@@ -25,6 +25,7 @@ const PATHS = {
   fog: 'M4 10h16M4 14h16M6 18h12M7 6h10',
   thunder: 'M7 14h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6 7a3.5 3.5 0 0 0 1 7zM13 15l-3 4h4l-3 4',
   window: 'M4 3h16v18H4zM12 3v18M4 12h16',
+  refresh: 'M20 11a8 8 0 0 0-14.9-3.5M4 4v4h4M4 13a8 8 0 0 0 14.9 3.5M20 20v-4h-4',
   expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
   sofa: 'M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v5H2zM5 18v2M19 18v2',

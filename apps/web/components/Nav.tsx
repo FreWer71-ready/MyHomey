@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FullscreenButton } from './FullscreenButton';
+import { RefreshButton } from './RefreshButton';
 import { Icon, type IconName } from './Icon';
 
 const ITEMS: { href: string; label: string; icon: IconName; ready: boolean }[] = [
@@ -47,8 +48,11 @@ export function Nav() {
           </span>
         ),
       )}
-      <div className="mt-auto hidden md:block">
-        <FullscreenButton />
+      <div className="flex flex-1 md:mt-auto md:flex-none md:flex-col md:gap-1">
+        <RefreshButton />
+        <span className="hidden md:block">
+          <FullscreenButton />
+        </span>
       </div>
     </nav>
   );
