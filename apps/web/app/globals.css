@@ -2,17 +2,82 @@
 
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --color-ink: #12162B;
-  --color-ink-2: #4A5070;
-  --color-ground: #F4F6FB;
+
+  /* Mörkt tema, alltid. Texttokens klarar WCAG AA mot glaskort ovanpå bildslöjan. */
+  --color-ground: #070A14;
+  --color-fg: #F3F5FA;
+  --color-dim: #C3C8D6;
+  --color-mute: #A9B0C2;
+  --color-deep: #0B0F1C;
+  --color-glass: rgb(14 18 32 / 0.48);
+  --color-glass-2: rgb(255 255 255 / 0.06);
+  --color-glass-hi: rgb(255 255 255 / 0.12);
+  --color-line: rgb(255 255 255 / 0.12);
+
+  /* Accent och status: starka färger för små ytor, "soft" som ton på kort. */
+  --color-ink: #12162B; /* text på solgula ytor */
   --color-sun: #FFC21A;
-  --color-sun-soft: #FFE58F;
-  --color-violet-soft: #D9CCFF;
+  --color-sun-soft: rgb(255 194 26 / 0.22);
+  --color-violet: #C4B5FD;
+  --color-violet-soft: rgb(139 92 246 / 0.26);
+  --color-ok: #7CE0A6;
+  --color-ok-soft: rgb(18 183 106 / 0.22);
+  --color-warn: #FFB27A;
+  --color-warn-strong: #E8650F;
+  --color-warn-soft: rgb(255 122 26 / 0.20);
+  --color-danger: #FF8A80;
+  --color-danger-strong: #F0503C;
+  --color-info: #8EC0FF;
+  --color-info-strong: #1E5BD6;
+  --color-teal: #0A7F8C;
 }
 
-body {
+html {
+  color-scheme: dark;
   background: var(--color-ground);
-  color: var(--color-ink);
+}
+
+/* Ingen egen bakgrund på body: den skulle täcka bakgrundsbilden (z-index -10). */
+body {
+  color: var(--color-fg);
+}
+
+/* Glaskort: halvgenomskinlig mörk ton utan backdrop-blur (sparar GPU/batteri när bakgrunden rör sig). */
+@utility glass {
+  background: var(--color-glass);
+  border: 1px solid var(--color-line);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+/* Bakgrund: långsam panorering/zoom (≈100 s fram och tillbaka), mjuk övertoning vid byte. */
+.backdrop-img {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  max-width: none; /* Tailwinds grundstil begränsar annars bilden till 100 % */
+  object-fit: cover;
+  animation: backdrop-pan 50s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.backdrop-in {
+  animation: backdrop-pan 50s ease-in-out infinite alternate, backdrop-fade 2.5s ease-out both;
+}
+.backdrop-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(4 6 14 / 0.42), rgb(4 6 14 / 0.18) 40%, rgb(4 6 14 / 0.6));
+}
+@keyframes backdrop-pan {
+  from { transform: scale(1) translate3d(0, 0, 0); }
+  to { transform: scale(1.08) translate3d(-2.5%, -1.5%, 0); }
+}
+@keyframes backdrop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .backdrop-img, .backdrop-in { animation: none; }
 }
 
 svg.ico {
@@ -24,7 +89,7 @@ svg.ico {
 }
 
 /* uPlot: förklaring i dashboardens stil. */
-.history-chart .u-legend { font: 700 15px var(--font-sans); text-align: left; margin-top: 12px; }
+.history-chart .u-legend { font: 700 15px var(--font-sans); text-align: left; margin-top: 12px; color: var(--color-fg); }
 .history-chart .u-legend .u-series { padding: 6px 10px; border-radius: 999px; }
 .history-chart .u-legend .u-series:first-child { display: none; }
 .history-chart .u-legend .u-marker { border-radius: 50%; width: 12px; height: 12px; }

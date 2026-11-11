@@ -113,6 +113,9 @@ export async function loadPrices(): Promise<Price[]> {
   return (data ?? []).map((p) => ({ start: Date.parse(p.start_ts), end: Date.parse(p.end_ts), ore: p.sek_per_kwh * 100 }));
 }
 
+/** Plats för väder och bakgrund (WEATHER_LAT/WEATHER_LON i Vercel, annars Eskilstuna). */
+export const PLACE = { lat: Number(process.env.WEATHER_LAT ?? 59.3712), lon: Number(process.env.WEATHER_LON ?? 16.5098) };
+
 /** Väderprognos (MET Norway), cachas 30 min. Plats via WEATHER_LAT/WEATHER_LON, annars Eskilstuna. */
 export async function loadWeather(): Promise<WeatherSummary | null> {
   const now = Date.now();
@@ -120,8 +123,7 @@ export async function loadWeather(): Promise<WeatherSummary | null> {
     const hours = [0, 1, 2, 3].map((h) => ({ time: Math.floor(now / 3600_000) * 3600_000 + h * 3600_000, symbol: h < 2 ? 'partlycloudy_night' : 'lightrain', precip: h < 2 ? 0 : 0.5, temp: 3 }));
     return summarizeWeather(hours, now);
   }
-  const lat = process.env.WEATHER_LAT ?? '59.3712';
-  const lon = process.env.WEATHER_LON ?? '16.5098';
+  const { lat, lon } = PLACE;
   try {
     const res = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`, {
       headers: { 'User-Agent': 'MyHomey-dashboard/1.0' },

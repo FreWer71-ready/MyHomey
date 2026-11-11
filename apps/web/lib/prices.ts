@@ -1,13 +1,14 @@
+import { tint } from './scale.ts';
 // Elpris: nuvarande pris, nivå mot dygnets snitt och billigaste tider. Ren logik.
 
 export type Price = { start: number; end: number; ore: number }; // ms, öre/kWh
 export type Level = { key: 'cheap' | 'normal' | 'high' | 'peak'; label: string; bg: string; bar: string };
 
 export const LEVELS: Level[] = [
-  { key: 'cheap', label: 'Billigt', bg: '#BFF0D4', bar: '#34C27A' },
-  { key: 'normal', label: 'Normalt', bg: '#FFE58F', bar: '#E8B400' },
-  { key: 'high', label: 'Dyrt', bg: '#FFC9A3', bar: '#FF8A3D' },
-  { key: 'peak', label: 'Mycket dyrt', bg: '#FFB0A6', bar: '#F0503C' },
+  { key: 'cheap', label: 'Billigt', bg: tint('#34C27A'), bar: '#34C27A' },
+  { key: 'normal', label: 'Normalt', bg: tint('#E8B400'), bar: '#E8B400' },
+  { key: 'high', label: 'Dyrt', bg: tint('#FF8A3D'), bar: '#FF8A3D' },
+  { key: 'peak', label: 'Mycket dyrt', bg: tint('#F0503C'), bar: '#F0503C' },
 ];
 
 /** Nivå relativt dygnets snitt (fasta öre-gränser fungerar inte när priserna svänger mellan år). */

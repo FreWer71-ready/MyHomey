@@ -6,8 +6,8 @@ import { Icon, type IconName } from './Icon';
 
 const SCENES: { key: string; label: string; icon: IconName; className: string }[] = [
   { key: 'ljust', label: 'Ljust', icon: 'sun', className: 'bg-sun text-ink' },
-  { key: 'mys', label: 'Mys', icon: 'moon', className: 'bg-white text-ink' },
-  { key: 'slack', label: 'Släck', icon: 'power', className: 'bg-ink text-white' },
+  { key: 'mys', label: 'Mys', icon: 'moon', className: 'glass text-fg' },
+  { key: 'slack', label: 'Släck', icon: 'power', className: 'bg-deep text-fg border border-line' },
 ];
 
 type State = { key: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null;
@@ -34,9 +34,9 @@ export function SceneButtons({ zoneId, room, size }: { zoneId: string; room: str
 
   const ring = (key: string) => {
     if (state?.key !== key) return '';
-    if (state.status === 'busy') return 'animate-pulse shadow-[0_0_0_3px_#12162B,0_0_0_5px_#FFFFFF]';
-    if (state.status === 'ok') return 'shadow-[0_0_0_3px_#12B76A,0_0_0_5px_#FFFFFF]';
-    return 'shadow-[0_0_0_3px_#F0503C,0_0_0_5px_#FFFFFF]';
+    if (state.status === 'busy') return 'animate-pulse shadow-[0_0_0_3px_var(--color-fg)]';
+    if (state.status === 'ok') return 'shadow-[0_0_0_3px_var(--color-ok)]';
+    return 'shadow-[0_0_0_3px_var(--color-danger)]';
   };
 
   return (
@@ -59,7 +59,7 @@ export function SceneButtons({ zoneId, room, size }: { zoneId: string; room: str
         ))}
       </div>
       {state?.status === 'error' && (
-        <p role="alert" className="rounded-xl bg-white/80 px-3 py-1.5 text-sm font-extrabold text-[#B42318]">{state.msg}</p>
+        <p role="alert" className="rounded-xl glass px-3 py-1.5 text-sm font-extrabold text-danger">{state.msg}</p>
       )}
     </div>
   );

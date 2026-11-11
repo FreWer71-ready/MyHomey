@@ -26,8 +26,8 @@ export function MoodButtons({ moods }: { moods: { id: string; name: string }[] }
   };
 
   const ring = (id: string) =>
-    state?.id !== id ? '' : state.status === 'busy' ? 'animate-pulse shadow-[0_0_0_3px_#12162B]'
-      : state.status === 'ok' ? 'shadow-[0_0_0_3px_#12B76A]' : 'shadow-[0_0_0_3px_#F0503C]';
+    state?.id !== id ? '' : state.status === 'busy' ? 'animate-pulse shadow-[0_0_0_3px_var(--color-fg)]'
+      : state.status === 'ok' ? 'shadow-[0_0_0_3px_var(--color-ok)]' : 'shadow-[0_0_0_3px_var(--color-danger)]';
 
   return (
     <div className="flex flex-col gap-2">
@@ -38,7 +38,7 @@ export function MoodButtons({ moods }: { moods: { id: string; name: string }[] }
               type="button"
               onClick={() => run(m.id)}
               disabled={state?.status === 'busy'}
-              className={`flex min-h-14 items-center gap-2.5 rounded-[20px] bg-[#E3DAFF] px-5 text-lg font-extrabold text-ink transition-shadow ${ring(m.id)}`}
+              className={`flex min-h-14 items-center gap-2.5 rounded-[20px] bg-violet-soft px-5 text-lg font-extrabold text-fg transition-shadow ${ring(m.id)}`}
             >
               <Icon name="moon" size={24} />
               {m.name}
@@ -47,7 +47,7 @@ export function MoodButtons({ moods }: { moods: { id: string; name: string }[] }
         ))}
       </ul>
       {state?.status === 'error' && (
-        <p role="alert" className="rounded-xl bg-white px-3 py-1.5 text-sm font-extrabold text-[#B42318]">{state.msg}</p>
+        <p role="alert" className="rounded-xl glass px-3 py-1.5 text-sm font-extrabold text-danger">{state.msg}</p>
       )}
     </div>
   );

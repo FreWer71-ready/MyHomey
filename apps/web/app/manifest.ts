@@ -10,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: 'fullscreen',
     display_override: ['fullscreen', 'standalone'],
     orientation: 'landscape',
-    background_color: '#F4F6FB',
-    theme_color: '#12162B',
+    background_color: '#070A14',
+    theme_color: '#070A14',
     icons: [
       { src: '/mydashboard/icon-192.png', sizes: '192x192', type: 'image/png' },
       { src: '/mydashboard/icon-512.png', sizes: '512x512', type: 'image/png' },

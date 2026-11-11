@@ -68,7 +68,7 @@ test('ikoner och färgskala', () => {
   assert.equal(iconFor('Kök'), 'pot');
   assert.equal(iconFor('Molly'), 'bed');
   assert.equal(heatColor(21), '#BFF0D4');
-  assert.equal(heatColor(null), '#E6E8F0');
+  assert.equal(heatColor(null), '#9AA1B5');
   assert.equal(fmtTemp(22), '22,0°');
 });
 

@@ -9,12 +9,22 @@ export const HEAT = [
   { max: Infinity, color: '#FFB8A6', label: 'över 25°' },
 ] as const;
 
-export const NO_TEMP = '#E6E8F0';
+export const NO_TEMP = '#9AA1B5';
+
+/** Färgton ovanpå glaskortets mörka grund (bra kontrast, ingen ljus yta som kan bränna in). */
+export function tint(hex: string, alpha = 0.3): string {
+  const n = parseInt(hex.slice(1), 16);
+  const rgb = `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
+  return `linear-gradient(rgb(${rgb} / ${alpha}), rgb(${rgb} / ${alpha})), var(--color-glass)`;
+}
 
 export function heatColor(t: number | null): string {
   if (t == null) return NO_TEMP;
   return HEAT.find((s) => t < s.max)!.color;
 }
+
+/** Temperaturfärg som ton för kort. */
+export const heatTint = (t: number | null) => tint(heatColor(t), t == null ? 0.12 : 0.3);
 
 const num = (n: number, decimals: number) =>
   n.toLocaleString('sv-SE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });

@@ -30,7 +30,7 @@ export function HistoryChart({ series, unit, decimals, bars, longPeriod }: {
     ];
     const fmtY = (v: number) =>
       `${v.toLocaleString('sv-SE', { maximumFractionDigits: Math.abs(v) < 1 && v !== 0 ? 3 : decimals })}${unit}`;
-    const axis = { stroke: '#4A5070', font: '600 13px "Plus Jakarta Sans", system-ui', grid: { stroke: '#E3E6EF', width: 1 }, ticks: { show: false } };
+    const axis = { stroke: '#C3C8D6', font: '600 13px "Plus Jakarta Sans", system-ui', grid: { stroke: 'rgba(255,255,255,0.08)', width: 1 }, ticks: { show: false } };
     const height = Math.max(260, Math.min(420, window.innerHeight - 420));
 
     const u = new uPlot({

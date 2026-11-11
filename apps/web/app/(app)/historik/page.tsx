@@ -20,7 +20,7 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
 const SHORT: PeriodKey[] = ['4h', '12h', '24h'];
 
 const chip = (active: boolean) =>
-  `flex min-h-11 items-center gap-2 rounded-full px-4 font-extrabold ${active ? 'bg-ink text-white' : 'bg-white'}`;
+  `flex min-h-11 items-center gap-2 rounded-full px-4 font-extrabold ${active ? 'bg-fg text-ground' : 'glass'}`;
 
 export default async function HistoryPage({
   searchParams,
@@ -63,10 +63,10 @@ export default async function HistoryPage({
             href={href(v.key, period)}
             aria-current={v.key === view ? 'page' : undefined}
             className={`flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 font-extrabold ${
-              v.key === view ? 'bg-sun' : 'bg-white'
+              v.key === view ? 'bg-sun' : 'glass'
             }`}
           >
-            <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${v.key === view ? 'bg-white/60' : 'bg-ground'}`}>
+            <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${v.key === view ? 'bg-glass-hi' : 'bg-glass-2'}`}>
               <Icon name={v.icon} size={22} />
             </span>
             {v.label}
@@ -89,7 +89,7 @@ export default async function HistoryPage({
       )}
 
       {!timeline && (
-        <section className="rounded-[24px] bg-white p-4">
+        <section className="rounded-[24px] glass p-4">
           {chartSeries.length ? (
             <HistoryChart
               series={chartSeries.map(({ id, label, color, points }) => ({ id, label, color, points }))}
@@ -99,7 +99,7 @@ export default async function HistoryPage({
               longPeriod={!SHORT.includes(period)}
             />
           ) : (
-            <p className="p-10 text-center text-lg font-bold text-ink-2">Ingen historik för perioden än.</p>
+            <p className="p-10 text-center text-lg font-bold text-dim">Ingen historik för perioden än.</p>
           )}
         </section>
       )}
@@ -113,7 +113,7 @@ export default async function HistoryPage({
                 key={s.id}
                 href={active ? href(view, period) : href(view, period, s.id)}
                 aria-pressed={active}
-                className={`flex flex-col gap-1 rounded-3xl bg-white p-3.5 ${
+                className={`flex flex-col gap-1 rounded-3xl glass p-3.5 ${
                   active ? 'shadow-[inset_0_0_0_3px_var(--color-ink)]' : sel ? 'opacity-55' : ''
                 }`}
               >
@@ -124,7 +124,7 @@ export default async function HistoryPage({
                 <span className="text-2xl font-extrabold tracking-tight">
                   {fmtValue(metric, cfg.delta ? s.total : s.latest)}
                 </span>
-                <span className="text-sm font-bold text-ink-2">
+                <span className="text-sm font-bold text-dim">
                   {cfg.delta
                     ? `förbrukat ${PERIODS[period].label}`
                     : `min ${fmtValue(metric, s.min)} · max ${fmtValue(metric, s.max)}`}

@@ -6,15 +6,15 @@ import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadPrices, loadWeather } from '@/lib/data';
 import { symbolInfo } from '@/lib/weather';
 import { hhmm, summarize } from '@/lib/prices';
-import { HEAT, fmtTemp, fmtWatt, heatColor } from '@/lib/scale';
+import { HEAT, fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
 function Hero({ bg, icon, label, children }: { bg: string; icon: IconName; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 rounded-[24px] p-4" style={{ background: bg }}>
+    <div className="glass flex flex-col gap-1 rounded-[24px] p-4" style={{ background: bg }}>
       <span className="flex items-center gap-2.5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/60">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
           <Icon name={icon} size={22} />
         </span>
         <span className="text-[15px] font-bold">{label}</span>
@@ -26,9 +26,9 @@ function Hero({ bg, icon, label, children }: { bg: string; icon: IconName; label
 
 function Status({ icon, label, value, tone, href }: { icon: IconName; label: string; value: string; tone: 'ok' | 'info' | 'warn'; href?: string }) {
   const tones = {
-    ok: ['bg-white', 'bg-[#BFF0D4] text-[#05603A]', 'text-ink-2'],
-    info: ['bg-white', 'bg-[#E3DAFF] text-[#5B2FD0]', 'text-ink-2'],
-    warn: ['bg-[#FFE3D1] shadow-[inset_0_0_0_3px_#FF7A1A]', 'bg-[#FF7A1A] text-white', 'text-[#6B2A05]'],
+    ok: ['glass', 'bg-ok-soft text-ok', 'text-dim'],
+    info: ['glass', 'bg-violet-soft text-violet', 'text-dim'],
+    warn: ['bg-warn-soft shadow-[inset_0_0_0_2px_var(--color-warn-strong)]', 'bg-warn-strong text-white', 'text-warn'],
   }[tone];
   const cls = `flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5 ${tones[0]}`;
   const body = (
@@ -57,20 +57,20 @@ export default async function HomePage() {
     <>
       <header className="flex items-end justify-between gap-4">
         <div>
-          <Clock show="date" className="text-[13px] font-bold tracking-wider text-ink-2 uppercase" />
+          <Clock show="date" className="text-[13px] font-bold tracking-wider text-fg uppercase" />
           <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
         </div>
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-2 rounded-full bg-[#D9F5E6] px-3 py-1.5 text-[14px] font-bold text-[#05603A]">
-            <span className="size-2.5 rounded-full bg-[#12B76A]" />
+          <span className="hidden items-center gap-2 rounded-full bg-ok-soft px-3 py-1.5 text-[14px] font-bold text-ok sm:flex">
+            <span className="size-2.5 rounded-full bg-ok" />
             Live · {h.online} enheter
           </span>
-          <Clock show="time" className="text-4xl leading-none font-extrabold tracking-tight" />
+          <Clock show="time" className="text-3xl leading-none md:text-4xl font-extrabold tracking-tight" />
         </div>
       </header>
 
       {warning && (
-        <Link href="/larm" role="alert" className="flex items-center gap-3 rounded-[20px] bg-[#1E5BD6] px-4 py-3 text-white">
+        <Link href="/larm" role="alert" className="flex items-center gap-3 rounded-[20px] bg-info-strong px-4 py-3 text-white">
           <Icon name="rain" size={28} />
           <span className="text-lg font-extrabold">
             Nederbörd väntas kl {hhmm(warning.at)} – stäng {warning.windows.map((w) => w.name).join(', ')}
@@ -79,7 +79,7 @@ export default async function HomePage() {
       )}
 
       {damp.length > 0 && (
-        <Link href="/larm#fukt" role="alert" className="flex items-center gap-3 rounded-[20px] bg-[#0A8F9E] px-4 py-3 text-white">
+        <Link href="/larm#fukt" role="alert" className="flex items-center gap-3 rounded-[20px] bg-teal px-4 py-3 text-white">
           <Icon name="drop" size={28} />
           <span className="text-lg font-extrabold">
             Hög luftfuktighet: {damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')} – vädra eller kör fläkten
@@ -88,9 +88,9 @@ export default async function HomePage() {
       )}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Hero bg={heatColor(h.outdoorTemp)} icon="thermo" label={sky ? `Ute · ${sky.label}` : 'Ute'}>
+        <Hero bg={heatTint(h.outdoorTemp)} icon="thermo" label={sky ? `Ute · ${sky.label}` : 'Ute'}>
           <span className="flex items-center justify-between gap-2">
-            <span className="text-5xl leading-none font-extrabold tracking-tight">{fmtTemp(h.outdoorTemp)}</span>
+            <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtTemp(h.outdoorTemp)}</span>
             {sky && <Icon name={sky.icon} size={52} />}
           </span>
           {weather && (
@@ -101,18 +101,18 @@ export default async function HomePage() {
             </span>
           )}
         </Hero>
-        <Hero bg="var(--color-sun)" icon="bulb" label="Lampor tända">
+        <Hero bg={tint('#FFC21A', 0.28)} icon="bulb" label="Lampor tända">
           <span className="flex items-center justify-between gap-2">
-            <span className="text-5xl leading-none font-extrabold tracking-tight">{h.lightsOn}</span>
+            <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{h.lightsOn}</span>
             <span className="text-[15px] font-bold">av {h.lightsTotal}</span>
           </span>
         </Hero>
-        <Hero bg="var(--color-violet-soft)" icon="bolt" label="Effekt nu">
-          <span className="text-5xl leading-none font-extrabold tracking-tight">{fmtWatt(h.powerW)}</span>
+        <Hero bg={tint('#8B5CF6', 0.28)} icon="bolt" label="Effekt nu">
+          <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtWatt(h.powerW)}</span>
           <span className="text-[15px] font-bold">{h.powerMeters} mätare</span>
         </Hero>
-        <Hero bg={price.level?.bg ?? '#E6E8F0'} icon="money" label={price.level ? `Elpris · ${price.level.label}` : 'Elpris SE3'}>
-          <span className="text-5xl leading-none font-extrabold tracking-tight">
+        <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={price.level ? `Elpris · ${price.level.label}` : 'Elpris SE3'}>
+          <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">
             {price.now ? Math.round(price.now.ore) : '–'}
             <span className="text-xl"> öre</span>
           </span>
@@ -149,9 +149,9 @@ export default async function HomePage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-[22px] font-extrabold">Rum</h2>
-        <div className="flex flex-wrap gap-1.5 text-[13px] font-bold text-[#3A3F5C]">
+        <div className="flex flex-wrap gap-1.5 text-[13px] font-bold text-fg">
           {HEAT.map((s) => (
-            <span key={s.label} className="rounded-full px-2.5 py-1" style={{ background: s.color }}>
+            <span key={s.label} className="rounded-full px-2.5 py-1" style={{ background: tint(s.color, 0.35) }}>
               {s.label}
             </span>
           ))}

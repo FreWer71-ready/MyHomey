@@ -27,7 +27,7 @@ export function RefreshButton() {
       onClick={refresh}
       aria-label="Uppdatera"
       aria-busy={pending}
-      className={`flex flex-1 flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] font-bold text-[#C9CDE0] md:w-full md:flex-none`}
+      className={`flex flex-1 flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] font-bold text-dim md:w-full md:flex-none`}
     >
       <Icon name="refresh" size={24} className={spin ? 'animate-spin' : ''} />
       Uppdatera
