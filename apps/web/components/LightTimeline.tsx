@@ -6,7 +6,7 @@ const TZ = 'Europe/Stockholm';
 /** Tidsmarkeringar: var 3:e timme på ett dygn, annars per dag/vecka. */
 function ticks(since: number, now: number) {
   const hours = (now - since) / 3600_000;
-  const step = hours <= 24 ? 3 * 3600_000 : hours <= 24 * 7 ? 24 * 3600_000 : 5 * 24 * 3600_000;
+  const step = hours <= 4 ? 1800_000 : hours <= 12 ? 2 * 3600_000 : hours <= 24 ? 3 * 3600_000 : hours <= 24 * 7 ? 24 * 3600_000 : 5 * 24 * 3600_000;
   const out: { left: number; label: string }[] = [];
   for (let t = Math.ceil(since / step) * step; t < now; t += step) {
     const d = new Date(t);

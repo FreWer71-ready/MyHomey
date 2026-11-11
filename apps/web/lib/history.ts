@@ -2,7 +2,7 @@
 import type { Device, Zone } from './home';
 
 export type MetricKey = 'temp' | 'hum' | 'power' | 'energy';
-export type PeriodKey = '24h' | '7d' | '30d';
+export type PeriodKey = '4h' | '12h' | '24h' | '7d' | '30d';
 
 export const METRICS: Record<MetricKey, {
   label: string; cap: string; unit: string; decimals: number;
@@ -18,7 +18,9 @@ export const METRICS: Record<MetricKey, {
 };
 
 export const PERIODS: Record<PeriodKey, { label: string; hours: number; bucket: string; barBucket: string }> = {
-  '24h': { label: '24 timmar', hours: 24, bucket: '10 minutes', barBucket: '1 hour' },
+  '4h': { label: '4 tim', hours: 4, bucket: '5 minutes', barBucket: '15 minutes' },
+  '12h': { label: '12 tim', hours: 12, bucket: '5 minutes', barBucket: '30 minutes' },
+  '24h': { label: '24 tim', hours: 24, bucket: '10 minutes', barBucket: '1 hour' },
   '7d': { label: '7 dagar', hours: 24 * 7, bucket: '1 hour', barBucket: '6 hours' },
   '30d': { label: '30 dagar', hours: 24 * 30, bucket: '4 hours', barBucket: '1 day' },
 };

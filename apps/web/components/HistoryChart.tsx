@@ -31,7 +31,7 @@ export function HistoryChart({ series, unit, decimals, bars, longPeriod }: {
     const fmtY = (v: number) =>
       `${v.toLocaleString('sv-SE', { maximumFractionDigits: Math.abs(v) < 1 && v !== 0 ? 3 : decimals })}${unit}`;
     const axis = { stroke: '#4A5070', font: '600 13px "Plus Jakarta Sans", system-ui', grid: { stroke: '#E3E6EF', width: 1 }, ticks: { show: false } };
-    const height = 420;
+    const height = Math.max(260, Math.min(420, window.innerHeight - 420));
 
     const u = new uPlot({
       width: el.clientWidth,
@@ -44,7 +44,7 @@ export function HistoryChart({ series, unit, decimals, bars, longPeriod }: {
         {
           ...axis,
           // Hela dagar på långa perioder, annars jämna timmar.
-          incrs: longPeriod ? [86400, 2 * 86400, 7 * 86400] : [3600, 2 * 3600, 3 * 3600, 6 * 3600],
+          incrs: longPeriod ? [86400, 2 * 86400, 7 * 86400] : [900, 1800, 3600, 2 * 3600, 3 * 3600, 6 * 3600],
           values: (_u, splits) => splits.map((s) => fmtTime(s, longPeriod)),
         },
         { ...axis, size: 96, values: (_u, splits) => splits.map(fmtY) },

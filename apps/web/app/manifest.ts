@@ -6,10 +6,17 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'MyHomey',
     start_url: '/mydashboard/',
     scope: '/mydashboard/',
-    display: 'standalone',
+    // Installerad som app: helskärm utan adressfält (Chrome på Android).
+    display: 'fullscreen',
+    display_override: ['fullscreen', 'standalone'],
     orientation: 'landscape',
     background_color: '#F4F6FB',
     theme_color: '#12162B',
-    icons: [{ src: '/mydashboard/icon.svg', sizes: 'any', type: 'image/svg+xml' }],
+    icons: [
+      { src: '/mydashboard/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/mydashboard/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/mydashboard/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/mydashboard/icon.svg', sizes: 'any', type: 'image/svg+xml' },
+    ],
   };
 }

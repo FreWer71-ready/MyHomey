@@ -21,7 +21,7 @@ export function SceneButtons({ room, size }: { room: string; size: 'icon' | 'lar
           title="Kommer snart"
           aria-label={`${s.label} i ${room}`}
           className={`flex items-center justify-center rounded-[14px] disabled:cursor-not-allowed ${s.className} ${
-            size === 'large' ? 'min-h-24 gap-3.5 rounded-[28px] text-[26px] font-extrabold' : 'min-h-12'
+            size === 'large' ? 'min-h-24 gap-3.5 rounded-[28px] text-[26px] font-extrabold' : 'min-h-11'
           }`}
         >
           <Icon name={s.icon} size={size === 'large' ? 40 : 24} />

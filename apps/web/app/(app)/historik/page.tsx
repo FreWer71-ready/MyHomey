@@ -17,12 +17,15 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'energy', label: METRICS.energy.label, icon: 'chart' },
   { key: 'lights', label: 'Lampor', icon: 'bulb' },
 ];
+const SHORT: PeriodKey[] = ['4h', '12h', '24h'];
 
-const tab = (active: boolean) =>
-  `flex min-h-12 items-center gap-2 rounded-full px-5 text-base font-extrabold ${active ? 'bg-ink text-white' : 'bg-white'}`;
+const chip = (active: boolean) =>
+  `flex min-h-11 items-center gap-2 rounded-full px-4 font-extrabold ${active ? 'bg-ink text-white' : 'bg-white'}`;
 
-export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ m?: string; p?: string }> }) {
-  const { m, p } = await searchParams;
+export default async function HistoryPage({
+  searchParams,
+}: { searchParams: Promise<{ m?: string; p?: string; s?: string }> }) {
+  const { m, p, s: sel } = await searchParams;
   const view: View = m === 'lights' ? 'lights' : isMetric(m) ? m : 'temp';
   const metric: MetricKey = view === 'lights' ? 'temp' : view;
   const period: PeriodKey = isPeriod(p) ? p : '24h';
@@ -30,80 +33,105 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const [series, timeline] = view === 'lights'
     ? [[], await loadLightTimeline(period)]
     : [await loadHistory(metric, period), null];
-  // Energi: en stapel per intervall för alla mätare; korten visar varje mätare.
-  const chartSeries = cfg.delta && series.length ? [sumSeries(series, 'Alla mätare', '#8B5CF6')] : series;
-  const href = (v: View, pp: PeriodKey) => `/historik?m=${v}&p=${pp}`;
+
+  // Valt rum/serie (?s=) filtrerar grafen; samma tryck igen visar alla.
+  const shown = sel ? series.filter((x) => x.id === sel) : series;
+  const chartSeries = cfg.delta && shown.length
+    ? [sumSeries(shown, sel && shown.length === 1 ? shown[0].label : 'Alla mätare', '#8B5CF6')]
+    : shown;
+  const rooms = timeline && sel ? timeline.rooms.filter((r) => r.name === sel) : timeline?.rooms;
+  const href = (v: View, pp: PeriodKey, s?: string) =>
+    `/historik?m=${v}&p=${pp}${s ? `&s=${encodeURIComponent(s)}` : ''}`;
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-[44px] leading-tight font-extrabold tracking-tight">Historik</h1>
-        <nav aria-label="Period" className="flex gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Historik</h1>
+        <nav aria-label="Period" className="flex flex-wrap gap-1.5">
           {(Object.keys(PERIODS) as PeriodKey[]).map((k) => (
-            <Link key={k} href={href(view, k)} aria-current={k === period ? 'page' : undefined} className={tab(k === period)}>
+            <Link key={k} href={href(view, k, sel)} aria-current={k === period ? 'page' : undefined} className={chip(k === period)}>
               {PERIODS[k].label}
             </Link>
           ))}
         </nav>
       </header>
 
-      <nav aria-label="Mått" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <nav aria-label="Mått" className="grid grid-cols-3 gap-2.5 lg:grid-cols-5">
         {VIEWS.map((v) => (
           <Link
             key={v.key}
             href={href(v.key, period)}
             aria-current={v.key === view ? 'page' : undefined}
-            className={`flex min-h-20 items-center gap-3 rounded-[24px] px-4 text-lg font-extrabold ${
+            className={`flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 font-extrabold ${
               v.key === view ? 'bg-sun' : 'bg-white'
             }`}
           >
-            <span className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${v.key === view ? 'bg-white/60' : 'bg-ground'}`}>
-              <Icon name={v.icon} size={26} />
+            <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${v.key === view ? 'bg-white/60' : 'bg-ground'}`}>
+              <Icon name={v.icon} size={22} />
             </span>
             {v.label}
           </Link>
         ))}
       </nav>
 
-      {timeline && <LightTimeline {...timeline} />}
+      {timeline && (
+        <>
+          <nav aria-label="Rum" className="flex flex-wrap gap-1.5">
+            <Link href={href(view, period)} aria-current={!sel ? 'page' : undefined} className={chip(!sel)}>Alla rum</Link>
+            {timeline.rooms.map((r) => (
+              <Link key={r.name} href={href(view, period, r.name)} aria-current={sel === r.name ? 'page' : undefined} className={chip(sel === r.name)}>
+                {r.name}
+              </Link>
+            ))}
+          </nav>
+          <LightTimeline rooms={rooms ?? []} since={timeline.since} now={timeline.now} />
+        </>
+      )}
 
-      {!timeline && <section className="rounded-[28px] bg-white p-5">
-        {chartSeries.length ? (
-          <HistoryChart
-            series={chartSeries.map(({ id, label, color, points }) => ({ id, label, color, points }))}
-            unit={cfg.unit}
-            decimals={cfg.decimals}
-            bars={!!cfg.delta}
-            longPeriod={period !== '24h'}
-          />
-        ) : (
-          <p className="p-10 text-center text-lg font-bold text-ink-2">Ingen historik för perioden än.</p>
-        )}
-      </section>}
+      {!timeline && (
+        <section className="rounded-[24px] bg-white p-4">
+          {chartSeries.length ? (
+            <HistoryChart
+              series={chartSeries.map(({ id, label, color, points }) => ({ id, label, color, points }))}
+              unit={cfg.unit}
+              decimals={cfg.decimals}
+              bars={!!cfg.delta}
+              longPeriod={!SHORT.includes(period)}
+            />
+          ) : (
+            <p className="p-10 text-center text-lg font-bold text-ink-2">Ingen historik för perioden än.</p>
+          )}
+        </section>
+      )}
 
       {series.length > 0 && (
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {series.map((s) => (
-            <div key={s.id} className="flex flex-col gap-1.5 rounded-3xl bg-white p-4">
-              <span className="flex items-center gap-2 font-extrabold">
-                <span className="size-3.5 shrink-0 rounded-full" style={{ background: cfg.delta ? '#8B5CF6' : s.color }} />
-                <span className="truncate">{s.label}</span>
-              </span>
-              {cfg.delta ? (
-                <>
-                  <span className="text-3xl font-extrabold tracking-tight">{fmtValue(metric, s.total)}</span>
-                  <span className="text-sm font-bold text-ink-2">förbrukat {PERIODS[period].label}</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-3xl font-extrabold tracking-tight">{fmtValue(metric, s.latest)}</span>
-                  <span className="text-sm font-bold text-ink-2">
-                    min {fmtValue(metric, s.min)} · max {fmtValue(metric, s.max)}
-                  </span>
-                </>
-              )}
-            </div>
-          ))}
+        <section aria-label="Filtrera på rum" className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4">
+          {series.map((s) => {
+            const active = sel === s.id;
+            return (
+              <Link
+                key={s.id}
+                href={active ? href(view, period) : href(view, period, s.id)}
+                aria-pressed={active}
+                className={`flex flex-col gap-1 rounded-3xl bg-white p-3.5 ${
+                  active ? 'shadow-[inset_0_0_0_3px_var(--color-ink)]' : sel ? 'opacity-55' : ''
+                }`}
+              >
+                <span className="flex items-center gap-2 font-extrabold">
+                  <span className="size-3.5 shrink-0 rounded-full" style={{ background: cfg.delta ? '#8B5CF6' : s.color }} />
+                  <span className="truncate">{s.label}</span>
+                </span>
+                <span className="text-2xl font-extrabold tracking-tight">
+                  {fmtValue(metric, cfg.delta ? s.total : s.latest)}
+                </span>
+                <span className="text-sm font-bold text-ink-2">
+                  {cfg.delta
+                    ? `förbrukat ${PERIODS[period].label}`
+                    : `min ${fmtValue(metric, s.min)} · max ${fmtValue(metric, s.max)}`}
+                </span>
+              </Link>
+            );
+          })}
         </section>
       )}
     </>
