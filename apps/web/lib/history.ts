@@ -44,14 +44,19 @@ export type Series = {
 export const isMetric = (m: string | undefined): m is MetricKey => !!m && m in METRICS;
 export const isPeriod = (p: string | undefined): p is PeriodKey => !!p && p in PERIODS;
 
-export function buildSeries(metric: MetricKey, rows: Row[], devices: Device[], zones: Zone[], nowSec?: number): Series[] {
+/** Mått där gamla värden betyder att sensorn är ej nåbar (samma regel som på Hem). */
+export const STALE_CHECKED: MetricKey[] = ['temp', 'hum'];
+
+export function buildSeries(
+  metric: MetricKey, rows: Row[], devices: Device[], zones: Zone[], nowSec?: number, stale: Set<string> = new Set(),
+): Series[] {
   const cfg = METRICS[metric];
   const zoneName = new Map(zones.map((z) => [z.id, z.name.trim()]));
   const byId = new Map(devices.map((d) => [d.id, d]));
   const grouped = new Map<string, Row[]>();
   for (const r of rows) {
     const d = byId.get(r.device_id);
-    if (!d || (cfg.classes.length && !cfg.classes.includes(d.class ?? ''))) continue;
+    if (!d || stale.has(d.id) || (cfg.classes.length && !cfg.classes.includes(d.class ?? ''))) continue;
     if (!grouped.has(r.device_id)) grouped.set(r.device_id, []);
     grouped.get(r.device_id)!.push(r);
   }

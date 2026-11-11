@@ -1,11 +1,11 @@
 import 'server-only';
 import { createClient } from './supabase/server';
-import { buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
+import { TEMP_MAX_DAYS, buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
 import type { Price } from './prices';
 import { startOfDayStockholm } from './time';
 import { parseMet, summarizeWeather, type WeatherSummary } from './weather';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
-import { buildSeries, METRICS, PERIODS, type MetricKey, type PeriodKey, type Row, type Series } from './history';
+import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
 export const DEMO = process.env.NODE_ENV === 'development' ? process.env.DEMO_DATA : undefined;
@@ -41,14 +41,21 @@ export async function loadHistory(metric: MetricKey, period: PeriodKey): Promise
   }
 
   const sb = await createClient();
-  const [zones, devices, rows] = await Promise.all([
+  const [zones, devices, rows, latest] = await Promise.all([
     sb.from('zones').select('id,name,parent_id'),
     sb.from('devices').select('id,name,zone_id,class,available'),
     sb.rpc('history', { cap: cfg.cap, since, bucket }),
+    sb.from('capability_state').select('device_id,last_updated').eq('capability_id', cfg.cap),
   ]);
-  const error = zones.error ?? devices.error ?? rows.error;
+  const error = zones.error ?? devices.error ?? rows.error ?? latest.error;
   if (error) throw new Error(`Kunde inte läsa historik: ${error.message}`);
-  return buildSeries(metric, rows.data as Row[], devices.data as Device[], zones.data as Zone[], Math.floor(Date.now() / 1000));
+  // Inaktuella sensorer (inget nytt värde på TEMP_MAX_DAYS dagar) visas inte.
+  const stale = new Set(
+    STALE_CHECKED.includes(metric)
+      ? (latest.data ?? []).filter((c) => Date.now() - Date.parse(c.last_updated) > TEMP_MAX_DAYS * 86400_000).map((c) => c.device_id)
+      : [],
+  );
+  return buildSeries(metric, rows.data as Row[], devices.data as Device[], zones.data as Zone[], Math.floor(Date.now() / 1000), stale);
 }
 
 /** Påhittade kurvor kring nuvarande värden, bara för demoläget. */

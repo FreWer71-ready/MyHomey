@@ -56,3 +56,8 @@ test('summering per tidpunkt', async () => {
   assert.deepEqual(s.points, [[1, 1], [2, 5], [3, 4]]);
   assert.equal(s.total, 10);
 });
+
+test('inaktuella sensorer tas bort ur historiken', () => {
+  const s = buildSeries('temp', [row('s1', '2026-11-11T10:00:00Z', 21), row('wx', '2026-11-11T10:00:00Z', 2)], devices, zones, undefined, new Set(['s1']));
+  assert.deepEqual(s.map((x) => x.label), ['Ute']);
+});
