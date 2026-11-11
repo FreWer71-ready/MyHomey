@@ -2,10 +2,10 @@
 import { createClient } from '@/lib/supabase/server';
 
 const SCENES = ['ljust', 'mys', 'slack'];
+type Result = { ok: boolean; error?: string };
 
-/** Kör Ljust/Mys/Släck i ett rum via Homeys webhook och loggar kommandot. */
-export async function runScene(zoneId: string, scene: string): Promise<{ ok: boolean; error?: string }> {
-  if (!SCENES.includes(scene)) return { ok: false, error: 'Okänd scen' };
+/** Anropar Homeys webhook "scen" (flödet kör DB Scen) och loggar kommandot. */
+async function command(tag: Record<string, string>, log: Record<string, string>): Promise<Result> {
   if (process.env.NODE_ENV === 'development' && process.env.DEMO_DATA) return { ok: true };
 
   const sb = await createClient();
@@ -20,9 +20,8 @@ export async function runScene(zoneId: string, scene: string): Promise<{ ok: boo
   if (!homeyId) {
     error = 'HOMEY_ID saknas';
   } else {
-    const tag = encodeURIComponent(JSON.stringify({ zone: zoneId, scene }));
     try {
-      const res = await fetch(`https://webhook.homey.app/${homeyId}/scen?tag=${tag}`, {
+      const res = await fetch(`https://webhook.homey.app/${homeyId}/scen?tag=${encodeURIComponent(JSON.stringify(tag))}`, {
         cache: 'no-store',
         signal: AbortSignal.timeout(8000),
       });
@@ -33,6 +32,18 @@ export async function runScene(zoneId: string, scene: string): Promise<{ ok: boo
     }
   }
 
-  await sb.from('commands').insert({ type: 'scene', zone_id: zoneId, scene, ok, error: error ?? null });
+  await sb.from('commands').insert({ ...log, ok, error: error ?? null });
   return { ok, error };
+}
+
+/** Ljust/Mys/Släck i ett rum. */
+export async function runScene(zoneId: string, scene: string): Promise<Result> {
+  if (!SCENES.includes(scene)) return { ok: false, error: 'Okänd scen' };
+  return command({ zone: zoneId, scene }, { type: 'scene', zone_id: zoneId, scene });
+}
+
+/** Aktivera ett Homey-mood. */
+export async function runMood(moodId: string): Promise<Result> {
+  if (!/^[\w-]{1,64}$/.test(moodId)) return { ok: false, error: 'Ogiltigt mood' };
+  return command({ mood: moodId }, { type: 'mood', mood_id: moodId });
 }

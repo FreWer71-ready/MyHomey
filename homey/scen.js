@@ -1,16 +1,28 @@
-// Scen per rum: Ljust / Mys / Släck för alla lampor i en zon.
+// DB Scen: Ljust / Mys / Släck för ett rum, eller aktivera ett mood.
 // Flöde: NÄR Logik → "Webhook tas emot", händelse: scen
-//        DÅ 1) HomeyScript → "Kör med argument": scen, argument = [Tag]
-//           2) HomeyScript → "Kör": Dashboard (fördröjning 2 s) – skickar nytt läge till dashboarden
-// Argument (JSON från dashboarden): {"zone":"<zon-id>","scene":"ljust|mys|slack"}
+//        DÅ 1) HomeyScript → "Kör med argument": DB Scen, argument = [Tag]
+//           2) HomeyScript → "Kör": Dashboard (fördröjning 2 s)
+// Argument (JSON från dashboarden):
+//   {"zone":"<zon-id>","scene":"ljust|mys|slack"}  eller  {"mood":"<mood-id>"}
+
+const a = JSON.parse(args[0] || '{}');
+
+if (a.mood) {
+  const moods = Homey.moods;
+  const activate = moods && (moods.setMood || moods.activateMood || moods.applyMood);
+  if (!activate) {
+    throw new Error('Kan inte aktivera moods. Tillgängligt: ' + Object.keys(Object.getPrototypeOf(moods || {})).join(', '));
+  }
+  await activate.call(moods, { id: a.mood });
+  log(`mood ${a.mood} aktiverat`);
+  return true;
+}
 
 const SCENES = {
   ljust: { on: true, dim: 1.0, temp: 0.3 }, // light_temperature: 0 = kallt, 1 = varmt
   mys: { on: true, dim: 0.3, temp: 0.9 },
   slack: { on: false },
 };
-
-const a = JSON.parse(args[0] || '{}');
 const s = SCENES[a.scene];
 if (!a.zone || !s) throw new Error(`Ogiltigt argument: ${args[0]}`);
 

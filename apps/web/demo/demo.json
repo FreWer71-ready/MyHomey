@@ -379,7 +379,7 @@
   {
    "device_id": "bs",
    "capability_id": "measure_humidity",
-   "value_num": 35.6,
+   "value_num": 74,
    "value_bool": null
   },
   {
@@ -427,6 +427,21 @@
    "id": "m4",
    "name": "Godnatt",
    "zone_id": "s1"
+  },
+  {
+   "id": "m5",
+   "name": "Jul",
+   "zone_id": "root"
+  },
+  {
+   "id": "m6",
+   "name": "Ljust alla rum",
+   "zone_id": "root"
+  },
+  {
+   "id": "m7",
+   "name": "Preparty",
+   "zone_id": "root"
   }
  ]
 }

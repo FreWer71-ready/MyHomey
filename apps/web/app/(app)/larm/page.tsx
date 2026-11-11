@@ -1,5 +1,5 @@
 import { Icon, type IconName } from '@/components/Icon';
-import { rainWarning } from '@/lib/alerts';
+import { HUMIDITY_LIMIT, humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadWeather } from '@/lib/data';
 import { STALE_HOURS } from '@/lib/home';
 import { hhmm } from '@/lib/prices';
@@ -36,6 +36,8 @@ export default async function AlarmPage() {
   const [h, weather] = await Promise.all([loadHome(), loadWeather()]);
   const warning = rainWarning(weather, h.openings);
   const open = h.openings.filter((o) => o.open);
+  const wet = h.rooms.filter((r) => r.humidity != null);
+  const damp = humidityWarnings(h.rooms);
 
   return (
     <>
@@ -106,6 +108,24 @@ export default async function AlarmPage() {
               </li>
             ))}
           </ul>
+        </Section>
+
+        <Section id="fukt" icon="drop" title="Luftfuktighet i våtrum" count={damp.length} tone={damp.length ? 'warn' : 'ok'}>
+          {wet.length ? (
+            <ul className="flex flex-col gap-2">
+              {wet.map((r) => (
+                <li key={r.id} className="flex items-center gap-3 rounded-2xl bg-ground px-4 py-3">
+                  <span className="min-w-0 grow font-extrabold">{r.name}</span>
+                  <span className="text-sm font-bold text-ink-2">gräns {HUMIDITY_LIMIT} %</span>
+                  <span className={`rounded-full px-3 py-1 font-extrabold ${r.humidity! >= HUMIDITY_LIMIT ? 'bg-[#0A8F9E] text-white' : 'bg-[#BFF0D4] text-[#05603A]'}`}>
+                    {Math.round(r.humidity!)} %
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Empty text="Ingen fuktsensor i badrum eller toalett." />
+          )}
         </Section>
       </div>
     </>

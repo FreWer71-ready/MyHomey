@@ -45,6 +45,9 @@ export type Home = {
   online: number;
   deviceTotal: number;
   rooms: Room[];
+  /** Zonen överst i Homey (hela hemmet) och dess moods. */
+  rootZoneId: string | null;
+  homeMoods: { id: string; name: string }[];
 };
 
 /** Capabilities som vyerna behöver. */
@@ -144,6 +147,12 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
     return [];
   }).sort((a, b) => (a.lastSeen ?? '').localeCompare(b.lastSeen ?? ''));
 
+  const root = zones.find((z) => z.parent_id === null) ?? null;
+  const homeMoods = moods
+    .filter((m) => root && m.zone_id === root.id)
+    .map((m) => ({ id: m.id, name: m.name.trim() }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+
   return {
     // Väderstationer (t.ex. Trafikverket) har klassen service.
     outdoorTemp: avg(nums(active.filter((d) => d.class === 'service'), 'measure_temperature')),
@@ -161,5 +170,7 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
     online: active.length,
     deviceTotal: devices.length,
     rooms,
+    rootZoneId: root?.id ?? null,
+    homeMoods,
   };
 }

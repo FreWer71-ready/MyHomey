@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
-import { rainWarning } from '@/lib/alerts';
+import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadPrices, loadWeather } from '@/lib/data';
 import { symbolInfo } from '@/lib/weather';
 import { hhmm, summarize } from '@/lib/prices';
@@ -51,6 +51,7 @@ export default async function HomePage() {
   const open = h.openings.filter((o) => o.open);
   const sky = weather ? symbolInfo(weather.current.symbol) : null;
   const warning = rainWarning(weather, h.openings);
+  const damp = humidityWarnings(h.rooms);
 
   return (
     <>
@@ -73,6 +74,15 @@ export default async function HomePage() {
           <Icon name="rain" size={28} />
           <span className="text-lg font-extrabold">
             Nederbörd väntas kl {hhmm(warning.at)} – stäng {warning.windows.map((w) => w.name).join(', ')}
+          </span>
+        </Link>
+      )}
+
+      {damp.length > 0 && (
+        <Link href="/larm#fukt" role="alert" className="flex items-center gap-3 rounded-[20px] bg-[#0A8F9E] px-4 py-3 text-white">
+          <Icon name="drop" size={28} />
+          <span className="text-lg font-extrabold">
+            Hög luftfuktighet: {damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')} – vädra eller kör fläkten
           </span>
         </Link>
       )}
