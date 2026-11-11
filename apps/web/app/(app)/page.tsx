@@ -4,7 +4,8 @@ import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadMotionCount, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
-import { symbolInfo } from '@/lib/weather';
+import { symbolInfo, weatherKind } from '@/lib/weather';
+import { WeatherIcon } from '@/components/WeatherIcon';
 import { hhmm, summarize } from '@/lib/prices';
 import { HEAT, fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
@@ -97,7 +98,7 @@ export default async function HomePage() {
         <Hero bg={heatTint(h.outdoorTemp)} icon="thermo" label={sky ? `Ute · ${sky.label}` : 'Ute'}>
           <span className="flex items-center justify-between gap-2">
             <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtTemp(h.outdoorTemp)}</span>
-            {sky && <Icon name={sky.icon} size={52} />}
+            {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={68} label={sky.label} />}
           </span>
           {weather && (
             <span className="text-[15px] font-bold">

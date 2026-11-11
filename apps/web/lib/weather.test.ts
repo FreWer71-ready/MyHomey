@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMet, summarizeWeather, symbolInfo } from './weather.ts';
+import { parseMet, summarizeWeather, symbolInfo, weatherKind } from './weather.ts';
 
 const t0 = Date.parse('2026-11-11T18:00:00Z');
 const ts = (h: number, symbol: string, precip: number) => ({
@@ -23,4 +23,15 @@ test('symboler', () => {
   assert.equal(symbolInfo('clearsky_night').icon, 'moon');
   assert.equal(symbolInfo('partlycloudy_day').label, 'Halvklart');
   assert.equal(symbolInfo('heavysleet').icon, 'snow');
+});
+
+test('färgade vädersymboler', () => {
+  assert.equal(weatherKind('clearsky_day'), 'sun');
+  assert.equal(weatherKind('clearsky_night'), 'moon');
+  assert.equal(weatherKind('fair_night'), 'partly-night');
+  assert.equal(weatherKind('cloudy'), 'cloud');
+  assert.equal(weatherKind('lightrainshowers_day'), 'rain');
+  assert.equal(weatherKind('heavysleet'), 'sleet');
+  assert.equal(weatherKind('snowandthunder'), 'thunder');
+  assert.equal(weatherKind('fog'), 'fog');
 });

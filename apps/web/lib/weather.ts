@@ -61,3 +61,19 @@ export function symbolInfo(code: string): { icon: IconName; label: string; wet: 
   if (base === 'partlycloudy' || base === 'fair') return { icon: 'cloudSun', label: base === 'fair' ? 'Mest klart' : 'Halvklart', wet: false };
   return { icon: night ? 'moon' : 'sun', label: 'Klart', wet: false };
 }
+
+export type WeatherKind = 'sun' | 'moon' | 'partly-day' | 'partly-night' | 'cloud' | 'rain' | 'snow' | 'sleet' | 'fog' | 'thunder';
+
+/** MET-symbol → typ av färgad vädersymbol. */
+export function weatherKind(code: string): WeatherKind {
+  const night = code.endsWith('_night');
+  const base = code.replace(/_(day|night|polartwilight)$/, '');
+  if (base.includes('thunder')) return 'thunder';
+  if (base.includes('sleet')) return 'sleet';
+  if (base.includes('snow')) return 'snow';
+  if (base.includes('rain')) return 'rain';
+  if (base === 'fog') return 'fog';
+  if (base === 'cloudy') return 'cloud';
+  if (base === 'partlycloudy' || base === 'fair') return night ? 'partly-night' : 'partly-day';
+  return night ? 'moon' : 'sun';
+}

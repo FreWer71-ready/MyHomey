@@ -70,14 +70,30 @@ body {
 }
 @keyframes backdrop-pan {
   from { transform: scale(1) translate3d(0, 0, 0); }
-  to { transform: scale(1.08) translate3d(-2.5%, -1.5%, 0); }
+  to { transform: scale(1.15) translate3d(-5%, -3%, 0); }
 }
 @keyframes backdrop-fade {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+/* Vädersymboler: små, lätta animationer (transform/opacity). */
+.wx-spin { animation: wx-spin 24s linear infinite; transform-origin: 32px 32px; transform-box: view-box; }
+.wx-drift { animation: wx-drift 6s ease-in-out infinite alternate; }
+.wx-fall { animation: wx-fall 1.4s linear infinite; }
+.wx-flake { animation: wx-flake 3.2s linear infinite; }
+.wx-flash { animation: wx-flash 5s steps(1) infinite; }
+.wx-slide { animation: wx-slide 5s ease-in-out infinite alternate; }
+.wx-twinkle { animation: wx-twinkle 3s ease-in-out infinite; }
+@keyframes wx-spin { to { transform: rotate(360deg); } }
+@keyframes wx-drift { from { transform: translateX(-1.5px); } to { transform: translateX(2px); } }
+@keyframes wx-fall { from { transform: translateY(-3px); opacity: 0; } 25% { opacity: 1; } to { transform: translateY(9px); opacity: 0; } }
+@keyframes wx-flake { from { transform: translate(0, -3px); opacity: 0; } 20% { opacity: 1; } 50% { transform: translate(2px, 4px); } to { transform: translate(-1px, 11px); opacity: 0; } }
+@keyframes wx-flash { 0%, 86%, 92% { opacity: 1; } 88%, 95% { opacity: 0.25; } }
+@keyframes wx-slide { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
+@keyframes wx-twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .backdrop-img, .backdrop-in { animation: none; }
+  .backdrop-img, .backdrop-in, .wx-spin, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle { animation: none; }
 }
 
 svg.ico {
