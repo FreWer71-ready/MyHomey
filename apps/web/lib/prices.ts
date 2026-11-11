@@ -1,6 +1,9 @@
 import { tint } from './scale.ts';
 // Elpris: nuvarande pris, nivå mot dygnets snitt och billigaste tider. Ren logik.
 
+/** Elprisområde för hemmet (Eskilstuna). */
+export const PRICE_AREA = 'SE3';
+
 export type Price = { start: number; end: number; ore: number }; // ms, öre/kWh
 export type Level = { key: 'cheap' | 'normal' | 'high' | 'peak'; label: string; bg: string; bar: string };
 

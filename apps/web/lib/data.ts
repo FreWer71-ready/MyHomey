@@ -1,7 +1,7 @@
 import 'server-only';
 import { createClient } from './supabase/server';
 import { TEMP_MAX_DAYS, buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
-import type { Price } from './prices';
+import { PRICE_AREA, type Price } from './prices';
 import { startOfDayStockholm } from './time';
 import { parseMet, summarizeWeather, type WeatherSummary } from './weather';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
@@ -113,7 +113,7 @@ export async function loadPrices(): Promise<Price[]> {
   const { data, error } = await sb
     .from('spot_prices')
     .select('start_ts,end_ts,sek_per_kwh')
-    .eq('area', 'SE3')
+    .eq('area', PRICE_AREA)
     .gte('start_ts', new Date(now - 26 * 3600_000).toISOString())
     .lt('start_ts', new Date(now + 36 * 3600_000).toISOString())
     .order('start_ts');

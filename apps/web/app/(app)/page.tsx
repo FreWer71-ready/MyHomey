@@ -6,7 +6,7 @@ import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadMotionCount, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
-import { hhmm, summarize } from '@/lib/prices';
+import { PRICE_AREA, hhmm, summarize } from '@/lib/prices';
 import { HEAT, fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
@@ -131,7 +131,7 @@ export default async function HomePage() {
         </Hero>
         )}
         {price.now && (
-        <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={price.level ? `Elpris · ${price.level.label}` : 'Elpris SE3'}>
+        <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={`Elpris ${PRICE_AREA}${price.level ? ` · ${price.level.label}` : ''}`}>
           <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">
             {Math.round(price.now.ore)}
             <span className="text-xl"> öre</span>
