@@ -94,10 +94,13 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:auto-cols-fr lg:grid-flow-col">
+        {(h.outdoorTemp != null || weather) && (
         <Hero bg={heatTint(h.outdoorTemp)} icon="thermo" label={sky ? `Ute · ${sky.label}` : 'Ute'}>
           <span className="flex items-center justify-between gap-2">
-            <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtTemp(h.outdoorTemp)}</span>
+            {h.outdoorTemp != null && (
+              <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtTemp(h.outdoorTemp)}</span>
+            )}
             {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={68} label={sky.label} />}
           </span>
           {weather && (
@@ -108,25 +111,32 @@ export default async function HomePage() {
             </span>
           )}
         </Hero>
+        )}
+        {h.lightsTotal > 0 && (
         <Hero bg={tint('#FFC21A', 0.28)} icon="bulb" label="Lampor tända">
           <span className="flex items-center justify-between gap-2">
             <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{h.lightsOn}</span>
             <span className="text-[15px] font-bold">av {h.lightsTotal}</span>
           </span>
         </Hero>
+        )}
+        {h.powerMeters > 0 && (
         <Hero bg={tint('#8B5CF6', 0.28)} icon="bolt" label="Effekt nu">
           <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtWatt(h.powerW)}</span>
           <span className="text-[15px] font-bold">{h.powerMeters} mätare</span>
         </Hero>
+        )}
+        {price.now && (
         <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={price.level ? `Elpris · ${price.level.label}` : 'Elpris SE3'}>
           <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">
-            {price.now ? Math.round(price.now.ore) : '–'}
+            {Math.round(price.now.ore)}
             <span className="text-xl"> öre</span>
           </span>
           <span className="text-[15px] font-bold">
-            {price.cheapest1h ? `Billigast ${hhmm(price.cheapest1h.start)}–${hhmm(price.cheapest1h.end)}` : 'Priser saknas'}
+            {price.cheapest1h && `Billigast ${hhmm(price.cheapest1h.start)}–${hhmm(price.cheapest1h.end)}`}
           </span>
         </Hero>
+        )}
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -170,9 +180,11 @@ export default async function HomePage() {
         </div>
       </div>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {h.rooms.map((r) => (
-          <RoomTile key={r.id} room={r} />
-        ))}
+        {h.rooms
+          .filter((r) => r.temp != null || r.humidity != null || r.lights.length > 0)
+          .map((r) => (
+            <RoomTile key={r.id} room={r} />
+          ))}
       </section>
     </>
   );
