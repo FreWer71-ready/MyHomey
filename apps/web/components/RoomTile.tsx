@@ -12,20 +12,20 @@ export function RoomTile({ room }: { room: Room }) {
           <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-white/65">
             <Icon name={room.icon} />
           </span>
-          <span className="min-w-0 grow text-[17px] leading-tight font-extrabold break-words">{room.name}</span>
-          {room.lightsOn > 0 && (
-            <span className="flex items-center gap-0.5 rounded-full bg-ink px-2 py-1 text-sm font-extrabold text-sun">
-              <Icon name="bulb" size={14} />
-              {room.lightsOn}
-            </span>
-          )}
+          <span className="min-w-0 grow truncate text-lg font-extrabold">{room.name}</span>
         </span>
-        <span className="flex items-baseline gap-2.5">
+        <span className="flex items-center gap-2.5">
           <span className="text-[34px] leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}</span>
           {room.humidity != null && (
             <span className="flex items-center gap-0.5 font-extrabold text-[#0B4F8A]">
               <Icon name="drop" size={16} />
               {fmtPercent(room.humidity)}
+            </span>
+          )}
+          {room.lightsOn > 0 && (
+            <span className="ml-auto flex items-center gap-0.5 rounded-full bg-ink px-2 py-1 text-sm font-extrabold text-sun">
+              <Icon name="bulb" size={14} />
+              {room.lightsOn}
             </span>
           )}
         </span>
