@@ -1,6 +1,6 @@
 import { Icon, type IconName } from '@/components/Icon';
 import { HUMIDITY_LIMIT, humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadWeather } from '@/lib/data';
+import { loadHome, loadOpeningsToday, loadWeather } from '@/lib/data';
 import { STALE_HOURS } from '@/lib/home';
 import { hhmm } from '@/lib/prices';
 import { symbolInfo } from '@/lib/weather';
@@ -33,7 +33,7 @@ function Section({ id, icon, title, count, tone, children }: {
 const Empty = ({ text }: { text: string }) => <p className="rounded-2xl bg-glass-2 p-4 font-bold text-dim">{text}</p>;
 
 export default async function AlarmPage() {
-  const [h, weather] = await Promise.all([loadHome(), loadWeather()]);
+  const [h, weather, openedToday] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday()]);
   const warning = rainWarning(weather, h.openings);
   const open = h.openings.filter((o) => o.open);
   const wet = h.rooms.filter((r) => r.humidity != null);
@@ -100,7 +100,9 @@ export default async function AlarmPage() {
                 <Icon name={o.kind === 'door' ? 'door' : 'window'} size={22} />
                 <span className="min-w-0 grow">
                   <span className="block truncate font-extrabold">{o.name}</span>
-                  <span className="block text-sm font-bold text-dim">{o.room || 'Inget rum'}</span>
+                  <span className="block text-sm font-bold text-dim">
+                    {o.room || 'Inget rum'} · öppnad {openedToday[o.id] ?? 0}× i dag
+                  </span>
                 </span>
                 <span className={`rounded-full px-3 py-1 text-sm font-extrabold ${o.open ? 'bg-warn-strong text-white' : 'bg-ok-soft text-ok'}`}>
                   {o.open ? 'Öppen' : 'Stängd'}

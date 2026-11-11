@@ -3,7 +3,7 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadMotionCount, loadPrices, loadWeather } from '@/lib/data';
+import { loadHome, loadMotionCount, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { symbolInfo } from '@/lib/weather';
 import { hhmm, summarize } from '@/lib/prices';
 import { HEAT, fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
@@ -46,7 +46,10 @@ function Status({ icon, label, value, tone, href }: { icon: IconName; label: str
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, motions] = await Promise.all([loadHome(), loadPrices(), loadWeather(), loadMotionCount()]);
+  const [h, prices, weather, motions, openedToday] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadMotionCount(), loadOpeningsToday(),
+  ]);
+  const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
   const price = summarize(prices, Date.now());
   const open = h.openings.filter((o) => o.open);
   const sky = weather ? symbolInfo(weather.current.symbol) : null;
@@ -128,7 +131,7 @@ export default async function HomePage() {
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Status
           icon={open.length ? 'shieldAlert' : 'shield'}
-          label="Dörrar & fönster"
+          label={entrance ? `Dörrar & fönster · entré ${openedToday[entrance.id] ?? 0}× i dag` : 'Dörrar & fönster'}
           value={open.length ? (open.length === 1 ? `${open[0].name} öppen` : `${open.length} öppna`) : 'Alla stängda'}
           tone={open.length ? 'warn' : 'ok'}
           href="/larm#oppet"

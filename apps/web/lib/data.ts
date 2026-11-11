@@ -2,6 +2,7 @@ import 'server-only';
 import { createClient } from './supabase/server';
 import { buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
 import type { Price } from './prices';
+import { startOfDayStockholm } from './time';
 import { parseMet, summarizeWeather, type WeatherSummary } from './weather';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { buildSeries, METRICS, PERIODS, type MetricKey, type PeriodKey, type Row, type Series } from './history';
@@ -148,4 +149,20 @@ export async function loadMotionCount(): Promise<number> {
     .gte('ts', new Date(Date.now() - 60 * 60_000).toISOString());
   if (error) throw new Error(`Kunde inte läsa rörelser: ${error.message}`);
   return count ?? 0;
+}
+
+/** Antal öppningar per dörr/fönster (alarm_contact → öppen) sedan midnatt. */
+export async function loadOpeningsToday(): Promise<Record<string, number>> {
+  if (DEMO) return { hd: 7 };
+  const sb = await createClient();
+  const { data, error } = await sb
+    .from('readings')
+    .select('device_id')
+    .eq('capability_id', 'alarm_contact')
+    .eq('value', 1)
+    .gte('ts', new Date(startOfDayStockholm()).toISOString());
+  if (error) throw new Error(`Kunde inte läsa dörröppningar: ${error.message}`);
+  const counts: Record<string, number> = {};
+  for (const r of data ?? []) counts[r.device_id] = (counts[r.device_id] ?? 0) + 1;
+  return counts;
 }
