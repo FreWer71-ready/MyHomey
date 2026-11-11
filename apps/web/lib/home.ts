@@ -19,6 +19,8 @@ export type Room = {
   name: string;
   icon: RoomIcon;
   temp: number | null;
+  /** Rummet har temperatursensorer men inga värden från de senaste TEMP_MAX_DAYS dagarna. */
+  tempStale: boolean;
   humidity: number | null;
   lights: Light[];
   lightsOn: number;
@@ -61,6 +63,8 @@ const HUMIDITY_ROOMS = /bad|toa|wc|dusch|tvätt/i;
 const LOW_BATTERY = 20;
 /** Sensorer som inte rapporterat på så här länge räknas som att de inte svarar. */
 export const STALE_HOURS = 48;
+/** Temperaturer äldre än så här används inte (sensorn räknas som ej nåbar). */
+export const TEMP_MAX_DAYS = 5;
 /** Bara kontaktsensorer med fönster i namnet räknas som fönster (regnvarning). */
 const WINDOW = /fönster|window/i;
 // Homey uppdaterar tidsstämpeln bara när värdet ändras, så bara mätvärden som
@@ -88,6 +92,10 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
   const cap = (d: Device, id: string) => byDevice.get(d.id)?.get(id);
   const nums = (ds: Device[], id: string) =>
     ds.map((d) => cap(d, id)?.value_num).filter((v): v is number => typeof v === 'number');
+  const fresh = (c: Cap | undefined) => !c?.last_updated || now - Date.parse(c.last_updated) <= TEMP_MAX_DAYS * 86400_000;
+  /** Temperaturer, utan värden äldre än TEMP_MAX_DAYS. */
+  const temps = (ds: Device[]) => nums(ds.filter((d) => fresh(cap(d, 'measure_temperature'))), 'measure_temperature');
+  const hasTemp = (ds: Device[]) => ds.some((d) => cap(d, 'measure_temperature')?.value_num != null);
 
   const active = devices.filter((d) => d.available);
   const lightOf = (d: Device): Light | null => {
@@ -110,7 +118,8 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
         name,
         icon: iconFor(name),
         // Bara riktiga sensorer: uttag och lampor mäter sin egen värme.
-        temp: avg(nums(ds.filter((d) => d.class === 'sensor'), 'measure_temperature')),
+        temp: avg(temps(ds.filter((d) => d.class === 'sensor'))),
+        tempStale: hasTemp(ds.filter((d) => d.class === 'sensor')) && !temps(ds.filter((d) => d.class === 'sensor')).length,
         humidity: HUMIDITY_ROOMS.test(name) ? avg(nums(ds, 'measure_humidity')) : null,
         lights,
         lightsOn: lights.filter((l) => l.on).length,
@@ -155,7 +164,7 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
 
   return {
     // Väderstationer (t.ex. Trafikverket) har klassen service.
-    outdoorTemp: avg(nums(active.filter((d) => d.class === 'service'), 'measure_temperature')),
+    outdoorTemp: avg(temps(active.filter((d) => d.class === 'service'))),
     lightsOn: allLights.filter((l) => l.on).length,
     lightsTotal: allLights.length,
     powerW: Math.round(power.reduce((a, b) => a + b, 0) * 10) / 10,

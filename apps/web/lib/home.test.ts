@@ -107,6 +107,22 @@ test('regnvarning kräver nederbörd och öppet fönster', async () => {
 
 test('fuktvarning från 70 %', async () => {
   const { humidityWarnings } = await import('./alerts.ts');
-  const r = (name: string, humidity: number | null) => ({ id: name, name, icon: 'drop' as const, temp: 22, humidity, lights: [], lightsOn: 0, moods: [], deviceCount: 1 });
+  const r = (name: string, humidity: number | null) => ({ id: name, name, icon: 'drop' as const, temp: 22, tempStale: false, humidity, lights: [], lightsOn: 0, moods: [], deviceCount: 1 });
   assert.deepEqual(humidityWarnings([r('Badrum', 74), r('Toa', 55), r('Kök', null)]).map((x) => x.name), ['Badrum']);
+});
+
+test('temperaturer äldre än 5 dagar räknas inte, rummet blir ej nåbart', () => {
+  const now = Date.parse('2026-11-11T12:00:00Z');
+  const zs: Zone[] = [{ id: 'r', name: 'Hem', parent_id: null }, { id: 'a', name: 'A', parent_id: 'r' }, { id: 'b', name: 'B', parent_id: 'r' }];
+  const ds: Device[] = [
+    { id: 'old', name: 'Gammal', zone_id: 'a', class: 'sensor', available: true },
+    { id: 'new', name: 'Ny', zone_id: 'b', class: 'sensor', available: true },
+    { id: 'old2', name: 'Gammal 2', zone_id: 'b', class: 'sensor', available: true },
+  ];
+  const t = (device_id: string, v: number, last_updated: string): Cap => ({ device_id, capability_id: 'measure_temperature', value_num: v, value_bool: null, last_updated });
+  const h = buildHome(zs, ds, [t('old', 26.8, '2026-07-01T00:00:00Z'), t('new', 21, '2026-11-11T11:00:00Z'), t('old2', 30, '2026-10-01T00:00:00Z')], [], now);
+  const a = h.rooms.find((r) => r.id === 'a')!, b = h.rooms.find((r) => r.id === 'b')!;
+  assert.deepEqual([a.temp, a.tempStale], [null, true]);
+  assert.deepEqual([b.temp, b.tempStale], [21, false]);
+  assert.equal(fmtTemp(a.temp, a.tempStale), 'Ej nåbar');
 });

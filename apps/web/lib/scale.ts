@@ -29,6 +29,6 @@ export const heatTint = (t: number | null) => tint(heatColor(t), t == null ? 0.1
 const num = (n: number, decimals: number) =>
   n.toLocaleString('sv-SE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
-export const fmtTemp = (t: number | null) => (t == null ? '–' : `${num(t, 1)}°`);
+export const fmtTemp = (t: number | null, stale = false) => (t == null ? (stale ? 'Ej nåbar' : '–') : `${num(t, 1)}°`);
 export const fmtPercent = (p: number | null) => (p == null ? '–' : `${num(p, 0)} %`);
 export const fmtWatt = (w: number) => `${num(w, w < 100 ? 1 : 0)} W`;

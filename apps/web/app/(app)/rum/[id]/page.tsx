@@ -68,7 +68,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
         </div>
         <span className="flex items-center gap-2 rounded-3xl bg-glass-hi px-4 py-3">
           <Icon name="thermo" size={28} />
-          <span className="text-4xl leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}</span>
+          <span className={`leading-none font-extrabold tracking-tight ${room.tempStale ? 'text-xl' : 'text-4xl'}`}>{fmtTemp(room.temp, room.tempStale)}</span>
         </span>
         {room.humidity != null && (
           <span className="flex items-center gap-2 rounded-3xl bg-glass-hi px-4 py-3">
