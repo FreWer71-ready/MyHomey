@@ -9,6 +9,8 @@ export type Cap = {
   value_bool: boolean | null;
 };
 
+export type Mood = { id: string; name: string; zone_id: string | null };
+
 export type RoomIcon = 'sofa' | 'bed' | 'door' | 'drop' | 'wc' | 'pot' | 'box';
 export type Light = { id: string; name: string; on: boolean; dim: number | null };
 export type Room = {
@@ -19,6 +21,7 @@ export type Room = {
   humidity: number | null;
   lights: Light[];
   lightsOn: number;
+  moods: { id: string; name: string }[];
   deviceCount: number;
 };
 export type Home = {
@@ -58,7 +61,7 @@ export const iconFor = (name: string): RoomIcon => ICONS.find(([re]) => re.test(
 
 const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
 
-export function buildHome(zones: Zone[], devices: Device[], caps: Cap[]): Home {
+export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: Mood[] = []): Home {
   const byDevice = new Map<string, Map<string, Cap>>();
   for (const c of caps) {
     if (!byDevice.has(c.device_id)) byDevice.set(c.device_id, new Map());
@@ -93,6 +96,10 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[]): Home {
         humidity: HUMIDITY_ROOMS.test(name) ? avg(nums(ds, 'measure_humidity')) : null,
         lights,
         lightsOn: lights.filter((l) => l.on).length,
+        moods: moods
+          .filter((m) => m.zone_id === z.id)
+          .map((m) => ({ id: m.id, name: m.name.trim() }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'sv')),
         deviceCount: ds.length,
       };
     })

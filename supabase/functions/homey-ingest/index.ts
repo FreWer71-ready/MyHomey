@@ -31,7 +31,13 @@ Deno.serve(async (req) => {
   }
 
   const t0 = Date.now();
-  const { data, error } = await db.rpc("ingest_homey", { p });
+  let { data, error } = await db.rpc("ingest_homey", { p });
+  // Moods skickas bara om Homey stöder dem.
+  if (!error && Array.isArray(p.moods)) {
+    const moods = await db.rpc("ingest_moods", { p });
+    if (moods.error) error = moods.error;
+    else data = { ...data, moods: moods.data };
+  }
   const ms = Date.now() - t0;
 
   await db.from("ingest_log").insert({

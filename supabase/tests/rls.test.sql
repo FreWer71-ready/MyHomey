@@ -19,3 +19,16 @@ do $$ begin
 end $$;
 reset role;
 \echo RLS-test OK
+
+-- Moods: ersätts helt, ignoreras utan nyckel, läsbara för godkänd användare.
+do $$ begin
+  if public.ingest_moods('{"moods":[{"id":"m1","name":"Mys","zone":"z1"},{"id":"m2","name":"Film","zone":"z1"}]}') <> 2 then raise exception 'moods insert'; end if;
+  if public.ingest_moods('{"moods":[{"id":"m2","name":"Bio","zone":"z1"}]}') <> 1 then raise exception 'moods ersätts inte'; end if;
+  if public.ingest_moods('{}') is not null then raise exception 'moods utan nyckel'; end if;
+  if (select name from public.moods where id = 'm2') <> 'Bio' then raise exception 'moods uppdateras inte'; end if;
+end $$;
+set role authenticated;
+set request.jwt.claims = '{"email":"ok@example.com"}';
+do $$ begin if (select count(*) from public.moods) <> 1 then raise exception 'godkänd ser inte moods'; end if; end $$;
+reset role;
+\echo Moods-test OK

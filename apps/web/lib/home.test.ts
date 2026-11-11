@@ -56,6 +56,14 @@ test('översikt: ute, lampor, effekt, batteri, rum utan enheter döljs', () => {
   assert.deepEqual(h.rooms[0].lights.map((l) => [l.name, l.on, l.dim]), [['Golv', false, null], ['Tak', true, 65]]);
 });
 
+test('moods per rum, sorterade', () => {
+  const h = buildHome(zones, devices, caps, [
+    { id: 'm2', name: 'Mys', zone_id: 'v' }, { id: 'm1', name: 'Film', zone_id: 'v' }, { id: 'm3', name: 'Bad', zone_id: 'b' },
+  ]);
+  assert.deepEqual(h.rooms[0].moods.map((m) => m.name), ['Film', 'Mys']);
+  assert.deepEqual(h.rooms[1].moods.map((m) => m.name), ['Bad']);
+});
+
 test('ikoner och färgskala', () => {
   assert.equal(iconFor('Kök'), 'pot');
   assert.equal(iconFor('Molly'), 'bed');

@@ -56,6 +56,29 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
         </span>
       </header>
 
+      <section aria-labelledby="moods" className="flex flex-col gap-3">
+        <h2 id="moods" className="text-[26px] font-extrabold">Moods</h2>
+        {room.moods.length > 0 ? (
+          <ul className="flex flex-wrap gap-3">
+            {room.moods.map((m) => (
+              <li key={m.id}>
+                <button
+                  type="button"
+                  disabled
+                  title="Kommer snart"
+                  className="flex min-h-16 items-center gap-3 rounded-3xl bg-[#E3DAFF] px-6 text-xl font-extrabold text-ink disabled:cursor-not-allowed"
+                >
+                  <Icon name="moon" size={28} />
+                  {m.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-3xl bg-white p-5 font-bold text-ink-2">Inga moods för det här rummet.</p>
+        )}
+      </section>
+
       {room.lights.length > 0 ? (
         <>
           <SceneButtons room={room.name} size="large" />

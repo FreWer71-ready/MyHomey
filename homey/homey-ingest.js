@@ -7,9 +7,11 @@ const SECRET = 'KLISTRA_IN_HEMLIGHETEN';
 
 const iso = (t) => (t ? new Date(t).toISOString() : null);
 
-const [zones, devices] = await Promise.all([
+const [zones, devices, moods] = await Promise.all([
   Homey.zones.getZones(),
   Homey.devices.getDevices(),
+  // Moods finns inte på alla Homey-modeller/versioner.
+  Homey.moods ? Homey.moods.getMoods().catch(() => null) : null,
 ]);
 
 const payload = {
@@ -17,6 +19,9 @@ const payload = {
   source: 'homeyscript',
   sent_at: new Date().toISOString(),
   zones: Object.values(zones).map((z) => ({ id: z.id, name: z.name, parent: z.parent || null })),
+  ...(moods && {
+    moods: Object.values(moods).map((m) => ({ id: m.id, name: m.name, zone: m.zone || null })),
+  }),
   devices: Object.values(devices).map((d) => ({
     id: d.id,
     name: d.name,
@@ -42,5 +47,5 @@ const res = await fetch(URL, {
 const text = await res.text();
 if (!res.ok) throw new Error(`Ingest ${res.status}: ${text}`);
 
-log(`${payload.devices.length} enheter → ${text}`);
+log(`${payload.devices.length} enheter, ${moods ? Object.keys(moods).length : 'inga'} moods → ${text}`);
 return true;
