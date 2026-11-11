@@ -64,6 +64,13 @@ test('moods per rum, sorterade', () => {
   assert.deepEqual(h.rooms[1].moods.map((m) => m.name), ['Bad']);
 });
 
+test('favoritmoods med rumsnamn, hela hemmet utan rum', () => {
+  const h = buildHome(zones, devices, caps, [
+    { id: 'm1', name: 'Film', zone_id: 'v', favorite: true }, { id: 'm2', name: 'Natt', zone_id: 'root', favorite: true }, { id: 'm3', name: 'Bad', zone_id: 'b' },
+  ]);
+  assert.deepEqual(h.favoriteMoods, [{ id: 'm2', name: 'Natt', room: null }, { id: 'm1', name: 'Film', room: 'Vardagsrum' }]);
+});
+
 test('ikoner och färgskala', () => {
   assert.equal(iconFor('Kök'), 'pot');
   assert.equal(iconFor('Molly'), 'bed');

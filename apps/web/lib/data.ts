@@ -4,6 +4,7 @@ import { TEMP_MAX_DAYS, buildHome, CAPS, type Cap, type Device, type Home, type 
 import { PRICE_AREA, type Price } from './prices';
 import { startOfDayStockholm } from './time';
 import { parseMet, summarizeWeather, type WeatherSummary } from './weather';
+import { MEDIA_CAPS, nowPlaying, type MediaCap, type NowPlaying } from './media';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
@@ -21,7 +22,7 @@ export async function loadHome(): Promise<Home> {
     sb.from('zones').select('id,name,parent_id'),
     sb.from('devices').select('id,name,zone_id,class,available'),
     sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,last_updated').in('capability_id', CAPS),
-    sb.from('moods').select('id,name,zone_id'),
+    sb.from('moods').select('id,name,zone_id,favorite'),
   ]);
   const error = zones.error ?? devices.error ?? caps.error ?? moods.error;
   if (error) throw new Error(`Kunde inte läsa data: ${error.message}`);
@@ -181,4 +182,16 @@ export async function loadNameDay(): Promise<string[]> {
   const sb = await createClient();
   const { data } = await sb.from('name_days').select('names').eq('date', day).maybeSingle();
   return data?.names ?? []; // Namnsdagen får aldrig stoppa sidan.
+}
+
+/** Vad som spelas nu på mediaspelare (Google TV m.fl.). */
+export async function loadNowPlaying(): Promise<NowPlaying[]> {
+  if (DEMO) return [{ id: 'tv', device: 'Google TV vardagsrum', title: 'Feels Like I’m Falling in Love', subtitle: 'Coldplay' }];
+  const sb = await createClient();
+  const [devices, caps] = await Promise.all([
+    sb.from('devices').select('id,name').eq('class', 'speaker').eq('available', true),
+    sb.from('capability_state').select('device_id,capability_id,value_bool,value_text').in('capability_id', MEDIA_CAPS),
+  ]);
+  if (devices.error || caps.error) return []; // Media får aldrig stoppa sidan.
+  return nowPlaying(devices.data, caps.data as MediaCap[]);
 }

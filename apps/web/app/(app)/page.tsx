@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
+import { MoodButtons } from '@/components/MoodButtons';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadMotionCount, loadNameDay, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadHome, loadMotionCount, loadNameDay, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -48,8 +49,8 @@ function Status({ icon, label, value, tone, href }: { icon: IconName; label: str
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, motions, openedToday, nameDay] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadMotionCount(), loadOpeningsToday(), loadNameDay(),
+  const [h, prices, weather, motions, openedToday, nameDay, playing] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadMotionCount(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(),
   ]);
   const names = joinNames(nameDay);
   const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
@@ -181,6 +182,13 @@ export default async function HomePage() {
         />
       </section>
 
+      {h.favoriteMoods.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-[22px] font-extrabold">Favoriter</h2>
+          <MoodButtons moods={h.favoriteMoods} />
+        </section>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-[22px] font-extrabold">Rum</h2>
         <div className="flex flex-wrap gap-1.5 text-[13px] font-bold text-fg">
@@ -198,6 +206,24 @@ export default async function HomePage() {
             <RoomTile key={r.id} room={r} />
           ))}
       </section>
+
+      {/* Spelas nu: visas bara när något spelar. */}
+      {playing.length > 0 && (
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {playing.map((p) => (
+            <div key={p.id} className="glass flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-[16px] bg-glass-hi">
+                <Icon name="tv" size={26} />
+              </span>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate font-bold text-dim">Spelas nu · {p.device}</span>
+                <span className="truncate text-xl leading-tight font-extrabold">{p.title}</span>
+                {p.subtitle && <span className="truncate text-[15px] font-bold text-dim">{p.subtitle}</span>}
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
     </>
   );
 }

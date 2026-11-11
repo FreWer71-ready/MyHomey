@@ -411,7 +411,8 @@
   {
    "id": "m1",
    "name": "Filmkväll",
-   "zone_id": "v"
+   "zone_id": "v",
+   "favorite": true
   },
   {
    "id": "m2",
@@ -421,7 +422,8 @@
   {
    "id": "m3",
    "name": "Läsning",
-   "zone_id": "v"
+   "zone_id": "v",
+   "favorite": true
   },
   {
    "id": "m4",
@@ -431,17 +433,20 @@
   {
    "id": "m5",
    "name": "Jul",
-   "zone_id": "root"
+   "zone_id": "root",
+   "favorite": true
   },
   {
    "id": "m6",
    "name": "Ljust alla rum",
-   "zone_id": "root"
+   "zone_id": "root",
+   "favorite": true
   },
   {
    "id": "m7",
    "name": "Preparty",
-   "zone_id": "root"
+   "zone_id": "root",
+   "favorite": true
   }
  ]
 }

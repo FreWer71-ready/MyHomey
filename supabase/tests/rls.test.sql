@@ -26,6 +26,8 @@ do $$ begin
   if public.ingest_moods('{"moods":[{"id":"m2","name":"Bio","zone":"z1"}]}') <> 1 then raise exception 'moods ersätts inte'; end if;
   if public.ingest_moods('{}') is not null then raise exception 'moods utan nyckel'; end if;
   if (select name from public.moods where id = 'm2') <> 'Bio' then raise exception 'moods uppdateras inte'; end if;
+  perform public.ingest_moods('{"moods":[{"id":"m2","name":"Bio","zone":"z1","favorite":true}]}');
+  if not (select favorite from public.moods where id = 'm2') then raise exception 'favorit sparas inte'; end if;
 end $$;
 set role authenticated;
 set request.jwt.claims = '{"email":"ok@example.com"}';

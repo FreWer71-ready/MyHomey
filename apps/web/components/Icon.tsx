@@ -122,6 +122,14 @@ const FLAT = {
       <circle className="wx-twinkle" cx={19.5} cy={5} r={1.1} fill={C.moon} />
     </>
   ),
+  tv: (
+    <>
+      <rect x={2.5} y={4} width={19} height={12.5} rx={2} fill={C.dark} />
+      <rect x={4} y={5.5} width={16} height={9.5} rx={1} fill={C.blue} />
+      <path className="wx-twinkle" d="M10.5 7.8v5l4-2.5z" fill={C.cloud} />
+      <path d="M8 20h8M12 16.5V20" fill="none" stroke={C.grey} strokeWidth={2} strokeLinecap="round" />
+    </>
+  ),
   power: (
     <>
       <path d="M7 6.5a7.5 7.5 0 1 0 10 0" fill="none" stroke={C.red} strokeWidth={2.6} strokeLinecap="round" />

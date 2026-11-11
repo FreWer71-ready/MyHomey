@@ -7,7 +7,7 @@ import { Icon } from './Icon';
 type State = { id: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null;
 
 /** Knappar som aktiverar Homey-moods. */
-export function MoodButtons({ moods }: { moods: { id: string; name: string }[] }) {
+export function MoodButtons({ moods }: { moods: { id: string; name: string; room?: string | null }[] }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [state, setState] = useState<State>(null);
@@ -41,7 +41,12 @@ export function MoodButtons({ moods }: { moods: { id: string; name: string }[] }
               className={`flex min-h-14 items-center gap-2.5 rounded-[20px] bg-violet-soft px-5 text-lg font-extrabold text-fg transition-shadow ${ring(m.id)}`}
             >
               <Icon name="moon" size={24} />
-              {m.name}
+              {m.room ? (
+                <span className="flex flex-col items-start leading-tight">
+                  {m.name}
+                  <span className="text-[13px] font-bold text-fg/80">{m.room}</span>
+                </span>
+              ) : m.name}
             </button>
           </li>
         ))}

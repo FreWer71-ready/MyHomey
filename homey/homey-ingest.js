@@ -13,6 +13,9 @@ const [zones, devices, moods] = await Promise.all([
   // Moods finns inte på alla Homey-modeller/versioner.
   Homey.moods ? Homey.moods.getMoods().catch(() => null) : null,
 ]);
+// Favoritmarkerade moods i Homey-appen (om användar-API:t finns).
+const me = Homey.users ? await Homey.users.getUserMe().catch(() => null) : null;
+const favorites = new Set(me?.properties?.favoriteMoods ?? []);
 
 const payload = {
   v: 1,
@@ -20,7 +23,7 @@ const payload = {
   sent_at: new Date().toISOString(),
   zones: Object.values(zones).map((z) => ({ id: z.id, name: z.name, parent: z.parent || null })),
   ...(moods && {
-    moods: Object.values(moods).map((m) => ({ id: m.id, name: m.name, zone: m.zone || null })),
+    moods: Object.values(moods).map((m) => ({ id: m.id, name: m.name, zone: m.zone || null, favorite: favorites.has(m.id) })),
   }),
   devices: Object.values(devices).map((d) => ({
     id: d.id,
@@ -47,5 +50,5 @@ const res = await fetch(URL, {
 const text = await res.text();
 if (!res.ok) throw new Error(`Ingest ${res.status}: ${text}`);
 
-log(`${payload.devices.length} enheter, ${moods ? Object.keys(moods).length : 'inga'} moods → ${text}`);
+log(`${payload.devices.length} enheter, ${moods ? Object.keys(moods).length : 'inga'} moods (${favorites.size} favoriter) → ${text}`);
 return true;

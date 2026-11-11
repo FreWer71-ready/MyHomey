@@ -10,7 +10,7 @@ export type Cap = {
   last_updated?: string;
 };
 
-export type Mood = { id: string; name: string; zone_id: string | null };
+export type Mood = { id: string; name: string; zone_id: string | null; favorite?: boolean };
 
 export type RoomIcon = 'sofa' | 'bed' | 'door' | 'drop' | 'wc' | 'pot' | 'box';
 export type Light = { id: string; name: string; on: boolean; dim: number | null };
@@ -50,6 +50,8 @@ export type Home = {
   /** Zonen överst i Homey (hela hemmet) och dess moods. */
   rootZoneId: string | null;
   homeMoods: { id: string; name: string }[];
+  /** Favoritmarkerade moods (Homey-appen), med rumsnamn. */
+  favoriteMoods: { id: string; name: string; room: string | null }[];
 };
 
 /** Capabilities som vyerna behöver. */
@@ -161,6 +163,10 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
     .filter((m) => root && m.zone_id === root.id)
     .map((m) => ({ id: m.id, name: m.name.trim() }))
     .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+  const favoriteMoods = moods
+    .filter((m) => m.favorite)
+    .map((m) => ({ id: m.id, name: m.name.trim(), room: m.zone_id && m.zone_id !== root?.id ? (zoneName.get(m.zone_id) ?? null) : null }))
+    .sort((a, b) => (a.room ?? '').localeCompare(b.room ?? '', 'sv') || a.name.localeCompare(b.name, 'sv'));
 
   return {
     // Väderstationer (t.ex. Trafikverket) har klassen service.
@@ -181,5 +187,6 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
     rooms,
     rootZoneId: root?.id ?? null,
     homeMoods,
+    favoriteMoods,
   };
 }
