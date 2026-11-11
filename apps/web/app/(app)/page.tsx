@@ -3,7 +3,8 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadMotionCount, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadHome, loadMotionCount, loadNameDay, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { joinNames } from '@/lib/days';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { PRICE_AREA, hhmm, summarize } from '@/lib/prices';
@@ -47,9 +48,10 @@ function Status({ icon, label, value, tone, href }: { icon: IconName; label: str
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, motions, openedToday] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadMotionCount(), loadOpeningsToday(),
+  const [h, prices, weather, motions, openedToday, nameDay] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadMotionCount(), loadOpeningsToday(), loadNameDay(),
   ]);
+  const names = joinNames(nameDay);
   const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
   const price = summarize(prices, Date.now());
   const open = h.openings.filter((o) => o.open);
@@ -61,7 +63,10 @@ export default async function HomePage() {
     <>
       <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 lg:flex-nowrap">
         <div className="shrink-0">
-          <Clock show="date" className="text-[13px] font-bold tracking-wider text-fg uppercase" />
+          <p className="text-[13px] font-bold tracking-wider text-fg uppercase">
+            <Clock show="date" />
+            {names && <span> · namnsdag {names}</span>}
+          </p>
           <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
         </div>
         {/* Varningar: i rubrikraden på plattan (sparar höjd), egen rad på mobil. */}

@@ -3,6 +3,7 @@ import { createClient } from './supabase/server';
 import { TEMP_MAX_DAYS, buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
 import { PRICE_AREA, type Price } from './prices';
 import { startOfDayStockholm } from './time';
+import { nameDays } from './days';
 import { parseMet, summarizeWeather, type WeatherSummary } from './weather';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
@@ -172,4 +173,16 @@ export async function loadOpeningsToday(): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
   for (const r of data ?? []) counts[r.device_id] = (counts[r.device_id] ?? 0) + 1;
   return counts;
+}
+
+/** Dagens namnsdag (Svenska dagar), cachas 6 h. Tom lista om källan inte svarar. */
+export async function loadNameDay(): Promise<string[]> {
+  const day = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit' }).format(Date.now());
+  if (DEMO) return ['Mårten'];
+  try {
+    const res = await fetch(`https://sholiday.faboul.se/dagar/v2.1/${day.replaceAll('-', '/')}`, { next: { revalidate: 21600 } });
+    return res.ok ? nameDays(await res.json(), day) : [];
+  } catch {
+    return []; // Namnsdagen får aldrig stoppa sidan.
+  }
 }
