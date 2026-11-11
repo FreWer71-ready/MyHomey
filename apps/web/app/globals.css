@@ -9,7 +9,7 @@
   --color-dim: #C3C8D6;
   --color-mute: #A9B0C2;
   --color-deep: #0B0F1C;
-  --color-glass: rgb(14 18 32 / 0.48);
+  --color-glass: rgb(14 18 32 / 0.55);
   --color-glass-2: rgb(255 255 255 / 0.06);
   --color-glass-hi: rgb(255 255 255 / 0.12);
   --color-line: rgb(255 255 255 / 0.12);
@@ -66,7 +66,7 @@ body {
 .backdrop-veil {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgb(4 6 14 / 0.42), rgb(4 6 14 / 0.18) 40%, rgb(4 6 14 / 0.6));
+  background: linear-gradient(180deg, rgb(4 6 14 / 0.55), rgb(4 6 14 / 0.35) 40%, rgb(4 6 14 / 0.7));
 }
 @keyframes backdrop-pan {
   from { transform: scale(1) translate3d(0, 0, 0); }

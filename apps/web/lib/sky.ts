@@ -1,12 +1,13 @@
 // Bakgrund: väderlek från MET-symbol × tid på dygnet från solens höjd. Ren logik.
 
-export type Condition = 'clear' | 'cloudy' | 'rain' | 'snow' | 'fog';
+export type Condition = 'clear' | 'cloudy' | 'rain' | 'snow' | 'fog' | 'storm';
 export type Phase = 'day' | 'dusk' | 'night';
 
 export function conditionOf(symbol: string | null | undefined): Condition {
   const s = (symbol ?? '').replace(/_(day|night|polartwilight)$/, '');
+  if (s.includes('thunder')) return 'storm';
   if (s.includes('snow')) return 'snow';
-  if (s.includes('rain') || s.includes('sleet') || s.includes('thunder')) return 'rain';
+  if (s.includes('rain') || s.includes('sleet')) return 'rain';
   if (s === 'fog') return 'fog';
   if (s === 'cloudy' || s === 'partlycloudy') return 'cloudy';
   return 'clear';
