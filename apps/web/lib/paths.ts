@@ -1,6 +1,9 @@
 /** Måste matcha basePath i next.config.ts. */
 export const BASE_PATH = '/mydashboard';
 
-/** Relativ redirect, så att den fungerar både via trand.se och appens egen domän. */
-export const relativeRedirect = (path: string) =>
-  new Response(null, { status: 303, headers: { Location: `${BASE_PATH}${path}` } });
+/**
+ * Publik adress till en sida i appen. I produktion nås appen via trand.se
+ * (PUBLIC_ORIGIN), lokalt via sin egen adress.
+ */
+export const publicUrl = (path: string, fallbackOrigin: string) =>
+  new URL(`${BASE_PATH}${path}`, process.env.PUBLIC_ORIGIN ?? fallbackOrigin);
