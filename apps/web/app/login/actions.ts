@@ -17,7 +17,7 @@ export async function sendLink(formData: FormData) {
       email,
       options: { emailRedirectTo: redirectTo },
     });
-    if (error) redirect('/login?status=error');
+    if (error) redirect(error.status === 429 ? '/login?status=ratelimit' : '/login?status=error');
   }
   // Samma svar oavsett, så att ingen kan testa vilka adresser som finns.
   redirect('/login?status=sent');

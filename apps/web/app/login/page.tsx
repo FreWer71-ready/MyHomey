@@ -4,6 +4,7 @@ import { sendLink } from './actions';
 const MESSAGES: Record<string, string> = {
   sent: 'Om adressen är godkänd har en inloggningslänk skickats. Öppna den på den här enheten.',
   error: 'Något gick fel. Försök igen.',
+  ratelimit: 'För många inloggningsmejl just nu. Vänta en timme och försök igen.',
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
