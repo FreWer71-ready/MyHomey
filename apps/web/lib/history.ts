@@ -42,7 +42,7 @@ export type Series = {
 export const isMetric = (m: string | undefined): m is MetricKey => !!m && m in METRICS;
 export const isPeriod = (p: string | undefined): p is PeriodKey => !!p && p in PERIODS;
 
-export function buildSeries(metric: MetricKey, rows: Row[], devices: Device[], zones: Zone[]): Series[] {
+export function buildSeries(metric: MetricKey, rows: Row[], devices: Device[], zones: Zone[], nowSec?: number): Series[] {
   const cfg = METRICS[metric];
   const zoneName = new Map(zones.map((z) => [z.id, z.name.trim()]));
   const byId = new Map(devices.map((d) => [d.id, d]));
@@ -71,6 +71,9 @@ export function buildSeries(metric: MetricKey, rows: Row[], devices: Device[], z
       points = rs.slice(1).map((r, i) => [sec(r.t), Math.max(0, r.vmax - rs[i].vmax)]);
     } else {
       points = rs.map((r) => [sec(r.t), r.v]);
+      // Senaste värdet gäller tills nästa ändring: dra linjen fram till nu.
+      const last = points.at(-1);
+      if (nowSec && last && nowSec > last[0]) points.push([nowSec, last[1]]);
     }
     const values = points.map((p) => p[1]);
     const lows = cfg.delta ? values : rs.map((r) => r.vmin);

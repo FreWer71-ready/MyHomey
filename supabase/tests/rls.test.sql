@@ -83,3 +83,13 @@ do $$ begin
 end $$;
 reset role;
 \echo Tidslinje-test OK
+
+-- Historik: värde före perioden tas med som startpunkt.
+insert into public.readings values ('d1','measure_humidity', now() - interval '3 days', 40);
+set role authenticated;
+set request.jwt.claims = '{"email":"ok@example.com"}';
+do $$ begin
+  if (select count(*) from public.history('measure_humidity', now() - interval '1 day', '1 hour')) <> 1 then raise exception 'startvärde saknas'; end if;
+end $$;
+reset role;
+\echo Startvärde-test OK

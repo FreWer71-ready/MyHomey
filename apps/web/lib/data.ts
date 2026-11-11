@@ -45,7 +45,7 @@ export async function loadHistory(metric: MetricKey, period: PeriodKey): Promise
   ]);
   const error = zones.error ?? devices.error ?? rows.error;
   if (error) throw new Error(`Kunde inte läsa historik: ${error.message}`);
-  return buildSeries(metric, rows.data as Row[], devices.data as Device[], zones.data as Zone[]);
+  return buildSeries(metric, rows.data as Row[], devices.data as Device[], zones.data as Zone[], Math.floor(Date.now() / 1000));
 }
 
 /** Påhittade kurvor kring nuvarande värden, bara för demoläget. */

@@ -38,6 +38,12 @@ test('energi: förbrukning per intervall, nollställning blir 0, flera i samma r
   assert.equal(Math.round(hall.total! * 10) / 10, 0.2);
 });
 
+test('linjen dras fram till nu med senaste värdet', () => {
+  const now = Date.parse('2026-11-11T12:00:00Z') / 1000;
+  const s = buildSeries('temp', [row('s1', '2026-11-11T10:00:00Z', 21)], devices, zones, now);
+  assert.deepEqual(s[0].points.at(-1), [now, 21]);
+});
+
 test('formattering', () => {
   assert.equal(fmtValue('temp', 21.04), '21,0°');
   assert.equal(fmtValue('energy', null), '–');
