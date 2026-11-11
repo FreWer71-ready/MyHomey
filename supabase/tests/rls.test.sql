@@ -28,6 +28,8 @@ do $$ begin
   if (select name from public.moods where id = 'm2') <> 'Bio' then raise exception 'moods uppdateras inte'; end if;
   perform public.ingest_moods('{"moods":[{"id":"m2","name":"Bio","zone":"z1","favorite":true}]}');
   if not (select favorite from public.moods where id = 'm2') then raise exception 'favorit sparas inte'; end if;
+  if public.ingest_flows('{"flows":[{"id":"f1","name":"Godnatt"},{"id":"f2","name":"Bio","advanced":true}]}') <> 2 then raise exception 'flows insert'; end if;
+  if public.ingest_flows('{"flows":[{"id":"f2","name":"Bio","advanced":true}]}') <> 1 then raise exception 'flows ersätts inte'; end if;
 end $$;
 set role authenticated;
 set request.jwt.claims = '{"email":"ok@example.com"}';

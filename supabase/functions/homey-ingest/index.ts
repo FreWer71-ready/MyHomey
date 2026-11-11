@@ -38,6 +38,12 @@ Deno.serve(async (req) => {
     if (moods.error) error = moods.error;
     else data = { ...data, moods: moods.data };
   }
+  // Favoritflows skickas bara om Homey lämnar ut dem.
+  if (!error && Array.isArray(p.flows)) {
+    const flows = await db.rpc("ingest_flows", { p });
+    if (flows.error) error = flows.error;
+    else data = { ...data, flows: flows.data };
+  }
   const ms = Date.now() - t0;
 
   await db.from("ingest_log").insert({
