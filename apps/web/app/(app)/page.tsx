@@ -1,7 +1,10 @@
+import Link from 'next/link';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
-import { loadHome, loadPrices } from '@/lib/data';
+import { rainWarning } from '@/lib/alerts';
+import { loadHome, loadPrices, loadWeather } from '@/lib/data';
+import { symbolInfo } from '@/lib/weather';
 import { hhmm, summarize } from '@/lib/prices';
 import { HEAT, fmtTemp, fmtWatt, heatColor } from '@/lib/scale';
 
@@ -21,14 +24,15 @@ function Hero({ bg, icon, label, children }: { bg: string; icon: IconName; label
   );
 }
 
-function Status({ icon, label, value, tone }: { icon: IconName; label: string; value: string; tone: 'ok' | 'info' | 'warn' }) {
+function Status({ icon, label, value, tone, href }: { icon: IconName; label: string; value: string; tone: 'ok' | 'info' | 'warn'; href?: string }) {
   const tones = {
     ok: ['bg-white', 'bg-[#BFF0D4] text-[#05603A]', 'text-ink-2'],
     info: ['bg-white', 'bg-[#E3DAFF] text-[#5B2FD0]', 'text-ink-2'],
     warn: ['bg-[#FFE3D1] shadow-[inset_0_0_0_3px_#FF7A1A]', 'bg-[#FF7A1A] text-white', 'text-[#6B2A05]'],
   }[tone];
-  return (
-    <div className={`flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5 ${tones[0]}`}>
+  const cls = `flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5 ${tones[0]}`;
+  const body = (
+    <>
       <span className={`flex size-12 shrink-0 items-center justify-center rounded-[16px] ${tones[1]}`}>
         <Icon name={icon} size={26} />
       </span>
@@ -36,14 +40,17 @@ function Status({ icon, label, value, tone }: { icon: IconName; label: string; v
         <span className={`font-bold ${tones[2]}`}>{label}</span>
         <span className="text-xl leading-tight font-extrabold">{value}</span>
       </span>
-    </div>
+    </>
   );
+  return href ? <Link href={href} className={cls}>{body}</Link> : <div className={cls}>{body}</div>;
 }
 
 export default async function HomePage() {
-  const [h, prices] = await Promise.all([loadHome(), loadPrices()]);
+  const [h, prices, weather] = await Promise.all([loadHome(), loadPrices(), loadWeather()]);
   const price = summarize(prices, Date.now());
-  const doorsOk = h.doorsOpen === 0;
+  const open = h.openings.filter((o) => o.open);
+  const sky = weather ? symbolInfo(weather.current.symbol) : null;
+  const warning = rainWarning(weather, h.openings);
 
   return (
     <>
@@ -61,9 +68,28 @@ export default async function HomePage() {
         </div>
       </header>
 
+      {warning && (
+        <Link href="/larm" role="alert" className="flex items-center gap-3 rounded-[20px] bg-[#1E5BD6] px-4 py-3 text-white">
+          <Icon name="rain" size={28} />
+          <span className="text-lg font-extrabold">
+            Nederbörd väntas kl {hhmm(warning.at)} – stäng {warning.windows.map((w) => w.name).join(', ')}
+          </span>
+        </Link>
+      )}
+
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Hero bg={heatColor(h.outdoorTemp)} icon="thermo" label="Ute">
-          <span className="text-5xl leading-none font-extrabold tracking-tight">{fmtTemp(h.outdoorTemp)}</span>
+        <Hero bg={heatColor(h.outdoorTemp)} icon="thermo" label={sky ? `Ute · ${sky.label}` : 'Ute'}>
+          <span className="flex items-center justify-between gap-2">
+            <span className="text-5xl leading-none font-extrabold tracking-tight">{fmtTemp(h.outdoorTemp)}</span>
+            {sky && <Icon name={sky.icon} size={52} />}
+          </span>
+          {weather && (
+            <span className="text-[15px] font-bold">
+              {weather.nextPrecip
+                ? `${symbolInfo(weather.nextPrecip.symbol).label} från ${hhmm(weather.nextPrecip.time)}`
+                : 'Uppehåll närmaste 6 tim'}
+            </span>
+          )}
         </Hero>
         <Hero bg="var(--color-sun)" icon="bulb" label="Lampor tända">
           <span className="flex items-center justify-between gap-2">
@@ -88,10 +114,11 @@ export default async function HomePage() {
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Status
-          icon={doorsOk ? 'shield' : 'shieldAlert'}
-          label="Dörrar"
-          value={doorsOk ? 'Alla stängda' : `${h.doorsOpen} öppna`}
-          tone={doorsOk ? 'ok' : 'warn'}
+          icon={open.length ? 'shieldAlert' : 'shield'}
+          label="Dörrar & fönster"
+          value={open.length ? (open.length === 1 ? `${open[0].name} öppen` : `${open.length} öppna`) : 'Alla stängda'}
+          tone={open.length ? 'warn' : 'ok'}
+          href="/larm#oppet"
         />
         <Status icon="motion" label="Rörelse" value={h.motion ? `${h.motion} aktiva` : 'Lugnt'} tone="info" />
         <Status
@@ -99,12 +126,14 @@ export default async function HomePage() {
           label="Batteri"
           value={h.lowBattery ? `${h.lowBattery} låga` : 'Alla ok'}
           tone={h.lowBattery ? 'warn' : 'ok'}
+          href="/larm#batteri"
         />
         <Status
           icon="wifi"
           label="Enheter"
-          value={`${h.online} online`}
-          tone={h.online === h.deviceTotal ? 'ok' : 'warn'}
+          value={h.silent.length ? `${h.silent.length} svarar inte` : `${h.online} online`}
+          tone={h.silent.length ? 'warn' : 'ok'}
+          href="/larm#enheter"
         />
       </section>
 

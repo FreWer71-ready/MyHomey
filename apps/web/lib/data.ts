@@ -2,6 +2,7 @@ import 'server-only';
 import { createClient } from './supabase/server';
 import { buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
 import type { Price } from './prices';
+import { parseMet, summarizeWeather, type WeatherSummary } from './weather';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { buildSeries, METRICS, PERIODS, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
@@ -18,7 +19,7 @@ export async function loadHome(): Promise<Home> {
   const [zones, devices, caps, moods] = await Promise.all([
     sb.from('zones').select('id,name,parent_id'),
     sb.from('devices').select('id,name,zone_id,class,available'),
-    sb.from('capability_state').select('device_id,capability_id,value_num,value_bool').in('capability_id', CAPS),
+    sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,last_updated').in('capability_id', CAPS),
     sb.from('moods').select('id,name,zone_id'),
   ]);
   const error = zones.error ?? devices.error ?? caps.error ?? moods.error;
@@ -110,4 +111,25 @@ export async function loadPrices(): Promise<Price[]> {
     .order('start_ts');
   if (error) throw new Error(`Kunde inte läsa elpriser: ${error.message}`);
   return (data ?? []).map((p) => ({ start: Date.parse(p.start_ts), end: Date.parse(p.end_ts), ore: p.sek_per_kwh * 100 }));
+}
+
+/** Väderprognos (MET Norway), cachas 30 min. Plats via WEATHER_LAT/WEATHER_LON, annars Eskilstuna. */
+export async function loadWeather(): Promise<WeatherSummary | null> {
+  const now = Date.now();
+  if (DEMO) {
+    const hours = [0, 1, 2, 3].map((h) => ({ time: Math.floor(now / 3600_000) * 3600_000 + h * 3600_000, symbol: h < 2 ? 'partlycloudy_night' : 'lightrain', precip: h < 2 ? 0 : 0.5, temp: 3 }));
+    return summarizeWeather(hours, now);
+  }
+  const lat = process.env.WEATHER_LAT ?? '59.3712';
+  const lon = process.env.WEATHER_LON ?? '16.5098';
+  try {
+    const res = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`, {
+      headers: { 'User-Agent': 'MyHomey-dashboard/1.0' },
+      next: { revalidate: 1800 },
+    });
+    if (!res.ok) return null;
+    return summarizeWeather(parseMet(await res.json()), now);
+  } catch {
+    return null; // Vädret får aldrig stoppa sidan.
+  }
 }

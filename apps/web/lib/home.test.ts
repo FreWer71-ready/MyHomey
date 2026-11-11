@@ -71,3 +71,35 @@ test('ikoner och färgskala', () => {
   assert.equal(heatColor(null), '#E6E8F0');
   assert.equal(fmtTemp(22), '22,0°');
 });
+
+test('batterilista, dörrar/fönster och enheter som inte svarar', () => {
+  const now = Date.parse('2026-11-11T12:00:00Z');
+  const zs: Zone[] = [{ id: 'r', name: 'Hem', parent_id: null }, { id: 'k', name: 'Kontor', parent_id: 'r' }];
+  const ds: Device[] = [
+    { id: 'w', name: 'Kontor Fönster 1', zone_id: 'k', class: 'sensor', available: true },
+    { id: 'e', name: 'Entredörr', zone_id: 'k', class: 'sensor', available: true },
+    { id: 't', name: 'Temp', zone_id: 'k', class: 'sensor', available: true },
+    { id: 'x', name: 'Borta', zone_id: 'k', class: 'sensor', available: false },
+  ];
+  const cs: Cap[] = [
+    { device_id: 'w', capability_id: 'alarm_contact', value_num: null, value_bool: true },
+    { device_id: 'e', capability_id: 'alarm_contact', value_num: null, value_bool: false },
+    { device_id: 't', capability_id: 'measure_battery', value_num: 3, value_bool: null, last_updated: '2026-11-09T12:00:00Z' },
+    { device_id: 'w', capability_id: 'measure_battery', value_num: 90, value_bool: null, last_updated: '2026-11-11T11:00:00Z' },
+  ];
+  const h = buildHome(zs, ds, cs, [], now);
+  assert.deepEqual(h.lowBatteryList.map((b) => [b.name, b.level, b.room]), [['Temp', 3, 'Kontor']]);
+  assert.deepEqual(h.openings.map((o) => [o.name, o.kind, o.open]), [['Kontor Fönster 1', 'window', true], ['Entredörr', 'door', false]]);
+  assert.deepEqual(h.silent.map((s) => [s.name, s.reason]), [['Borta', 'offline'], ['Temp', 'stale']]);
+});
+
+test('regnvarning kräver nederbörd och öppet fönster', async () => {
+  const { rainWarning } = await import('./alerts.ts');
+  const w = { current: { time: 1, symbol: 'rain', precip: 1, temp: 2 }, nextPrecip: { time: 2, symbol: 'rain', precip: 1, temp: 2 }, rainSoon: true };
+  const win = { id: 'w', name: 'Fönster', room: 'Kontor', open: true, kind: 'window' as const };
+  const door = { ...win, id: 'd', kind: 'door' as const };
+  assert.equal(rainWarning(w, [win])!.at, 2);
+  assert.equal(rainWarning(w, [door]), null);
+  assert.equal(rainWarning({ ...w, rainSoon: false }, [win]), null);
+  assert.equal(rainWarning(null, [win]), null);
+});

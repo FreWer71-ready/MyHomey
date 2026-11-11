@@ -7,6 +7,7 @@ export type Cap = {
   capability_id: string;
   value_num: number | null;
   value_bool: boolean | null;
+  last_updated?: string;
 };
 
 export type Mood = { id: string; name: string; zone_id: string | null };
@@ -24,6 +25,10 @@ export type Room = {
   moods: { id: string; name: string }[];
   deviceCount: number;
 };
+export type BatteryItem = { id: string; name: string; room: string; level: number | null };
+export type Opening = { id: string; name: string; room: string; open: boolean; kind: 'door' | 'window' };
+export type Silent = { id: string; name: string; room: string; lastSeen: string | null; reason: 'offline' | 'stale' };
+
 export type Home = {
   outdoorTemp: number | null;
   lightsOn: number;
@@ -34,6 +39,9 @@ export type Home = {
   doorsTotal: number;
   motion: number;
   lowBattery: number;
+  lowBatteryList: BatteryItem[];
+  openings: Opening[];
+  silent: Silent[];
   online: number;
   deviceTotal: number;
   rooms: Room[];
@@ -48,6 +56,10 @@ export const CAPS = [
 /** Luftfuktighet visas bara i våtrum. */
 const HUMIDITY_ROOMS = /bad|toa|wc|dusch|tvätt/i;
 const LOW_BATTERY = 20;
+/** Sensorer som inte rapporterat på så här länge räknas som att de inte svarar. */
+export const STALE_HOURS = 36;
+const DOOR = /dörr|door|entr|grind|port/i;
+const REPORTING = ['measure_temperature', 'measure_humidity', 'measure_battery'];
 
 const ICONS: [RegExp, RoomIcon][] = [
   [/vardag|soffa|tv-rum/i, 'sofa'],
@@ -61,7 +73,7 @@ export const iconFor = (name: string): RoomIcon => ICONS.find(([re]) => re.test(
 
 const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
 
-export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: Mood[] = []): Home {
+export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: Mood[] = [], now = Date.now()): Home {
   const byDevice = new Map<string, Map<string, Cap>>();
   for (const c of caps) {
     if (!byDevice.has(c.device_id)) byDevice.set(c.device_id, new Map());
@@ -109,6 +121,26 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
   const contacts = active.map((d) => cap(d, 'alarm_contact')).filter(Boolean) as Cap[];
   const power = nums(active, 'measure_power');
 
+  const zoneName = new Map(zones.map((z) => [z.id, z.name.trim()]));
+  const roomOf = (d: Device) => zoneName.get(d.zone_id ?? '') ?? '';
+  const lowBatteryList: BatteryItem[] = active.flatMap((d) => {
+    const level = cap(d, 'measure_battery')?.value_num ?? null;
+    const low = (level != null && level < LOW_BATTERY) || cap(d, 'alarm_battery')?.value_bool === true;
+    return low ? [{ id: d.id, name: d.name.trim(), room: roomOf(d), level }] : [];
+  }).sort((a, b) => (a.level ?? -1) - (b.level ?? -1));
+  const openings: Opening[] = active.flatMap((d) => {
+    const c = cap(d, 'alarm_contact');
+    return c ? [{ id: d.id, name: d.name.trim(), room: roomOf(d), open: c.value_bool === true, kind: DOOR.test(d.name) ? 'door' as const : 'window' as const }] : [];
+  });
+  // Inte svarar: otillgänglig i Homey, eller sensor som inte rapporterat på STALE_HOURS.
+  const silent: Silent[] = devices.flatMap((d): Silent[] => {
+    const base = { id: d.id, name: d.name.trim(), room: roomOf(d) };
+    if (!d.available) return [{ ...base, lastSeen: null, reason: 'offline' as const }];
+    const seen = REPORTING.map((id) => cap(d, id)?.last_updated).filter((x): x is string => !!x).sort().at(-1);
+    if (seen && now - Date.parse(seen) > STALE_HOURS * 3600_000) return [{ ...base, lastSeen: seen, reason: 'stale' as const }];
+    return [];
+  }).sort((a, b) => (a.lastSeen ?? '').localeCompare(b.lastSeen ?? ''));
+
   return {
     // Väderstationer (t.ex. Trafikverket) har klassen service.
     outdoorTemp: avg(nums(active.filter((d) => d.class === 'service'), 'measure_temperature')),
@@ -119,10 +151,10 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
     doorsOpen: contacts.filter((c) => c.value_bool === true).length,
     doorsTotal: contacts.length,
     motion: active.filter((d) => cap(d, 'alarm_motion')?.value_bool === true).length,
-    lowBattery: active.filter((d) => {
-      const level = cap(d, 'measure_battery')?.value_num;
-      return (level != null && level < LOW_BATTERY) || cap(d, 'alarm_battery')?.value_bool === true;
-    }).length,
+    lowBattery: lowBatteryList.length,
+    lowBatteryList,
+    openings,
+    silent,
     online: active.length,
     deviceTotal: devices.length,
     rooms,
