@@ -150,7 +150,7 @@ export default async function HomePage() {
         />
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-[22px] font-extrabold">Rum</h2>
         <div className="flex flex-wrap gap-1.5 text-[13px] font-bold text-fg">
           {HEAT.map((s) => (
