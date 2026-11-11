@@ -32,3 +32,28 @@ set request.jwt.claims = '{"email":"ok@example.com"}';
 do $$ begin if (select count(*) from public.moods) <> 1 then raise exception 'godkänd ser inte moods'; end if; end $$;
 reset role;
 \echo Moods-test OK
+
+-- Närvaro: namnmatchning, alias, ignorerade enheter, frånkopplade.
+insert into public.people (name, sort) values ('Molly', 1), ('Wilmer', 2), ('Fredrik', 3);
+select public.ingest_unifi('[{"mac":"AA","name":"Mollys iPhone"},{"mac":"BB","name":"iPhone 15"},{"mac":"CC","name":"Wilmer-pc"},{"mac":"DD","name":"Fredrik iPad"}]');
+insert into public.client_alias (mac, person_id) select 'bb', id from public.people where name = 'Fredrik';
+insert into public.client_alias (mac, ignore) values ('dd', true);
+select public.ingest_unifi('[{"mac":"AA","name":"Mollys iPhone"},{"mac":"BB","name":"iPhone 15"}]');
+update public.network_clients set last_seen = now() - interval '1 hour' where mac = 'cc';
+do $$ declare r record; begin
+  for r in select name, home, devices from public.v_presence order by sort loop
+    raise notice '% hemma=% enheter=%', r.name, r.home, r.devices;
+  end loop;
+  if not (select home from public.v_presence where name = 'Molly') then raise exception 'Molly borde vara hemma'; end if;
+  if (select home from public.v_presence where name = 'Wilmer') then raise exception 'Wilmer borde vara borta'; end if;
+  if not (select home from public.v_presence where name = 'Fredrik') then raise exception 'alias fungerar inte'; end if;
+  if (select devices from public.v_presence where name = 'Fredrik') <> 1 then raise exception 'ignorerad enhet räknas'; end if;
+  if (select connected from public.network_clients where mac = 'cc') then raise exception 'frånkopplad markeras inte'; end if;
+end $$;
+set role authenticated;
+set request.jwt.claims = '{"email":"ok@example.com"}';
+do $$ begin if (select count(*) from public.v_presence) <> 3 then raise exception 'godkänd ser inte närvaro'; end if; end $$;
+set request.jwt.claims = '{"email":"fel@example.com"}';
+do $$ begin if (select count(*) from public.v_presence) <> 0 then raise exception 'närvaro läcker'; end if; end $$;
+reset role;
+\echo Närvaro-test OK

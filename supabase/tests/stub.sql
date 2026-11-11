@@ -8,3 +8,4 @@ grant usage on schema auth to anon, authenticated;
 create publication supabase_realtime;
 create schema vault;
 create view vault.decrypted_secrets as select 'homey_ingest_secret'::text as name, 'test-secret'::text as decrypted_secret;
+create schema if not exists extensions;
