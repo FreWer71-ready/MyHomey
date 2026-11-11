@@ -48,8 +48,11 @@ const FLAT = {
   ),
   drop: (
     <>
-      <path d="M12 2.5s-6.5 7-6.5 11.8a6.5 6.5 0 0 0 13 0C18.5 9.5 12 2.5 12 2.5z" fill={C.blue} />
-      <path d="M9 14.5a3.2 3.2 0 0 0 2.2 3" fill="none" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" opacity={0.8} />
+      <g className="wx-bob">
+        <path d="M12 2.5s-6.5 7-6.5 11.8a6.5 6.5 0 0 0 13 0C18.5 9.5 12 2.5 12 2.5z" fill={C.blue} />
+        <path d="M9 14.5a3.2 3.2 0 0 0 2.2 3" fill="none" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" opacity={0.8} />
+      </g>
+      <ellipse className="wx-ripple" cx={12} cy={22.3} rx={5} ry={1} fill="none" stroke={C.blue} strokeWidth={1} />
     </>
   ),
   bulb: (
@@ -126,14 +129,14 @@ const FLAT = {
     </>
   ),
   sofa: (
-    <>
+    <g className="wx-bob" style={{ animationDuration: '5s' }}>
       <rect x={4} y={6} width={16} height={7} rx={2.5} fill="#A78BFA" />
       <rect x={2} y={10} width={4} height={8} rx={2} fill={C.violet} />
       <rect x={18} y={10} width={4} height={8} rx={2} fill={C.violet} />
       <rect x={5} y={12} width={14} height={5} rx={1.5} fill={C.violet} />
       <rect x={4} y={18} width={2} height={2.5} rx={0.6} fill={C.dark} />
       <rect x={18} y={18} width={2} height={2.5} rx={0.6} fill={C.dark} />
-    </>
+    </g>
   ),
   bed: (
     <>
@@ -142,13 +145,15 @@ const FLAT = {
       <rect x={5.5} y={9.5} width={5} height={3.5} rx={1.5} fill={C.blue} />
       <rect x={11.5} y={10.5} width={10} height={3.5} rx={1.5} fill={C.violet} />
       <rect x={20} y={17} width={2} height={3} rx={0.8} fill={C.wood} />
+      <text className="wx-rise" x={7} y={7} fontSize={5.5} fontWeight={800} fill={C.cloud} fontFamily="system-ui, sans-serif">z</text>
+      <text className="wx-rise" style={{ animationDelay: '1.3s' }} x={10} y={5} fontSize={4.5} fontWeight={800} fill={C.cloud} fontFamily="system-ui, sans-serif">z</text>
     </>
   ),
   door: (
     <>
       <rect x={5} y={2.5} width={14} height={19} rx={1.5} fill={C.grey} />
       <rect x={6.8} y={4} width={10.4} height={17.5} rx={1} fill={C.wood} />
-      <circle cx={14.8} cy={12.5} r={1.1} fill={C.sun} />
+      <circle className="wx-twinkle" cx={14.8} cy={12.5} r={1.1} fill={C.sun} />
     </>
   ),
   window: (
@@ -158,7 +163,7 @@ const FLAT = {
       <rect x={13} y={5} width={6} height={6} rx={0.8} fill={C.blue} />
       <rect x={5} y={13} width={6} height={6} rx={0.8} fill={C.blue} />
       <rect x={13} y={13} width={6} height={6} rx={0.8} fill={C.blue} />
-      <path d="M6 9.5l3-3M14 9.5l3-3" stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" opacity={0.7} />
+      <path className="wx-twinkle" d="M6 9.5l3-3M14 9.5l3-3M6 17.5l3-3M14 17.5l3-3" stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" />
     </>
   ),
   wc: (
@@ -167,6 +172,7 @@ const FLAT = {
       <path d="M4.5 10h15a7.5 7.5 0 0 1-15 0z" fill={C.cloud} />
       <path d="M9 16.5 8 21.5h8l-1-5" fill={C.cloud} />
       <rect x={4.5} y={9} width={15} height={2} rx={1} fill={C.blue} />
+      <path className="wx-fall" d="M12 11.6c-.9 1.3-1.2 1.9-1.2 2.4a1.2 1.2 0 0 0 2.4 0c0-.5-.3-1.1-1.2-2.4z" fill={C.blue} />
     </>
   ),
   pot: (
@@ -179,12 +185,12 @@ const FLAT = {
     </>
   ),
   box: (
-    <>
+    <g className="wx-bob">
       <path d="M3 7.5 12 3l9 4.5v10L12 22l-9-4.5z" fill={C.wood} />
       <path d="M3 7.5 12 12l9-4.5L12 3z" fill="#E0A877" />
       <path d="M12 12v10" stroke="#9C6A42" strokeWidth={1.4} />
       <path d="m7.5 5.3 9 4.5" stroke={C.cloud} strokeWidth={1.8} />
-    </>
+    </g>
   ),
 } as const;
 

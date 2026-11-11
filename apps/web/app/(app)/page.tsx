@@ -108,10 +108,13 @@ export default async function HomePage() {
           )}
           {weather && (
             <span className="relative text-[15px] font-bold">
-              {sky?.label} ·{' '}
-              {weather.nextPrecip
-                ? `${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} från ${hhmm(weather.nextPrecip.time)}`
-                : 'uppehåll 6 tim'}
+              {weather.nextPrecip && weather.nextPrecip.time <= weather.current.time
+                ? `${sky?.label} just nu`
+                : `${sky?.label} · ${
+                    weather.nextPrecip
+                      ? `${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} från ${hhmm(weather.nextPrecip.time)}`
+                      : 'uppehåll 6 tim'
+                  }`}
             </span>
           )}
         </Hero>
