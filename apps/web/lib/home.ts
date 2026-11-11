@@ -58,7 +58,8 @@ const HUMIDITY_ROOMS = /bad|toa|wc|dusch|tvätt/i;
 const LOW_BATTERY = 20;
 /** Sensorer som inte rapporterat på så här länge räknas som att de inte svarar. */
 export const STALE_HOURS = 48;
-const DOOR = /dörr|door|entr|grind|port/i;
+/** Bara kontaktsensorer med fönster i namnet räknas som fönster (regnvarning). */
+const WINDOW = /fönster|window/i;
 // Homey uppdaterar tidsstämpeln bara när värdet ändras, så bara mätvärden som
 // normalt ändras flera gånger per dygn duger för att upptäcka tysta sensorer.
 const REPORTING = ['measure_temperature', 'measure_humidity'];
@@ -132,7 +133,7 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
   }).sort((a, b) => (a.level ?? -1) - (b.level ?? -1));
   const openings: Opening[] = active.flatMap((d) => {
     const c = cap(d, 'alarm_contact');
-    return c ? [{ id: d.id, name: d.name.trim(), room: roomOf(d), open: c.value_bool === true, kind: DOOR.test(d.name) ? 'door' as const : 'window' as const }] : [];
+    return c ? [{ id: d.id, name: d.name.trim(), room: roomOf(d), open: c.value_bool === true, kind: WINDOW.test(d.name) ? 'window' as const : 'door' as const }] : [];
   });
   // Inte svarar: otillgänglig i Homey, eller sensor som inte rapporterat på STALE_HOURS.
   const silent: Silent[] = devices.flatMap((d): Silent[] => {
