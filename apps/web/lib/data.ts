@@ -1,6 +1,7 @@
 import 'server-only';
 import { createClient } from './supabase/server';
 import { buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
+import type { Price } from './prices';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { buildSeries, METRICS, PERIODS, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
@@ -85,4 +86,28 @@ export async function loadLightTimeline(period: PeriodKey): Promise<{ rooms: Roo
   const error = zones.error ?? devices.error ?? rows.error;
   if (error) throw new Error(`Kunde inte läsa tidslinje: ${error.message}`);
   return { rooms: buildTimeline(rows.data as OnOffRow[], devices.data as Device[], zones.data as Zone[], since, now), since, now };
+}
+
+/** Spotpriser från i går kväll till och med i morgon (öre/kWh). */
+export async function loadPrices(): Promise<Price[]> {
+  const now = Date.now();
+  if (DEMO) {
+    const first = Math.floor((now - 14 * 3600_000) / 900_000) * 900_000;
+    return Array.from({ length: 50 * 4 }, (_, i) => {
+      const start = first + i * 900_000;
+      const h = new Date(start).getHours();
+      const peak = (h >= 7 && h < 9) || (h >= 17 && h < 20) ? 120 : 0;
+      return { start, end: start + 900_000, ore: 140 + 70 * Math.sin(((h - 9) / 24) * 2 * Math.PI) + peak };
+    });
+  }
+  const sb = await createClient();
+  const { data, error } = await sb
+    .from('spot_prices')
+    .select('start_ts,end_ts,sek_per_kwh')
+    .eq('area', 'SE3')
+    .gte('start_ts', new Date(now - 26 * 3600_000).toISOString())
+    .lt('start_ts', new Date(now + 36 * 3600_000).toISOString())
+    .order('start_ts');
+  if (error) throw new Error(`Kunde inte läsa elpriser: ${error.message}`);
+  return (data ?? []).map((p) => ({ start: Date.parse(p.start_ts), end: Date.parse(p.end_ts), ore: p.sek_per_kwh * 100 }));
 }

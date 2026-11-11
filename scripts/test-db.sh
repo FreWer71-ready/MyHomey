@@ -15,7 +15,7 @@ trap cleanup EXIT
 "${RUN[@]}" "$PGBIN/pg_ctl" -D "$TMP/data" -o "-p $PORT -k $TMP -c listen_addresses=''" -l "$TMP/log" start >/dev/null
 P=("${RUN[@]}" "$PGBIN/psql" -h "$TMP" -p "$PORT" -U postgres -v ON_ERROR_STOP=1 -q)
 
-cat "$ROOT/supabase/tests/stub.sql" "$ROOT"/supabase/migrations/*.sql | "${P[@]}" -f - >/dev/null
+cat "$ROOT/supabase/tests/stub.sql" $(ls "$ROOT"/supabase/migrations/*.sql | grep -v _cron.sql) | "${P[@]}" -f - >/dev/null
 "${P[@]}" -f "$ROOT/supabase/tests/ingest.test.sql" >/dev/null
 "${P[@]}" -c "truncate public.readings, public.capability_state, public.devices, public.zones cascade" >/dev/null
 "${P[@]}" -f "$ROOT/supabase/tests/rls.test.sql"

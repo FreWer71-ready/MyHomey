@@ -1,7 +1,8 @@
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
-import { loadHome } from '@/lib/data';
+import { loadHome, loadPrices } from '@/lib/data';
+import { hhmm, summarize } from '@/lib/prices';
 import { HEAT, fmtTemp, fmtWatt, heatColor } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,8 @@ function Status({ icon, label, value, tone }: { icon: IconName; label: string; v
 }
 
 export default async function HomePage() {
-  const h = await loadHome();
+  const [h, prices] = await Promise.all([loadHome(), loadPrices()]);
+  const price = summarize(prices, Date.now());
   const doorsOk = h.doorsOpen === 0;
 
   return (
@@ -73,9 +75,14 @@ export default async function HomePage() {
           <span className="text-5xl leading-none font-extrabold tracking-tight">{fmtWatt(h.powerW)}</span>
           <span className="text-[15px] font-bold">{h.powerMeters} mätare</span>
         </Hero>
-        <Hero bg="#E6E8F0" icon="money" label="Elpris SE3">
-          <span className="text-[32px] leading-tight font-extrabold tracking-tight">Kommer</span>
-          <span className="text-[15px] font-bold text-ink-2">Steg 5 i byggordningen</span>
+        <Hero bg={price.level?.bg ?? '#E6E8F0'} icon="money" label={price.level ? `Elpris · ${price.level.label}` : 'Elpris SE3'}>
+          <span className="text-5xl leading-none font-extrabold tracking-tight">
+            {price.now ? Math.round(price.now.ore) : '–'}
+            <span className="text-xl"> öre</span>
+          </span>
+          <span className="text-[15px] font-bold">
+            {price.cheapest1h ? `Billigast ${hhmm(price.cheapest1h.start)}–${hhmm(price.cheapest1h.end)}` : 'Priser saknas'}
+          </span>
         </Hero>
       </section>
 
