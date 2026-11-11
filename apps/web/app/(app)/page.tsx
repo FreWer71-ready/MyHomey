@@ -13,8 +13,8 @@ export const dynamic = 'force-dynamic';
 
 function Hero({ bg, icon, label, children }: { bg: string; icon: IconName; label: string; children: React.ReactNode }) {
   return (
-    <div className="glass flex flex-col gap-1 rounded-[24px] p-4" style={{ background: bg }}>
-      <span className="flex items-center gap-2.5">
+    <div className="glass relative flex flex-col gap-1 overflow-hidden rounded-[24px] p-4" style={{ background: bg }}>
+      <span className="relative flex items-center gap-2.5">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
           <Icon name={icon} size={22} />
         </span>
@@ -96,18 +96,22 @@ export default async function HomePage() {
 
       <section className="grid grid-cols-2 gap-3 lg:auto-cols-fr lg:grid-flow-col">
         {(h.outdoorTemp != null || weather) && (
-        <Hero bg={heatTint(h.outdoorTemp)} icon="thermo" label={sky ? `Ute · ${sky.label}` : 'Ute'}>
-          <span className="flex items-center justify-between gap-2">
-            {h.outdoorTemp != null && (
-              <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtTemp(h.outdoorTemp)}</span>
-            )}
-            {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={68} label={sky.label} />}
-          </span>
+        <Hero bg={heatTint(h.outdoorTemp)} icon="thermo" label="Ute">
+          {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
+          {sky && weather && (
+            <span className="pointer-events-none absolute top-1 -right-1 opacity-85">
+              <WeatherIcon kind={weatherKind(weather.current.symbol)} size={120} label={sky.label} />
+            </span>
+          )}
+          {h.outdoorTemp != null && (
+            <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtTemp(h.outdoorTemp)}</span>
+          )}
           {weather && (
-            <span className="text-[15px] font-bold">
+            <span className="relative text-[15px] font-bold">
+              {sky?.label} ·{' '}
               {weather.nextPrecip
-                ? `${symbolInfo(weather.nextPrecip.symbol).label} från ${hhmm(weather.nextPrecip.time)}`
-                : 'Uppehåll närmaste 6 tim'}
+                ? `${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} från ${hhmm(weather.nextPrecip.time)}`
+                : 'uppehåll 6 tim'}
             </span>
           )}
         </Hero>
@@ -142,15 +146,15 @@ export default async function HomePage() {
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Status
           icon={open.length ? 'shieldAlert' : 'shield'}
-          label={entrance ? `Dörrar & fönster · entré ${openedToday[entrance.id] ?? 0}× i dag` : 'Dörrar & fönster'}
+          label={entrance ? `Dörrar · entré ${openedToday[entrance.id] ?? 0}× i dag` : 'Dörrar & fönster'}
           value={open.length ? (open.length === 1 ? `${open[0].name} öppen` : `${open.length} öppna`) : 'Alla stängda'}
           tone={open.length ? 'warn' : 'ok'}
           href="/larm#oppet"
         />
         <Status
           icon="motion"
-          label={h.motion ? `Rörelse · ${h.motion} aktiv${h.motion > 1 ? 'a' : ''} nu` : 'Rörelse'}
-          value={motions ? `${motions} st senaste timmen` : 'Lugnt senaste timmen'}
+          label={h.motion ? `Rörelse · ${h.motion} aktiv nu` : 'Rörelse senaste timmen'}
+          value={motions ? `${motions} registreringar` : 'Lugnt'}
           tone="info"
         />
         <Status
