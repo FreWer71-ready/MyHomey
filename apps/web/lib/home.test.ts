@@ -1,0 +1,65 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { buildHome, iconFor, type Cap, type Device, type Zone } from './home.ts';
+import { heatColor, fmtTemp } from './scale.ts';
+
+const zones: Zone[] = [
+  { id: 'root', name: 'Hem', parent_id: null },
+  { id: 'v', name: 'Vardagsrum', parent_id: 'root' },
+  { id: 'b', name: 'Badrum', parent_id: 'root' },
+  { id: 'tom', name: 'Ute', parent_id: 'root' },
+];
+const devices: Device[] = [
+  { id: 'wx', name: 'Eskilstuna Ö', zone_id: 'root', class: 'service', available: true },
+  { id: 's1', name: 'Temp vardagsrum', zone_id: 'v', class: 'sensor', available: true },
+  { id: 'p1', name: 'Växtlampa', zone_id: 'v', class: 'socket', available: true },
+  { id: 'l1', name: 'Tak', zone_id: 'v', class: 'light', available: true },
+  { id: 'l2', name: 'Golv', zone_id: 'v', class: 'light', available: true },
+  { id: 'old', name: 'Gammal', zone_id: 'v', class: 'light', available: false },
+  { id: 's2', name: 'Temp badrum', zone_id: 'b', class: 'sensor', available: true },
+];
+const c = (device_id: string, capability_id: string, v: number | boolean): Cap => ({
+  device_id, capability_id,
+  value_num: typeof v === 'number' ? v : null,
+  value_bool: typeof v === 'boolean' ? v : null,
+});
+const caps: Cap[] = [
+  c('wx', 'measure_temperature', 1.7),
+  c('s1', 'measure_temperature', 22), c('s1', 'measure_humidity', 40), c('s1', 'alarm_contact', false),
+  c('p1', 'measure_temperature', 35.5), c('p1', 'measure_power', 13.06),
+  c('l1', 'onoff', true), c('l1', 'dim', 0.65), c('l2', 'onoff', false),
+  c('old', 'onoff', true),
+  c('s2', 'measure_temperature', 24.1), c('s2', 'measure_humidity', 36), c('s2', 'measure_battery', 12),
+];
+
+test('rumstemperatur räknas bara från sensorer', () => {
+  const v = buildHome(zones, devices, caps).rooms.find((r) => r.id === 'v')!;
+  assert.equal(v.temp, 22);
+});
+
+test('luftfuktighet bara i våtrum', () => {
+  const rooms = buildHome(zones, devices, caps).rooms;
+  assert.equal(rooms.find((r) => r.id === 'v')!.humidity, null);
+  assert.equal(rooms.find((r) => r.id === 'b')!.humidity, 36);
+});
+
+test('översikt: ute, lampor, effekt, batteri, rum utan enheter döljs', () => {
+  const h = buildHome(zones, devices, caps);
+  assert.equal(h.outdoorTemp, 1.7);
+  assert.equal(h.lightsOn, 1);
+  assert.equal(h.lightsTotal, 2);
+  assert.equal(h.powerW, 13.1);
+  assert.equal(h.lowBattery, 1);
+  assert.equal(h.doorsTotal, 1);
+  assert.equal(h.online, 6);
+  assert.deepEqual(h.rooms.map((r) => r.id), ['v', 'b']);
+  assert.deepEqual(h.rooms[0].lights.map((l) => [l.name, l.on, l.dim]), [['Golv', false, null], ['Tak', true, 65]]);
+});
+
+test('ikoner och färgskala', () => {
+  assert.equal(iconFor('Kök'), 'pot');
+  assert.equal(iconFor('Molly'), 'bed');
+  assert.equal(heatColor(21), '#BFF0D4');
+  assert.equal(heatColor(null), '#E6E8F0');
+  assert.equal(fmtTemp(22), '22,0°');
+});

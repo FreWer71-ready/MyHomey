@@ -1,0 +1,123 @@
+// Räknar fram hemöversikten ur rådata från Supabase. Ren logik, inga anrop.
+
+export type Zone = { id: string; name: string; parent_id: string | null };
+export type Device = { id: string; name: string; zone_id: string | null; class: string | null; available: boolean };
+export type Cap = {
+  device_id: string;
+  capability_id: string;
+  value_num: number | null;
+  value_bool: boolean | null;
+};
+
+export type RoomIcon = 'sofa' | 'bed' | 'door' | 'drop' | 'wc' | 'pot' | 'box';
+export type Light = { id: string; name: string; on: boolean; dim: number | null };
+export type Room = {
+  id: string;
+  name: string;
+  icon: RoomIcon;
+  temp: number | null;
+  humidity: number | null;
+  lights: Light[];
+  lightsOn: number;
+  deviceCount: number;
+};
+export type Home = {
+  outdoorTemp: number | null;
+  lightsOn: number;
+  lightsTotal: number;
+  powerW: number;
+  powerMeters: number;
+  doorsOpen: number;
+  doorsTotal: number;
+  motion: number;
+  lowBattery: number;
+  online: number;
+  deviceTotal: number;
+  rooms: Room[];
+};
+
+/** Capabilities som vyerna behöver. */
+export const CAPS = [
+  'measure_temperature', 'measure_humidity', 'onoff', 'dim', 'measure_power',
+  'alarm_contact', 'alarm_motion', 'measure_battery', 'alarm_battery',
+];
+
+/** Luftfuktighet visas bara i våtrum. */
+const HUMIDITY_ROOMS = /bad|toa|wc|dusch|tvätt/i;
+const LOW_BATTERY = 20;
+
+const ICONS: [RegExp, RoomIcon][] = [
+  [/vardag|soffa|tv-rum/i, 'sofa'],
+  [/kök/i, 'pot'],
+  [/bad|dusch/i, 'drop'],
+  [/toa|wc/i, 'wc'],
+  [/hall|entré|farstu/i, 'door'],
+  [/förråd|garage|vind|källare/i, 'box'],
+];
+export const iconFor = (name: string): RoomIcon => ICONS.find(([re]) => re.test(name))?.[1] ?? 'bed';
+
+const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+
+export function buildHome(zones: Zone[], devices: Device[], caps: Cap[]): Home {
+  const byDevice = new Map<string, Map<string, Cap>>();
+  for (const c of caps) {
+    if (!byDevice.has(c.device_id)) byDevice.set(c.device_id, new Map());
+    byDevice.get(c.device_id)!.set(c.capability_id, c);
+  }
+  const cap = (d: Device, id: string) => byDevice.get(d.id)?.get(id);
+  const nums = (ds: Device[], id: string) =>
+    ds.map((d) => cap(d, id)?.value_num).filter((v): v is number => typeof v === 'number');
+
+  const active = devices.filter((d) => d.available);
+  const lightOf = (d: Device): Light | null => {
+    const onoff = cap(d, 'onoff');
+    if (d.class !== 'light' || !onoff) return null;
+    const dim = cap(d, 'dim')?.value_num;
+    return { id: d.id, name: d.name.trim(), on: onoff.value_bool === true, dim: dim == null ? null : Math.round(dim * 100) };
+  };
+  const allLights = active.map(lightOf).filter((l): l is Light => l !== null);
+
+  const rooms: Room[] = zones
+    .filter((z) => z.parent_id !== null)
+    .map((z) => {
+      const ds = active.filter((d) => d.zone_id === z.id);
+      const name = z.name.trim();
+      const lights = ds.map(lightOf).filter((l): l is Light => l !== null)
+        .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+      return {
+        id: z.id,
+        name,
+        icon: iconFor(name),
+        // Bara riktiga sensorer: uttag och lampor mäter sin egen värme.
+        temp: avg(nums(ds.filter((d) => d.class === 'sensor'), 'measure_temperature')),
+        humidity: HUMIDITY_ROOMS.test(name) ? avg(nums(ds, 'measure_humidity')) : null,
+        lights,
+        lightsOn: lights.filter((l) => l.on).length,
+        deviceCount: ds.length,
+      };
+    })
+    .filter((r) => r.deviceCount > 0)
+    .sort((a, b) => b.deviceCount - a.deviceCount || a.name.localeCompare(b.name, 'sv'));
+
+  const contacts = active.map((d) => cap(d, 'alarm_contact')).filter(Boolean) as Cap[];
+  const power = nums(active, 'measure_power');
+
+  return {
+    // Väderstationer (t.ex. Trafikverket) har klassen service.
+    outdoorTemp: avg(nums(active.filter((d) => d.class === 'service'), 'measure_temperature')),
+    lightsOn: allLights.filter((l) => l.on).length,
+    lightsTotal: allLights.length,
+    powerW: Math.round(power.reduce((a, b) => a + b, 0) * 10) / 10,
+    powerMeters: power.length,
+    doorsOpen: contacts.filter((c) => c.value_bool === true).length,
+    doorsTotal: contacts.length,
+    motion: active.filter((d) => cap(d, 'alarm_motion')?.value_bool === true).length,
+    lowBattery: active.filter((d) => {
+      const level = cap(d, 'measure_battery')?.value_num;
+      return (level != null && level < LOW_BATTERY) || cap(d, 'alarm_battery')?.value_bool === true;
+    }).length,
+    online: active.length,
+    deviceTotal: devices.length,
+    rooms,
+  };
+}
