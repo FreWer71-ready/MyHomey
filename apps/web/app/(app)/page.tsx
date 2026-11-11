@@ -3,7 +3,7 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadPrices, loadWeather } from '@/lib/data';
+import { loadHome, loadMotionCount, loadPrices, loadWeather } from '@/lib/data';
 import { symbolInfo } from '@/lib/weather';
 import { hhmm, summarize } from '@/lib/prices';
 import { HEAT, fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
@@ -46,7 +46,7 @@ function Status({ icon, label, value, tone, href }: { icon: IconName; label: str
 }
 
 export default async function HomePage() {
-  const [h, prices, weather] = await Promise.all([loadHome(), loadPrices(), loadWeather()]);
+  const [h, prices, weather, motions] = await Promise.all([loadHome(), loadPrices(), loadWeather(), loadMotionCount()]);
   const price = summarize(prices, Date.now());
   const open = h.openings.filter((o) => o.open);
   const sky = weather ? symbolInfo(weather.current.symbol) : null;
@@ -133,7 +133,12 @@ export default async function HomePage() {
           tone={open.length ? 'warn' : 'ok'}
           href="/larm#oppet"
         />
-        <Status icon="motion" label="Rörelse" value={h.motion ? `${h.motion} aktiva` : 'Lugnt'} tone="info" />
+        <Status
+          icon="motion"
+          label={h.motion ? `Rörelse · ${h.motion} aktiv${h.motion > 1 ? 'a' : ''} nu` : 'Rörelse'}
+          value={motions ? `${motions} st senaste timmen` : 'Lugnt senaste timmen'}
+          tone="info"
+        />
         <Status
           icon="battery"
           label="Batteri"

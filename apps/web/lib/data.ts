@@ -135,3 +135,17 @@ export async function loadWeather(): Promise<WeatherSummary | null> {
     return null; // Vädret får aldrig stoppa sidan.
   }
 }
+
+/** Antal rörelseregistreringar (alarm_motion → på) de senaste 60 minuterna. */
+export async function loadMotionCount(): Promise<number> {
+  if (DEMO) return 3;
+  const sb = await createClient();
+  const { count, error } = await sb
+    .from('readings')
+    .select('device_id', { count: 'exact', head: true })
+    .eq('capability_id', 'alarm_motion')
+    .eq('value', 1)
+    .gte('ts', new Date(Date.now() - 60 * 60_000).toISOString());
+  if (error) throw new Error(`Kunde inte läsa rörelser: ${error.message}`);
+  return count ?? 0;
+}
