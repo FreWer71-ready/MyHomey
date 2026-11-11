@@ -35,6 +35,12 @@ npm run dev
 
 Lokalt demoläge utan Supabase: `DEMO_DATA=$PWD/demo/demo.json npm run dev` (bara i `next dev`).
 
+## Driftsättning
+
+- Vercel-projekt `myhomey` (rotkatalog `apps/web`), byggs automatiskt från `main`.
+- Nås på **https://trand.se/mydashboard** – projektet `trand-se` skriver om `/mydashboard/*` till `myhomey.vercel.app` (appen har `basePath: /mydashboard`).
+- Supabase Auth → URL Configuration måste tillåta `https://trand.se/mydashboard/**`.
+
 ## Tester
 
 ```bash
