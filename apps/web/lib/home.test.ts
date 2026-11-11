@@ -84,7 +84,8 @@ test('batterilista, dörrar/fönster och enheter som inte svarar', () => {
   const cs: Cap[] = [
     { device_id: 'w', capability_id: 'alarm_contact', value_num: null, value_bool: true },
     { device_id: 'e', capability_id: 'alarm_contact', value_num: null, value_bool: false },
-    { device_id: 't', capability_id: 'measure_battery', value_num: 3, value_bool: null, last_updated: '2026-11-09T12:00:00Z' },
+    { device_id: 't', capability_id: 'measure_battery', value_num: 3, value_bool: null, last_updated: '2020-01-01T00:00:00Z' },
+    { device_id: 't', capability_id: 'measure_temperature', value_num: 21, value_bool: null, last_updated: '2026-11-08T12:00:00Z' },
     { device_id: 'w', capability_id: 'measure_battery', value_num: 90, value_bool: null, last_updated: '2026-11-11T11:00:00Z' },
   ];
   const h = buildHome(zs, ds, cs, [], now);

@@ -50,16 +50,18 @@ export type Home = {
 /** Capabilities som vyerna behöver. */
 export const CAPS = [
   'measure_temperature', 'measure_humidity', 'onoff', 'dim', 'measure_power',
-  'alarm_contact', 'alarm_motion', 'measure_battery', 'alarm_battery',
+  'alarm_contact', 'alarm_motion', 'measure_battery', 'alarm_battery', 'alarm_connectivity',
 ];
 
 /** Luftfuktighet visas bara i våtrum. */
 const HUMIDITY_ROOMS = /bad|toa|wc|dusch|tvätt/i;
 const LOW_BATTERY = 20;
 /** Sensorer som inte rapporterat på så här länge räknas som att de inte svarar. */
-export const STALE_HOURS = 36;
+export const STALE_HOURS = 48;
 const DOOR = /dörr|door|entr|grind|port/i;
-const REPORTING = ['measure_temperature', 'measure_humidity', 'measure_battery'];
+// Homey uppdaterar tidsstämpeln bara när värdet ändras, så bara mätvärden som
+// normalt ändras flera gånger per dygn duger för att upptäcka tysta sensorer.
+const REPORTING = ['measure_temperature', 'measure_humidity'];
 
 const ICONS: [RegExp, RoomIcon][] = [
   [/vardag|soffa|tv-rum/i, 'sofa'],
@@ -135,7 +137,7 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
   // Inte svarar: otillgänglig i Homey, eller sensor som inte rapporterat på STALE_HOURS.
   const silent: Silent[] = devices.flatMap((d): Silent[] => {
     const base = { id: d.id, name: d.name.trim(), room: roomOf(d) };
-    if (!d.available) return [{ ...base, lastSeen: null, reason: 'offline' as const }];
+    if (!d.available || cap(d, 'alarm_connectivity')?.value_bool === true) return [{ ...base, lastSeen: null, reason: 'offline' as const }];
     const seen = REPORTING.map((id) => cap(d, id)?.last_updated).filter((x): x is string => !!x).sort().at(-1);
     if (seen && now - Date.parse(seen) > STALE_HOURS * 3600_000) return [{ ...base, lastSeen: seen, reason: 'stale' as const }];
     return [];
