@@ -4,7 +4,8 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'MyHomey',
   description: 'Dashboard för hemmet',
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  icons: { icon: '/mydashboard/icon.svg', apple: '/mydashboard/icon.svg' },
+  manifest: '/mydashboard/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'MyHomey', statusBarStyle: 'black-translucent' },
 };
 

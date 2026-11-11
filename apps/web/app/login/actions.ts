@@ -2,6 +2,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { BASE_PATH } from '@/lib/paths';
 
 /** Skickar inloggningslänk, men bara till adresser i app_users. */
 export async function sendLink(formData: FormData) {
@@ -13,7 +14,7 @@ export async function sendLink(formData: FormData) {
     const origin = h.get('origin') ?? `https://${h.get('host')}`;
     const { error } = await sb.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${origin}/auth/confirm` },
+      options: { emailRedirectTo: `${origin}${BASE_PATH}/auth/confirm` },
     });
     if (error) redirect('/login?status=error');
   }
