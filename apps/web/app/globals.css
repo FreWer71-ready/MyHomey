@@ -85,6 +85,8 @@ body {
 .wx-slide { animation: wx-slide 5s ease-in-out infinite alternate; }
 .wx-twinkle { animation: wx-twinkle 3s ease-in-out infinite; }
 @keyframes wx-spin { to { transform: rotate(360deg); } }
+.wx-swing { animation: wx-swing 4s ease-in-out infinite; transform-box: view-box; }
+@keyframes wx-swing { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(12deg); } 86% { transform: rotate(-10deg); } 93% { transform: rotate(5deg); } }
 @keyframes wx-drift { from { transform: translateX(-1.5px); } to { transform: translateX(2px); } }
 @keyframes wx-fall { from { transform: translateY(-3px); opacity: 0; } 25% { opacity: 1; } to { transform: translateY(9px); opacity: 0; } }
 @keyframes wx-flake { from { transform: translate(0, -3px); opacity: 0; } 20% { opacity: 1; } 50% { transform: translate(2px, 4px); } to { transform: translate(-1px, 11px); opacity: 0; } }
@@ -93,7 +95,7 @@ body {
 @keyframes wx-twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .backdrop-img, .backdrop-in, .wx-spin, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle { animation: none; }
+  .backdrop-img, .backdrop-in, .wx-spin, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle, .wx-swing { animation: none; }
 }
 
 svg.ico {

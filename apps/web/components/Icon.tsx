@@ -1,47 +1,221 @@
-const PATHS = {
-  home: 'M3 11 12 4l9 7M5 10v10h14V10',
+// Ikoner: platta, färgade symboler i samma stil som vädersymbolerna (WeatherIcon),
+// med lätta animationer (.wx-* i globals.css). Rena kontrollikoner är linjeikoner.
+
+const C = {
+  sun: '#FFC21A', ray: '#FFB000', orange: '#FF8A3D', red: '#F0503C', green: '#34C27A',
+  blue: '#4FA3FF', violet: '#8B5CF6', teal: '#2BB5C4', cloud: '#EEF2F8', grey: '#C5CFDD',
+  dark: '#5B6478', wood: '#C98A5A', moon: '#FFE08A',
+};
+
+const FLAT = {
+  home: (
+    <>
+      <path d="M5 11 12 5l7 6v9H5z" fill={C.cloud} />
+      <path d="M2.8 11.6 12 3.8l9.2 7.8" fill="none" stroke={C.red} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+      <rect x={10.3} y={14} width={3.4} height={6} rx={0.8} fill={C.wood} />
+    </>
+  ),
+  rooms: (
+    <>
+      <rect x={3} y={3} width={8} height={8} rx={2.2} fill={C.blue} />
+      <rect x={13} y={3} width={8} height={8} rx={2.2} fill={C.sun} />
+      <rect x={3} y={13} width={8} height={8} rx={2.2} fill={C.green} />
+      <rect x={13} y={13} width={8} height={8} rx={2.2} fill={C.violet} />
+    </>
+  ),
+  bolt: <path className="wx-flash" d="M13.5 2 4.5 13.5h6.2L9.5 22l9-11.5h-6.2z" fill={C.sun} />,
+  chart: (
+    <>
+      <rect x={4} y={12} width={4} height={8} rx={1.2} fill={C.blue} />
+      <rect x={10} y={6} width={4} height={14} rx={1.2} fill={C.green} />
+      <rect x={16} y={9} width={4} height={11} rx={1.2} fill={C.sun} />
+      <rect x={2.5} y={20} width={19} height={1.8} rx={0.9} fill={C.grey} />
+    </>
+  ),
+  bell: (
+    <g className="wx-swing" style={{ transformOrigin: '12px 3px' }}>
+      <path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z" fill={C.sun} />
+      <circle cx={12} cy={20.2} r={2} fill={C.orange} />
+      <rect x={11} y={2} width={2} height={2.5} rx={1} fill={C.ray} />
+    </g>
+  ),
+  thermo: (
+    <>
+      <path d="M9.5 4.5a2.5 2.5 0 0 1 5 0v9.2a4.5 4.5 0 1 1-5 0z" fill={C.cloud} />
+      <rect x={11} y={8} width={2} height={8} rx={1} fill={C.red} />
+      <circle cx={12} cy={17.3} r={2.6} fill={C.red} />
+    </>
+  ),
+  drop: (
+    <>
+      <path d="M12 2.5s-6.5 7-6.5 11.8a6.5 6.5 0 0 0 13 0C18.5 9.5 12 2.5 12 2.5z" fill={C.blue} />
+      <path d="M9 14.5a3.2 3.2 0 0 0 2.2 3" fill="none" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" opacity={0.8} />
+    </>
+  ),
+  bulb: (
+    <>
+      <circle className="wx-twinkle" cx={12} cy={9.5} r={8} fill={C.sun} opacity={0.35} />
+      <path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V17h5.2v-1.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" fill={C.sun} />
+      <rect x={9.4} y={17.6} width={5.2} height={2} rx={0.8} fill={C.grey} />
+      <rect x={10.2} y={20.2} width={3.6} height={1.6} rx={0.8} fill={C.dark} />
+    </>
+  ),
+  money: (
+    <>
+      <circle cx={12} cy={12} r={9.5} fill={C.sun} />
+      <circle cx={12} cy={12} r={7} fill="none" stroke={C.ray} strokeWidth={1.4} />
+      <text x={12} y={15.2} textAnchor="middle" fontSize={8} fontWeight={800} fill="#8A5A00" fontFamily="system-ui, sans-serif">kr</text>
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 2.5 4.5 5.5v6c0 5 3.3 8.3 7.5 10 4.2-1.7 7.5-5 7.5-10v-6z" fill={C.green} />
+      <path d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="#FFFFFF" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  shieldAlert: (
+    <>
+      <path d="M12 2.5 4.5 5.5v6c0 5 3.3 8.3 7.5 10 4.2-1.7 7.5-5 7.5-10v-6z" fill={C.orange} />
+      <rect className="wx-flash" x={10.9} y={7} width={2.2} height={7} rx={1.1} fill="#FFFFFF" />
+      <circle cx={12} cy={16.6} r={1.3} fill="#FFFFFF" />
+    </>
+  ),
+  motion: (
+    <>
+      <circle cx={8} cy={4.5} r={2.2} fill={C.violet} />
+      <path d="M8 7.5 5.5 13l2.5 1.5L7 21M8 7.5l2.5 5.5L13 14M7.6 10 4 11.5M9 15.5l2.5 5.5" fill="none" stroke={C.violet} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+      <path className="wx-twinkle" d="M15.5 8.5a5 5 0 0 1 0 7" fill="none" stroke={C.teal} strokeWidth={2} strokeLinecap="round" />
+      <path className="wx-twinkle" style={{ animationDelay: '0.6s' }} d="M18.5 6a9 9 0 0 1 0 12" fill="none" stroke={C.teal} strokeWidth={2} strokeLinecap="round" />
+    </>
+  ),
+  battery: (
+    <>
+      <rect x={2} y={7} width={17} height={10} rx={2.5} fill={C.cloud} />
+      <rect x={19.5} y={10} width={2.5} height={4} rx={1} fill={C.grey} />
+      <rect className="wx-flash" x={3.8} y={8.8} width={4.5} height={6.4} rx={1.2} fill={C.red} />
+    </>
+  ),
+  wifi: (
+    <>
+      <path className="wx-twinkle" d="M2.5 9.5a14 14 0 0 1 19 0" fill="none" stroke={C.blue} strokeWidth={2.4} strokeLinecap="round" style={{ animationDelay: '1s' }} />
+      <path className="wx-twinkle" d="M5.8 13a9 9 0 0 1 12.4 0" fill="none" stroke={C.blue} strokeWidth={2.4} strokeLinecap="round" style={{ animationDelay: '0.5s' }} />
+      <path className="wx-twinkle" d="M9 16.5a4.5 4.5 0 0 1 6 0" fill="none" stroke={C.blue} strokeWidth={2.4} strokeLinecap="round" />
+      <circle cx={12} cy={19.5} r={1.6} fill={C.blue} />
+    </>
+  ),
+  sun: (
+    <>
+      <g className="wx-spin" style={{ transformOrigin: '12px 12px' }}>
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+          <rect key={a} x={11} y={1.5} width={2} height={3.5} rx={1} fill={C.ray} transform={`rotate(${a} 12 12)`} />
+        ))}
+      </g>
+      <circle cx={12} cy={12} r={5} fill={C.sun} />
+    </>
+  ),
+  moon: (
+    <>
+      <path d="M14 3a9 9 0 1 0 7 13.5A7.2 7.2 0 0 1 14 3z" fill={C.moon} />
+      <circle className="wx-twinkle" cx={19.5} cy={5} r={1.1} fill={C.moon} />
+    </>
+  ),
+  power: (
+    <>
+      <path d="M7 6.5a7.5 7.5 0 1 0 10 0" fill="none" stroke={C.red} strokeWidth={2.6} strokeLinecap="round" />
+      <rect x={10.8} y={2.5} width={2.4} height={9} rx={1.2} fill={C.red} />
+    </>
+  ),
+  sofa: (
+    <>
+      <rect x={4} y={6} width={16} height={7} rx={2.5} fill="#A78BFA" />
+      <rect x={2} y={10} width={4} height={8} rx={2} fill={C.violet} />
+      <rect x={18} y={10} width={4} height={8} rx={2} fill={C.violet} />
+      <rect x={5} y={12} width={14} height={5} rx={1.5} fill={C.violet} />
+      <rect x={4} y={18} width={2} height={2.5} rx={0.6} fill={C.dark} />
+      <rect x={18} y={18} width={2} height={2.5} rx={0.6} fill={C.dark} />
+    </>
+  ),
+  bed: (
+    <>
+      <rect x={2.5} y={5} width={2.5} height={15} rx={1.2} fill={C.wood} />
+      <rect x={4} y={13} width={17.5} height={4.5} rx={1.5} fill={C.cloud} />
+      <rect x={5.5} y={9.5} width={5} height={3.5} rx={1.5} fill={C.blue} />
+      <rect x={11.5} y={10.5} width={10} height={3.5} rx={1.5} fill={C.violet} />
+      <rect x={20} y={17} width={2} height={3} rx={0.8} fill={C.wood} />
+    </>
+  ),
+  door: (
+    <>
+      <rect x={5} y={2.5} width={14} height={19} rx={1.5} fill={C.grey} />
+      <rect x={6.8} y={4} width={10.4} height={17.5} rx={1} fill={C.wood} />
+      <circle cx={14.8} cy={12.5} r={1.1} fill={C.sun} />
+    </>
+  ),
+  window: (
+    <>
+      <rect x={3} y={3} width={18} height={18} rx={2} fill={C.cloud} />
+      <rect x={5} y={5} width={6} height={6} rx={0.8} fill={C.blue} />
+      <rect x={13} y={5} width={6} height={6} rx={0.8} fill={C.blue} />
+      <rect x={5} y={13} width={6} height={6} rx={0.8} fill={C.blue} />
+      <rect x={13} y={13} width={6} height={6} rx={0.8} fill={C.blue} />
+      <path d="M6 9.5l3-3M14 9.5l3-3" stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" opacity={0.7} />
+    </>
+  ),
+  wc: (
+    <>
+      <rect x={6} y={2.5} width={12} height={6.5} rx={1.5} fill={C.grey} />
+      <path d="M4.5 10h15a7.5 7.5 0 0 1-15 0z" fill={C.cloud} />
+      <path d="M9 16.5 8 21.5h8l-1-5" fill={C.cloud} />
+      <rect x={4.5} y={9} width={15} height={2} rx={1} fill={C.blue} />
+    </>
+  ),
+  pot: (
+    <>
+      <path className="wx-fall" style={{ animationDirection: 'reverse' }} d="M9 6.5c0-1.5 1.5-1.5 1.5-3M13.5 6.5c0-1.5 1.5-1.5 1.5-3" fill="none" stroke={C.grey} strokeWidth={1.6} strokeLinecap="round" />
+      <rect x={3.5} y={9} width={17} height={2.5} rx={1.2} fill="#C2402F" />
+      <path d="M5 11.5h14v5.5a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" fill={C.red} />
+      <rect x={1.5} y={12} width={3} height={2} rx={1} fill={C.dark} />
+      <rect x={19.5} y={12} width={3} height={2} rx={1} fill={C.dark} />
+    </>
+  ),
+  box: (
+    <>
+      <path d="M3 7.5 12 3l9 4.5v10L12 22l-9-4.5z" fill={C.wood} />
+      <path d="M3 7.5 12 12l9-4.5L12 3z" fill="#E0A877" />
+      <path d="M12 12v10" stroke="#9C6A42" strokeWidth={1.4} />
+      <path d="m7.5 5.3 9 4.5" stroke={C.cloud} strokeWidth={1.8} />
+    </>
+  ),
+} as const;
+
+// Linjeikoner för rena kontroller (följer textfärgen).
+const LINE = {
   logo: 'M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5',
-  rooms: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
-  bolt: 'M13 2 4 14h7l-1 8 9-12h-7z',
-  chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
-  bell: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4',
-  thermo: 'M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z',
-  drop: 'M12 3s-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-6-11-6-11z',
-  bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z',
-  money: 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
-  shield: 'M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6zM9 12l2 2 4-4',
-  shieldAlert: 'M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6zM12 8v4M12 16h.01',
-  motion: 'M3 12h4l3-8 4 16 3-8h4',
-  battery: 'M4 7h13a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM22 11v2M6 10v4',
-  wifi: 'M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0M12 19.5h.01',
-  sun: 'M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z',
-  moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
-  power: 'M12 3v8M6.6 6.6a8 8 0 1 0 10.8 0',
   back: 'm15 6-6 6 6 6',
+  refresh: 'M20 11a8 8 0 0 0-14.9-3.5M4 4v4h4M4 13a8 8 0 0 0 14.9 3.5M20 20v-4h-4',
+  expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
   cloud: 'M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7z',
   cloudSun: 'M12 2v2M4.9 4.9l1.4 1.4M2 12h2M17.7 6.3l1.4-1.4M8 12a4 4 0 0 1 7.5-2M9 20h8a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 8.2 14.5 3 3 0 0 0 9 20z',
   rain: 'M7 14h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6 7a3.5 3.5 0 0 0 1 7zM8 17l-1 3M12 17l-1 3M16 17l-1 3',
   snow: 'M7 14h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6 7a3.5 3.5 0 0 0 1 7zM8 18h.01M12 20h.01M16 18h.01M10 22h.01M14 22h.01',
   fog: 'M4 10h16M4 14h16M6 18h12M7 6h10',
   thunder: 'M7 14h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6 7a3.5 3.5 0 0 0 1 7zM13 15l-3 4h4l-3 4',
-  window: 'M4 3h16v18H4zM12 3v18M4 12h16',
-  refresh: 'M20 11a8 8 0 0 0-14.9-3.5M4 4v4h4M4 13a8 8 0 0 0 14.9 3.5M20 20v-4h-4',
-  expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
-  shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
-  sofa: 'M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v5H2zM5 18v2M19 18v2',
-  bed: 'M3 19V6M3 14h18v5M21 14v-2a3 3 0 0 0-3-3h-7v5M5.4 11a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0-3.2 0',
-  door: 'M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M4 21h16M14 12h1',
-  wc: 'M7 3h10v6H7zM5 9h14a7 7 0 0 1-14 0zM9 16l-1 5h8l-1-5',
-  pot: 'M4 10h16v7a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3zM2 10h2M20 10h2M9 6V4M12 6V3M15 6V4',
-  box: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
 } as const;
 
-export type IconName = keyof typeof PATHS;
+export type IconName = keyof typeof FLAT | keyof typeof LINE;
 
 export function Icon({ name, size = 24, className }: { name: IconName; size?: number; className?: string }) {
+  if (name in FLAT) {
+    return (
+      <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" className={`shrink-0 overflow-visible ${className ?? ''}`}>
+        {FLAT[name as keyof typeof FLAT]}
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" className={`ico ${className ?? ''}`}>
-      <path d={PATHS[name]} />
+      <path d={LINE[name as keyof typeof LINE]} />
     </svg>
   );
 }

@@ -5,9 +5,9 @@ import { runScene } from '@/app/actions/scene';
 import { Icon, type IconName } from './Icon';
 
 const SCENES: { key: string; label: string; icon: IconName; className: string }[] = [
-  { key: 'ljust', label: 'Ljust', icon: 'sun', className: 'bg-sun text-ink' },
+  { key: 'ljust', label: 'Ljust', icon: 'sun', className: 'glass text-fg' },
   { key: 'mys', label: 'Mys', icon: 'moon', className: 'glass text-fg' },
-  { key: 'slack', label: 'Släck', icon: 'power', className: 'bg-deep text-fg border border-line' },
+  { key: 'slack', label: 'Släck', icon: 'power', className: 'glass text-fg' },
 ];
 
 type State = { key: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null;

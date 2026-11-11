@@ -104,7 +104,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
               >
                 <span
                   className={`flex size-14 shrink-0 items-center justify-center rounded-[18px] ${
-                    l.on ? 'bg-sun text-ink' : 'bg-line text-mute'
+                    l.on ? 'bg-glass-hi' : 'bg-glass-2 opacity-45 grayscale'
                   }`}
                 >
                   <Icon name="bulb" size={28} />

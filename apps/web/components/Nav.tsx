@@ -31,7 +31,7 @@ export function Nav() {
             href={it.href}
             aria-current={active(it.href) ? 'page' : undefined}
             className={`flex flex-1 flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] md:flex-none ${
-              active(it.href) ? 'bg-sun font-extrabold text-ink' : 'font-bold text-dim'
+              active(it.href) ? 'bg-glass-hi font-extrabold text-sun ring-1 ring-sun/60' : 'font-bold text-dim'
             }`}
           >
             <Icon name={it.icon} size={24} />

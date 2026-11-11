@@ -27,9 +27,9 @@ function Hero({ bg, icon, label, children }: { bg: string; icon: IconName; label
 
 function Status({ icon, label, value, tone, href }: { icon: IconName; label: string; value: string; tone: 'ok' | 'info' | 'warn'; href?: string }) {
   const tones = {
-    ok: ['glass', 'bg-ok-soft text-ok', 'text-dim'],
-    info: ['glass', 'bg-violet-soft text-violet', 'text-dim'],
-    warn: ['bg-warn-soft shadow-[inset_0_0_0_2px_var(--color-warn-strong)]', 'bg-warn-strong text-white', 'text-warn'],
+    ok: ['glass', 'bg-glass-hi', 'text-dim'],
+    info: ['glass', 'bg-glass-hi', 'text-dim'],
+    warn: ['bg-warn-soft shadow-[inset_0_0_0_2px_var(--color-warn-strong)]', 'bg-glass-hi', 'text-warn'],
   }[tone];
   const cls = `flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5 ${tones[0]}`;
   const body = (

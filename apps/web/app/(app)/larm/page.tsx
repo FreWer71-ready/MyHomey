@@ -19,7 +19,7 @@ function Section({ id, icon, title, count, tone, children }: {
   return (
     <section id={id} className="scroll-mt-4 rounded-[24px] glass p-4">
       <h2 className="mb-3 flex items-center gap-3 text-[22px] font-extrabold">
-        <span className={`flex size-11 items-center justify-center rounded-2xl ${tone === 'warn' ? 'bg-warn-strong text-white' : 'bg-ok-soft text-ok'}`}>
+        <span className={`flex size-11 items-center justify-center rounded-2xl ${tone === 'warn' ? 'bg-warn-soft ring-1 ring-warn-strong' : 'bg-glass-hi'}`}>
           <Icon name={icon} size={24} />
         </span>
         {title}
