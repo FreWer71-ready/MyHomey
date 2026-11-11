@@ -1,11 +1,4 @@
-// Svenska dagar (sholiday.faboul.se): namnsdagar. Ren logik.
-
-type DaysJson = { dagar?: { datum: string; namnsdag?: string[] }[] };
-
-/** Namn som har namnsdag ett visst datum (YYYY-MM-DD). */
-export function nameDays(json: DaysJson, date: string): string[] {
-  return json.dagar?.find((d) => d.datum === date)?.namnsdag ?? [];
-}
+// Namnsdagar: formattering. Ren logik.
 
 /** "Mårten", "Anna och Hanna", "Ada, Bea och Cia". */
 export function joinNames(names: string[]): string {
