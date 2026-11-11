@@ -30,7 +30,7 @@ export function RoomTile({ room }: { room: Room }) {
           )}
         </span>
       </Link>
-      {room.lights.length > 0 && <SceneButtons room={room.name} size="icon" />}
+      {room.lights.length > 0 && <SceneButtons zoneId={room.id} room={room.name} size="icon" />}
     </div>
   );
 }

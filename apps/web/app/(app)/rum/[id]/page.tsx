@@ -81,7 +81,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
 
       {room.lights.length > 0 ? (
         <>
-          <SceneButtons room={room.name} size="large" />
+          <SceneButtons zoneId={room.id} room={room.name} size="large" />
           <h2 className="text-[26px] font-extrabold">Belysning</h2>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {room.lights.map((l) => (
