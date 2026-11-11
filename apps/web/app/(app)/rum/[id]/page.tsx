@@ -26,7 +26,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
           key={r.id}
           href={`/rum/${r.id}`}
           aria-current={r.id === id ? 'page' : undefined}
-          className={`flex min-h-11 items-center rounded-full px-4 font-extrabold ${r.id === id ? 'bg-fg text-ground' : 'glass'}`}
+          className={`flex min-h-11 items-center rounded-full px-4 font-extrabold ${r.id === id ? 'bg-sun text-ink' : 'glass'}`}
         >
           {r.name}
         </Link>

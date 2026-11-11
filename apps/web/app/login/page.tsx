@@ -37,7 +37,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           />
           <span className="text-sm font-semibold text-dim">Lämna tomt för att få en inloggningslänk via e-post.</span>
         </label>
-        <button type="submit" className="min-h-14 rounded-full bg-deep text-lg font-extrabold text-white">
+        <button type="submit" className="min-h-14 rounded-full bg-sun text-lg font-extrabold text-ink">
           Logga in
         </button>
         {status && MESSAGES[status] && (

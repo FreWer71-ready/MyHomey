@@ -20,7 +20,7 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
 const SHORT: PeriodKey[] = ['4h', '12h', '24h'];
 
 const chip = (active: boolean) =>
-  `flex min-h-11 items-center gap-2 rounded-full px-4 font-extrabold ${active ? 'bg-fg text-ground' : 'glass'}`;
+  `flex min-h-11 items-center gap-2 rounded-full px-4 font-extrabold ${active ? 'bg-sun text-ink' : 'glass'}`;
 
 export default async function HistoryPage({
   searchParams,

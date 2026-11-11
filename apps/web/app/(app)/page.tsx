@@ -55,37 +55,40 @@ export default async function HomePage() {
 
   return (
     <>
-      <header className="flex items-end justify-between gap-4">
-        <div>
+      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 lg:flex-nowrap">
+        <div className="shrink-0">
           <Clock show="date" className="text-[13px] font-bold tracking-wider text-fg uppercase" />
           <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="hidden items-center gap-2 rounded-full bg-ok-soft px-3 py-1.5 text-[14px] font-bold text-ok sm:flex">
+        {/* Varningar: i rubrikraden på plattan (sparar höjd), egen rad på mobil. */}
+        {(warning || damp.length > 0) && (
+          <div className="order-last flex w-full min-w-0 flex-col gap-1.5 lg:order-none lg:w-auto lg:grow">
+            {warning && (
+              <Link href="/larm" role="alert" className="flex items-center gap-2.5 rounded-[16px] bg-info-strong px-3.5 py-2 text-white">
+                <Icon name="rain" size={22} />
+                <span className="truncate font-extrabold">
+                  Nederbörd kl {hhmm(warning.at)} – stäng {warning.windows.map((w) => w.name).join(', ')}
+                </span>
+              </Link>
+            )}
+            {damp.length > 0 && (
+              <Link href="/larm#fukt" role="alert" className="flex items-center gap-2.5 rounded-[16px] bg-teal px-3.5 py-2 text-white">
+                <Icon name="drop" size={22} />
+                <span className="truncate font-extrabold">
+                  Fukt {damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')} – vädra eller kör fläkten
+                </span>
+              </Link>
+            )}
+          </div>
+        )}
+        <div className="flex shrink-0 items-center gap-4">
+          <span className="hidden items-center gap-2 rounded-full bg-ok-soft px-3 py-1.5 text-[14px] font-bold text-ok xl:flex">
             <span className="size-2.5 rounded-full bg-ok" />
             Live · {h.online} enheter
           </span>
-          <Clock show="time" className="text-3xl leading-none md:text-4xl font-extrabold tracking-tight" />
+          <Clock show="time" className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl" />
         </div>
       </header>
-
-      {warning && (
-        <Link href="/larm" role="alert" className="flex items-center gap-3 rounded-[20px] bg-info-strong px-4 py-3 text-white">
-          <Icon name="rain" size={28} />
-          <span className="text-lg font-extrabold">
-            Nederbörd väntas kl {hhmm(warning.at)} – stäng {warning.windows.map((w) => w.name).join(', ')}
-          </span>
-        </Link>
-      )}
-
-      {damp.length > 0 && (
-        <Link href="/larm#fukt" role="alert" className="flex items-center gap-3 rounded-[20px] bg-teal px-4 py-3 text-white">
-          <Icon name="drop" size={28} />
-          <span className="text-lg font-extrabold">
-            Hög luftfuktighet: {damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')} – vädra eller kör fläkten
-          </span>
-        </Link>
-      )}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Hero bg={heatTint(h.outdoorTemp)} icon="thermo" label={sky ? `Ute · ${sky.label}` : 'Ute'}>

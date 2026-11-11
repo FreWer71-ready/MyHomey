@@ -55,7 +55,7 @@ export function LightTimeline({ rooms, since, now }: { rooms: RoomLines[]; since
                   {l.segments.map((s, i) => (
                     <span
                       key={i}
-                      className="absolute inset-y-1 rounded-md bg-sun"
+                      className="absolute inset-y-1 rounded-md bg-sun/80"
                       style={{ left: `${s.left}%`, width: `max(${s.width}%, 3px)` }}
                     />
                   ))}
