@@ -7,7 +7,7 @@ const ITEMS: { href: string; label: string; icon: IconName; ready: boolean }[] =
   { href: '/', label: 'Hem', icon: 'home', ready: true },
   { href: '/rum', label: 'Rum', icon: 'rooms', ready: true },
   { href: '/energi', label: 'Energi', icon: 'bolt', ready: false },
-  { href: '/historik', label: 'Historik', icon: 'chart', ready: false },
+  { href: '/historik', label: 'Historik', icon: 'chart', ready: true },
   { href: '/larm', label: 'Larm', icon: 'bell', ready: false },
 ];
 

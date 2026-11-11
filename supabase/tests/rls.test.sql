@@ -57,3 +57,29 @@ set request.jwt.claims = '{"email":"fel@example.com"}';
 do $$ begin if (select count(*) from public.v_presence) <> 0 then raise exception 'närvaro läcker'; end if; end $$;
 reset role;
 \echo Närvaro-test OK
+
+-- Historik: intervall, RLS gäller (security invoker).
+insert into public.readings values ('d1','measure_temperature', now() - interval '50 minutes', 20),
+  ('d1','measure_temperature', now() - interval '45 minutes', 22), ('d1','measure_temperature', now() - interval '5 minutes', 25);
+set role authenticated;
+set request.jwt.claims = '{"email":"ok@example.com"}';
+do $$ begin
+  if (select count(*) from public.history('measure_temperature', now() - interval '1 hour', '30 minutes')) not between 2 and 3 then raise exception 'history intervall'; end if;
+  if (select max(vmax) from public.history('measure_temperature', now() - interval '1 hour', '1 hour')) <> 25 then raise exception 'history max'; end if;
+end $$;
+set request.jwt.claims = '{"email":"fel@example.com"}';
+do $$ begin if exists (select 1 from public.history('measure_temperature', now() - interval '1 hour', '1 hour')) then raise exception 'history läcker'; end if; end $$;
+reset role;
+\echo Historik-test OK
+
+-- Tidslinje: läget före perioden + ändringar.
+insert into public.readings values ('d1','onoff', now() - interval '3 hours', 1), ('d1','onoff', now() - interval '30 minutes', 0),
+  ('d1','onoff', now() - interval '10 minutes', 1);
+set role authenticated;
+set request.jwt.claims = '{"email":"ok@example.com"}';
+do $$ begin
+  if (select count(*) from public.onoff_timeline(now() - interval '1 hour')) <> 3 then raise exception 'tidslinje antal'; end if;
+  if (select value from public.onoff_timeline(now() - interval '1 hour') order by ts limit 1) <> 1 then raise exception 'tidslinje startläge'; end if;
+end $$;
+reset role;
+\echo Tidslinje-test OK

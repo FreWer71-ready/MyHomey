@@ -22,3 +22,10 @@ svg.ico {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* uPlot: förklaring i dashboardens stil. */
+.history-chart .u-legend { font: 700 15px var(--font-sans); text-align: left; margin-top: 12px; }
+.history-chart .u-legend .u-series { padding: 6px 10px; border-radius: 999px; }
+.history-chart .u-legend .u-series:first-child { display: none; }
+.history-chart .u-legend .u-marker { border-radius: 50%; width: 12px; height: 12px; }
+.history-chart .u-legend .u-off { opacity: 0.35; }
