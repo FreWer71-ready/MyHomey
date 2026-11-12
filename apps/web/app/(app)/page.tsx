@@ -145,7 +145,7 @@ export default async function HomePage() {
           <span className="size-2.5 shrink-0 rounded-full bg-ok shadow-[0_0_0_4px_rgb(52_194_122/0.18)]" />
           <span className="font-extrabold text-ok">Allt lugnt</span>
           <span className="truncate font-bold">
-            · inga varningar från SMHI eller VMA{commute ? ' · tåg och väg utan störningar' : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
+            · inga varningar (SMHI, VMA){commute ? ' · pendling utan störningar: tåg Eskilstuna–Stockholm, väg 56/E18 till Västerås' : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
           </span>
         </Link>
       )}

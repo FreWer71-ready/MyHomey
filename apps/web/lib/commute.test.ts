@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { commuteAlerts, direction, groupRoad, parseCommute, roadTone, trainTone, type RawCommute } from './commute.ts';
+import { commuteAlerts, direction, groupRoad, parseCommute, phrases, shortPlace, roadTone, trainTone, type RawCommute } from './commute.ts';
 
 const now = Date.parse('2026-11-12T15:30:00+01:00');
 const raw: RawCommute = {
@@ -20,6 +20,7 @@ const raw: RawCommute = {
     { Deviation: [{ Id: 'c', MessageType: 'Vägarbete', MessageTypeValue: 'MaintenanceWorks', SeverityCode: 5, Geometry: { Point: { WGS84: 'POINT (16.61 59.91)' } } }] },
     { Deviation: [{ Id: 'e', RoadNumber: 'E18', RoadNumberNumeric: 18, MessageType: 'Olycka', MessageTypeValue: 'Accident', SeverityCode: 4, Geometry: { Point: { WGS84: 'POINT (16.50 59.61)' } } }] },
     { Deviation: [{ Id: 'f', RoadNumber: 'E18', RoadNumberNumeric: 18, MessageType: 'Olycka', MessageTypeValue: 'Accident', SeverityCode: 4, Geometry: { Point: { WGS84: 'POINT (17.60 59.40)' } } }] },
+    { Deviation: [{ Id: 'g', MessageType: 'Vägarbete', MessageTypeValue: 'MaintenanceWorks', SeverityCode: 1, Geometry: { Point: { WGS84: 'POINT (16.45 59.40)' } } }] },
     { Deviation: [{ Id: 'd', MessageType: 'Vägarbete', MessageTypeValue: 'MaintenanceWorks', SeverityCode: 2, EndTime: '2026-11-01T00:00:00+01:00' }] },
   ],
 };
@@ -37,7 +38,7 @@ test('pendling: avgångna tåg bort, försening, inställt, ankomst och slutstat
 
 test('pendling: väg 56 och E18 inom sträckan, incidenter först, pausade bort', () => {
   const c = parseCommute(raw, 'Et', 'Cst', now);
-  assert.deepEqual(c.road.map((r) => r.id), ['b', 'e']); // a är pausat
+  assert.deepEqual(c.road.map((r) => r.id), ['b', 'e']); // a är pausat, g utan påverkan
   assert.equal(c.road[1].road, 'E18');
   assert.equal(c.road[0].place, null);
 });
@@ -79,4 +80,10 @@ test('pendling: liknande vägärenden slås ihop', () => {
   assert.equal(g.length, 2);
   assert.deepEqual([g[0].count, g[0].places, g[0].texts, g[0].end], [3, ['Kvicksund', 'Stora Ekeby'], ['Broarbete', 'Underhållsarbete'], now + 500]);
   assert.equal(g[1].tone, 'warn');
+});
+
+test('pendling: korta platser och fraser', () => {
+  assert.equal(shortPlace('Väg 56 från Stora Ekeby till Kvicksund S båda riktningarna i Västmanlands län (U)'), 'Stora Ekeby – Kvicksund S');
+  assert.equal(shortPlace('Väg 56 vid Kvicksundsbron, i båda riktningar.'), 'Kvicksundsbron');
+  assert.deepEqual(phrases(['Drift/underhåll\nEtt avstängt körfält. Risk för köbildning', 'Risk för köbildning']), ['Drift/underhåll', 'Ett avstängt körfält', 'Risk för köbildning']);
 });

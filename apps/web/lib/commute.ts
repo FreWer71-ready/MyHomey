@@ -77,13 +77,15 @@ function inBox(d: RawDeviation) {
   return lat >= box.lat[0] && lat <= box.lat[1] && lon >= box.lon[0] && lon <= box.lon[1];
 }
 
-/** En händelse per situation: den allvarligaste avvikelsen. Pausade (Suspended) tas bort; incidenter först. */
+/** En händelse per situation: den allvarligaste avvikelsen. Pausade och de utan påverkan tas bort; incidenter först. */
 function road(raw: RawCommute['situations'], now: number): RoadEvent[] {
   const out: RoadEvent[] = [];
   for (const s of raw ?? []) {
     const devs = (s.Deviation ?? []).filter((d) => !d.Suspended && inBox(d) && (t(d.EndTime) ?? Infinity) > now && (t(d.StartTime) ?? 0) <= now + 24 * 3600_000);
     if (!devs.length) continue;
     const d = [...devs].sort((a, b) => (b.SeverityCode ?? 0) - (a.SeverityCode ?? 0) || Number(!!b.Message) - Number(!!a.Message))[0];
+    // Ärenden utan påverkan (vägarbete m.m. med påverkan 0–1) tillför inget och hoppas över. Incidenter visas alltid.
+    if (PLANNED.test(d.MessageTypeValue ?? '') && Math.max(...devs.map((x) => x.SeverityCode ?? 0)) <= 1) continue;
     out.push({
       id: d.Id ?? `${out.length}`,
       road: d.RoadNumber ?? (d.RoadNumberNumeric === 18 ? 'E18' : 'Väg 56'),
@@ -189,4 +191,21 @@ export function groupRoad(list: RoadEvent[], now = Date.now()): RoadGroup[] {
     map.set(key, g);
   }
   return [...map.values()];
+}
+
+/** Kortare platstext: "Väg 56 från Stora Ekeby till Kvicksund S båda riktningarna i Västmanlands län (U)" -> "Stora Ekeby – Kvicksund S". */
+export function shortPlace(p: string): string {
+  return p
+    .replace(/^(väg \d+|e\d+|rv \d+)\s*/i, '')
+    .replace(/[,\s]*(i )?(båda riktningar(na)?|en riktning|riktning [^,]*)/gi, '')
+    .replace(/\s*i [\wåäö]+ län( \([A-ZÅÄÖ]+\))?/gi, '')
+    .replace(/^från (.+?) till (.+)$/i, '$1 – $2')
+    .replace(/^vid /i, '')
+    .replace(/[.,\s]+$/, '')
+    .trim();
+}
+
+/** Beskrivningar som korta fraser utan dubbletter: "Drift/underhåll\nEtt avstängt körfält. Risk för köbildning." -> 3 fraser. */
+export function phrases(texts: string[]): string[] {
+  return [...new Set(texts.flatMap((t) => t.split(/[.\n]+/)).map((x) => x.trim()).filter(Boolean))];
 }
