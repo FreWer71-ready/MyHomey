@@ -14,6 +14,8 @@
   --color-glass-hi: rgb(255 255 255 / 0.12);
   /* Knappar ovanpå färgade kort: täta och mörka så att ikonerna syns skarpt. */
   --color-btn: rgb(10 13 24 / 0.72);
+  /* Kortgrund utan färgton: samma täta grund som de färgade korten (tint i scale.ts). */
+  --color-card: rgb(14 18 32 / 0.88);
   --color-line: rgb(255 255 255 / 0.12);
 
   /* Accent och status: starka färger för små ytor, "soft" som ton på kort. */

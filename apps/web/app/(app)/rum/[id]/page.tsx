@@ -6,7 +6,7 @@ import { Icon } from '@/components/Icon';
 import { MoodButtons } from '@/components/MoodButtons';
 import { SceneButtons } from '@/components/SceneButtons';
 import { loadHome } from '@/lib/data';
-import { fmtPercent, fmtTemp, heatTint } from '@/lib/scale';
+import { fmtPercent, fmtTemp, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +40,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
     return (
       <>
         {nav}
-        <header className="flex items-center gap-4 rounded-[28px] bg-violet-soft px-6 py-5">
+        <header className="flex items-center gap-4 rounded-[28px] px-6 py-5" style={{ background: tint('#8B5CF6', 0.42) }}>
           <span className="flex size-16 shrink-0 items-center justify-center rounded-[22px] bg-deep text-sun">
             <Icon name="logo" size={36} />
           </span>

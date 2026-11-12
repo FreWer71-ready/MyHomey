@@ -64,7 +64,7 @@ export function LightControl({ light }: { light: Light }) {
     ? `linear-gradient(${hsl(light.hue, light.sat, 0.42)}, ${hsl(light.hue, light.sat, 0.42)}), rgb(14 18 32 / 0.88)` : tint('#FFC21A', 0.42);
 
   return (
-    <li className="glass flex flex-col gap-2.5 rounded-3xl p-3" style={glow ? { background: glow } : undefined}>
+    <li className="flex flex-col gap-2.5 rounded-3xl border border-line bg-card p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_8px_24px_rgb(0_0_0/0.25)]" style={glow ? { background: glow } : undefined}>
       <div className="flex items-center gap-3">
         <button
           type="button"
