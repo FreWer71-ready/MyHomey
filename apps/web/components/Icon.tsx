@@ -17,18 +17,18 @@ const FLAT = {
   ),
   rooms: (
     <>
-      <rect x={3} y={3} width={8} height={8} rx={2.2} fill={C.blue} />
-      <rect x={13} y={3} width={8} height={8} rx={2.2} fill={C.sun} />
-      <rect x={3} y={13} width={8} height={8} rx={2.2} fill={C.green} />
-      <rect x={13} y={13} width={8} height={8} rx={2.2} fill={C.violet} />
+      <rect className="wx-pop" x={3} y={3} width={8} height={8} rx={2.2} fill={C.blue} />
+      <rect className="wx-pop" style={{ animationDelay: '0.5s' }} x={13} y={3} width={8} height={8} rx={2.2} fill={C.sun} />
+      <rect className="wx-pop" style={{ animationDelay: '1.5s' }} x={3} y={13} width={8} height={8} rx={2.2} fill={C.green} />
+      <rect className="wx-pop" style={{ animationDelay: '1s' }} x={13} y={13} width={8} height={8} rx={2.2} fill={C.violet} />
     </>
   ),
   bolt: <path className="wx-flash" d="M13.5 2 4.5 13.5h6.2L9.5 22l9-11.5h-6.2z" fill={C.sun} />,
   chart: (
     <>
-      <rect x={4} y={12} width={4} height={8} rx={1.2} fill={C.blue} />
-      <rect x={10} y={6} width={4} height={14} rx={1.2} fill={C.green} />
-      <rect x={16} y={9} width={4} height={11} rx={1.2} fill={C.sun} />
+      <rect className="wx-grow" x={4} y={12} width={4} height={8} rx={1.2} fill={C.blue} />
+      <rect className="wx-grow" style={{ animationDelay: '0.4s' }} x={10} y={6} width={4} height={14} rx={1.2} fill={C.green} />
+      <rect className="wx-grow" style={{ animationDelay: '0.8s' }} x={16} y={9} width={4} height={11} rx={1.2} fill={C.sun} />
       <rect x={2.5} y={20} width={19} height={1.8} rx={0.9} fill={C.grey} />
     </>
   ),
@@ -47,7 +47,7 @@ const FLAT = {
   ),
   star: (
     <>
-      <path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill={C.sun} stroke={C.ray} strokeWidth={1} strokeLinejoin="round" />
+      <path className="wx-glint" d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill={C.sun} stroke={C.ray} strokeWidth={1} strokeLinejoin="round" />
       <path className="wx-twinkle" d="M20 2.5v3M18.5 4h3" stroke={C.cloud} strokeWidth={1.4} strokeLinecap="round" />
     </>
   ),
