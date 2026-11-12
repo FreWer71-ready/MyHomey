@@ -156,3 +156,12 @@ test('väderstation: vind, by, riktning och vägyta', async () => {
   assert.equal(buildHome(zones, devices, caps).station, null);
   assert.deepEqual([compass(0), compass(350), compass(270)], ['N', 'N', 'V']);
 });
+
+test('väderstation äldre än 4 tim: ej tillgänglig; en rörlig mätare räcker för att stationen lever', () => {
+  const now = Date.parse('2026-11-12T12:00:00Z');
+  const t = (id: string, v: number, at: string): Cap => ({ device_id: 'wx', capability_id: id, value_num: v, value_bool: null, last_updated: at });
+  const old = buildHome(zones, devices, [t('measure_temperature', 4, '2026-11-12T07:00:00Z'), t('measure_wind_strength', 1, '2026-11-12T06:00:00Z')], [], now);
+  assert.deepEqual([old.outdoorTemp, old.outdoorStale, old.station], [null, true, null]);
+  const alive = buildHome(zones, devices, [t('measure_temperature', 4, '2026-11-12T11:30:00Z'), t('measure_wind_strength', 1, '2026-11-12T03:00:00Z')], [], now);
+  assert.deepEqual([alive.outdoorTemp, alive.outdoorStale, alive.station?.wind], [4, false, 1]);
+});

@@ -36,6 +36,8 @@ export type Station = { wind: number | null; gust: number | null; dir: string | 
 
 export type Home = {
   outdoorTemp: number | null;
+  /** Det finns en väderstation men den har inte rapporterat på WEATHER_MAX_HOURS. */
+  outdoorStale: boolean;
   station: Station | null;
   lightsOn: number;
   lightsTotal: number;
@@ -76,6 +78,9 @@ const LOW_BATTERY = 20;
 export const STALE_HOURS = 48;
 /** Temperaturer äldre än så här används inte (sensorn räknas som ej nåbar). */
 export const TEMP_MAX_DAYS = 5;
+/** Väderstationens värden räknas som ej tillgängliga om stationen inte rapporterat på så här länge. */
+export const WEATHER_MAX_HOURS = 4;
+const STATION_CAPS = ['measure_temperature', 'measure_wind_strength', 'measure_gust_strength', 'measure_wind_angle', 'measure_temperature.surface'];
 /** Bara kontaktsensorer med fönster i namnet räknas som fönster (regnvarning). */
 const WINDOW = /fönster|window/i;
 // Homey uppdaterar tidsstämpeln bara när värdet ändras, så bara mätvärden som
@@ -178,13 +183,21 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
     .sort((a, b) => (a.room ?? '').localeCompare(b.room ?? '', 'sv') || a.name.localeCompare(b.name, 'sv'));
 
   // Väderstationer (t.ex. Trafikverket) har klassen service.
-  const stations = active.filter((d) => d.class === 'service');
+  // Homey uppdaterar tidsstämpeln bara vid ändrat värde, så stationen räknas som vid liv
+  // om något av dess värden ändrats inom WEATHER_MAX_HOURS (vinden kan stå still länge).
+  const allStations = devices.filter((d) => d.class === 'service');
+  const stationSeen = (d: Device) => STATION_CAPS.map((id) => cap(d, id)?.last_updated).filter((x): x is string => !!x).sort().at(-1);
+  const stations = allStations.filter((d) => {
+    const seen = stationSeen(d);
+    return d.available && (!seen || now - Date.parse(seen) <= WEATHER_MAX_HOURS * 3600_000);
+  });
   const sNum = (id: string) => avg(stations.map((d) => cap(d, id)?.value_num).filter((v): v is number => typeof v === 'number'));
   const angle = sNum('measure_wind_angle');
   const station: Station = { wind: sNum('measure_wind_strength'), gust: sNum('measure_gust_strength'), dir: angle == null ? null : compass(angle), road: sNum('measure_temperature.surface') };
 
   return {
-    outdoorTemp: avg(temps(stations)),
+    outdoorTemp: avg(nums(stations, 'measure_temperature')),
+    outdoorStale: allStations.length > 0 && stations.length === 0,
     station: Object.values(station).some((v) => v != null) ? station : null,
     lightsOn: allLights.filter((l) => l.on).length,
     lightsTotal: allLights.length,

@@ -104,7 +104,7 @@ export default async function HomePage() {
       </header>
 
       <section className="grid grid-cols-2 gap-3 lg:flex">
-        {(h.outdoorTemp != null || weather) && (
+        {(h.outdoorTemp != null || h.outdoorStale || weather) && (
         <Hero wide bg={heatTint(h.outdoorTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
           {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
           {sky && weather && (
@@ -112,9 +112,15 @@ export default async function HomePage() {
               <WeatherIcon kind={weatherKind(weather.current.symbol)} size={100} label={sky.label} />
             </span>
           )}
-          {h.outdoorTemp != null && (
+          {h.outdoorTemp != null ? (
             <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(h.outdoorTemp)}</span>
+          ) : h.outdoorStale && (
+            <span className="relative flex flex-col pr-24">
+              <span className="text-2xl leading-tight font-extrabold">Ej tillgänglig</span>
+              <span className="text-[13px] font-bold">Inget från väderstationen på 4 tim</span>
+            </span>
           )}
+          {!weather && <span className="relative text-[15px] font-bold opacity-80">Prognos ej tillgänglig</span>}
           {weather && (
             <span className="relative text-[15px] font-bold">
               {weather.nextPrecip && weather.nextPrecip.time <= weather.current.time
