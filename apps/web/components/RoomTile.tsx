@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TrendArrow } from './TrendArrow';
 import type { Room } from '@/lib/home';
 import { fmtPercent, fmtTemp, heatTint } from '@/lib/scale';
 import { Icon } from './Icon';
@@ -16,7 +17,7 @@ export function RoomTile({ room }: { room: Room }) {
         </span>
         <span className="flex items-center gap-2.5">
           {room.temp != null && (
-            <span className="text-[28px] leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}</span>
+            <span className="text-[28px] leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}<TrendArrow trend={room.tempTrend} /></span>
           )}
           {room.humidity != null && (
             <span className="flex items-center gap-0.5 font-extrabold text-fg">

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TrendArrow } from '@/components/TrendArrow';
 import { LightControl } from '@/components/LightControl';
 import { notFound } from 'next/navigation';
 import { Icon } from '@/components/Icon';
@@ -70,7 +71,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
         {room.temp != null && (
           <span className="flex items-center gap-2 rounded-3xl bg-glass-hi px-4 py-3">
             <Icon name="thermo" size={28} />
-            <span className="text-4xl leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}</span>
+            <span className="text-4xl leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}<TrendArrow trend={room.tempTrend} /></span>
           </span>
         )}
         {room.humidity != null && (

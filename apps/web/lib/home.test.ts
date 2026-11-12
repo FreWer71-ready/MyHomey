@@ -114,7 +114,7 @@ test('regnvarning kräver nederbörd och öppet fönster', async () => {
 
 test('fuktvarning från 70 %', async () => {
   const { humidityWarnings } = await import('./alerts.ts');
-  const r = (name: string, humidity: number | null) => ({ id: name, name, icon: 'drop' as const, temp: 22, tempStale: false, humidity, lights: [], lightsOn: 0, moods: [], deviceCount: 1 });
+  const r = (name: string, humidity: number | null) => ({ id: name, name, icon: 'drop' as const, temp: 22, tempTrend: null, tempStale: false, humidity, lights: [], lightsOn: 0, moods: [], deviceCount: 1 });
   assert.deepEqual(humidityWarnings([r('Badrum', 74), r('Toa', 55), r('Kök', null)]).map((x) => x.name), ['Badrum']);
 });
 
@@ -164,4 +164,12 @@ test('väderstation äldre än 4 tim: ej tillgänglig; en rörlig mätare räcke
   assert.deepEqual([old.outdoorTemp, old.outdoorStale, old.station], [null, true, null]);
   const alive = buildHome(zones, devices, [t('measure_temperature', 4, '2026-11-12T11:30:00Z'), t('measure_wind_strength', 1, '2026-11-12T03:00:00Z')], [], now);
   assert.deepEqual([alive.outdoorTemp, alive.outdoorStale, alive.station?.wind], [4, false, 1]);
+});
+
+test('temperaturtrend: upp/ned över gränsen, annars ingen', () => {
+  const h = buildHome(zones, devices, caps, [], Date.now(), { s1: 0.5, s2: -0.1, wx: -0.8 });
+  assert.equal(h.rooms.find((r) => r.id === 'v')!.tempTrend, 'up');
+  assert.equal(h.rooms.find((r) => r.id === 'b')!.tempTrend, null);
+  assert.equal(h.outdoorTrend, 'down');
+  assert.equal(buildHome(zones, devices, caps).outdoorTrend, null);
 });

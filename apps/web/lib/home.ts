@@ -27,6 +27,8 @@ export type Room = {
   name: string;
   icon: RoomIcon;
   temp: number | null;
+  /** Temperaturtrend senaste timmen. */
+  tempTrend: Trend;
   /** Rummet har temperatursensorer men inga värden från de senaste TEMP_MAX_DAYS dagarna. */
   tempStale: boolean;
   humidity: number | null;
@@ -40,10 +42,16 @@ export type Opening = { id: string; name: string; room: string; open: boolean; k
 export type Silent = { id: string; name: string; room: string; lastSeen: string | null; reason: 'offline' | 'stale' };
 
 /** Väderstation (Trafikverket): vind i m/s, riktning som kompasstext, vägytans temperatur. */
+export type Trend = 'up' | 'down' | null;
+/** Ändring per timme som räknas som trend (inne reagerar långsammare än ute). */
+export const TREND_INDOOR = 0.3;
+export const TREND_OUTDOOR = 0.5;
+
 export type Station = { wind: number | null; gust: number | null; dir: string | null; road: number | null };
 
 export type Home = {
   outdoorTemp: number | null;
+  outdoorTrend: Trend;
   /** Det finns en väderstation men den har inte rapporterat på WEATHER_MAX_HOURS. */
   outdoorStale: boolean;
   station: Station | null;
@@ -108,7 +116,10 @@ export const iconFor = (name: string): RoomIcon => ICONS.find(([re]) => re.test(
 
 const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
 
-export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: Mood[] = [], now = Date.now()): Home {
+/** trends: temperaturändring senaste timmen per enhet (nuvärde minus värdet för en timme sedan). */
+export function buildHome(
+  zones: Zone[], devices: Device[], caps: Cap[], moods: Mood[] = [], now = Date.now(), trends: Record<string, number> = {},
+): Home {
   const byDevice = new Map<string, Map<string, Cap>>();
   for (const c of caps) {
     if (!byDevice.has(c.device_id)) byDevice.set(c.device_id, new Map());
@@ -120,6 +131,11 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
   const fresh = (c: Cap | undefined) => !c?.last_updated || now - Date.parse(c.last_updated) <= TEMP_MAX_DAYS * 86400_000;
   /** Temperaturer, utan värden äldre än TEMP_MAX_DAYS. */
   const temps = (ds: Device[]) => nums(ds.filter((d) => fresh(cap(d, 'measure_temperature'))), 'measure_temperature');
+  /** Snittet av sensorernas ändring senaste timmen → upp, ned eller ingen trend. */
+  const trendOf = (ds: Device[], limit: number): Trend => {
+    const d = avg(ds.map((x) => trends[x.id]).filter((v): v is number => typeof v === 'number'));
+    return d == null || Math.abs(d) < limit ? null : d > 0 ? 'up' : 'down';
+  };
   const hasTemp = (ds: Device[]) => ds.some((d) => cap(d, 'measure_temperature')?.value_num != null);
 
   const active = devices.filter((d) => d.available);
@@ -149,6 +165,7 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
         icon: iconFor(name),
         // Bara riktiga sensorer: uttag och lampor mäter sin egen värme.
         temp: avg(temps(ds.filter((d) => d.class === 'sensor'))),
+        tempTrend: trendOf(ds.filter((d) => d.class === 'sensor' && fresh(cap(d, 'measure_temperature'))), TREND_INDOOR),
         tempStale: hasTemp(ds.filter((d) => d.class === 'sensor')) && !temps(ds.filter((d) => d.class === 'sensor')).length,
         humidity: HUMIDITY_ROOMS.test(name) ? avg(nums(ds, 'measure_humidity')) : null,
         lights,
@@ -212,6 +229,7 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
   return {
     outdoorTemp: avg(nums(stations, 'measure_temperature')),
     outdoorStale: allStations.length > 0 && stations.length === 0,
+    outdoorTrend: trendOf(stations, TREND_OUTDOOR),
     station: Object.values(station).some((v) => v != null) ? station : null,
     lightsOn: allLights.filter((l) => l.on).length,
     lightsTotal: allLights.length,

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
@@ -117,7 +118,7 @@ export default async function HomePage() {
             </span>
           )}
           {h.outdoorTemp != null ? (
-            <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(h.outdoorTemp)}</span>
+            <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(h.outdoorTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
           ) : h.outdoorStale && (
             <span className="relative flex flex-col pr-24">
               <span className="text-2xl leading-tight font-extrabold">Ej tillgänglig</span>

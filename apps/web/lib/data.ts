@@ -17,18 +17,22 @@ export async function loadHome(): Promise<Home> {
   if (DEMO) {
     const { readFile } = await import('node:fs/promises');
     const d = JSON.parse(await readFile(DEMO, 'utf8'));
-    return buildHome(d.zones, d.devices, d.caps, d.moods ?? []);
+    // Demo: några rum och ute med trend.
+    return buildHome(d.zones, d.devices, d.caps, d.moods ?? [], Date.now(), { vt: 0.6, st: -0.5, wx: -0.9, ...(d.trends ?? {}) });
   }
   const sb = await createClient();
-  const [zones, devices, caps, moods] = await Promise.all([
+  const [zones, devices, caps, moods, hour] = await Promise.all([
     sb.from('zones').select('id,name,parent_id'),
     sb.from('devices').select('id,name,zone_id,class,available'),
     sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,last_updated').in('capability_id', CAPS),
     sb.from('moods').select('id,name,zone_id,favorite'),
+    // Temperaturen för en timme sedan (första minutbucketen bär med värdet före perioden).
+    sb.rpc('history', { cap: 'measure_temperature', since: new Date(Date.now() - 3600_000).toISOString(), bucket: '1 minute' }),
   ]);
   const error = zones.error ?? devices.error ?? caps.error ?? moods.error;
   if (error) throw new Error(`Kunde inte läsa data: ${error.message}`);
-  return buildHome(zones.data as Zone[], devices.data as Device[], caps.data as Cap[], moods.data as Mood[]);
+  return buildHome(zones.data as Zone[], devices.data as Device[], caps.data as Cap[], moods.data as Mood[], Date.now(),
+    tempTrends((hour.data ?? []) as Row[], caps.data as Cap[]));
 }
 
 export async function loadHistory(metric: MetricKey, period: PeriodKey): Promise<Series[]> {
@@ -59,6 +63,18 @@ export async function loadHistory(metric: MetricKey, period: PeriodKey): Promise
       : [],
   );
   return buildSeries(metric, rows.data as Row[], devices.data as Device[], zones.data as Zone[], Math.floor(Date.now() / 1000), stale);
+}
+
+/** Ändring senaste timmen per enhet: nuvärde minus första värdet i perioden. Trenden får aldrig stoppa sidan. */
+function tempTrends(rows: Row[], caps: Cap[]): Record<string, number> {
+  const first = new Map<string, number>();
+  for (const r of [...rows].sort((a, b) => a.t.localeCompare(b.t))) if (!first.has(r.device_id)) first.set(r.device_id, r.v);
+  const out: Record<string, number> = {};
+  for (const c of caps) {
+    const was = first.get(c.device_id);
+    if (c.capability_id === 'measure_temperature' && c.value_num != null && was != null) out[c.device_id] = c.value_num - was;
+  }
+  return out;
 }
 
 /** Påhittade kurvor kring nuvarande värden, bara för demoläget. */
