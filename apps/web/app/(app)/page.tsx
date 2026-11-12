@@ -66,15 +66,15 @@ export default async function HomePage() {
             {/* Närvaro (Smart Presence i Homey): grönt = hemma, rött = borta med när personen sågs senast. */}
             {h.people.length > 0 && (
               <span className="flex flex-wrap items-center gap-1.5">
-                {[...h.people].sort((x, y) => Number(y.present) - Number(x.present)).map((p) => (
+                {[...h.people].sort((x, y) => Number(y.present) - Number(x.present) || (y.since ?? '').localeCompare(x.since ?? '')).map((p) => (
                   <span
                     key={p.id}
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[15px] font-extrabold ${p.present ? 'bg-ok-soft text-ok' : 'bg-danger-strong text-white'}`}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[15px] font-extrabold ${p.present ? 'bg-ok-soft text-ok' : 'bg-[rgb(240_80_60/0.2)] text-danger'}`}
                     title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}
                   >
-                    <span className={`size-2 rounded-full ${p.present ? 'bg-ok' : 'bg-white'}`} />
+                    <span className={`size-2 rounded-full ${p.present ? 'bg-ok' : 'bg-danger'}`} />
                     {p.name}
-                    {!p.present && p.since && <span className="font-bold opacity-90">· {seenAgo(p.since)}</span>}
+                    {!p.present && p.since && <span className="font-bold opacity-80">· {seenAgo(p.since)}</span>}
                   </span>
                 ))}
               </span>
