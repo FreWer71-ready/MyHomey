@@ -187,3 +187,9 @@ test('SMHI dygn: från i morgon, min/max, summerad nederbörd, symbol nära kl 1
     ['2026-11-13', 1, 6, 2.9, 'rain'], ['2026-11-14', 2, 2, 0, 'fair_day'],
   ]);
 });
+
+test('närvaro från Smart Presence (capability presence)', () => {
+  const ds: Device[] = [...devices, { id: 'pf', name: 'Fredrik ', zone_id: 'root', class: 'sensor', available: true }, { id: 'pm', name: 'Molly', zone_id: 'root', class: 'sensor', available: true }];
+  const h = buildHome(zones, ds, [...caps, c('pf', 'presence', true), c('pm', 'presence', false)]);
+  assert.deepEqual(h.people, [{ id: 'pf', name: 'Fredrik', present: true }, { id: 'pm', name: 'Molly', present: false }]);
+});

@@ -40,6 +40,7 @@ export default async function HomePage() {
     loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(),
   ]);
   const names = joinNames(nameDay);
+  const home = h.people.filter((p) => p.present);
   const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
   const price = summarize(prices, Date.now());
   const open = h.openings.filter((o) => o.open);
@@ -60,7 +61,21 @@ export default async function HomePage() {
               </span>
             )}
           </p>
-          <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
+            {/* Närvaro (Smart Presence i Homey): vilka som är hemma just nu. */}
+            {h.people.length > 0 && (
+              <span className="flex flex-wrap items-center gap-1.5">
+                {home.length ? home.map((p) => (
+                  <span key={p.id} className="flex items-center gap-1.5 rounded-full bg-ok-soft px-3 py-1 text-[15px] font-extrabold text-ok">
+                    <span className="size-2 rounded-full bg-ok" />{p.name}
+                  </span>
+                )) : (
+                  <span className="rounded-full bg-glass-hi px-3 py-1 text-[15px] font-bold text-dim">Ingen hemma</span>
+                )}
+              </span>
+            )}
+          </div>
         </div>
         {/* Varningar: i rubrikraden på plattan (sparar höjd), egen rad på mobil. */}
         {(warning || damp.length > 0 || net?.state === 'down') && (

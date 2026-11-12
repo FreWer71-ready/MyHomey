@@ -193,6 +193,27 @@
    "zone_id": "f",
    "class": "sensor",
    "available": true
+  },
+  {
+   "id": "pf",
+   "name": "Fredrik",
+   "zone_id": "root",
+   "class": "sensor",
+   "available": true
+  },
+  {
+   "id": "pm",
+   "name": "Molly",
+   "zone_id": "root",
+   "class": "sensor",
+   "available": true
+  },
+  {
+   "id": "pw",
+   "name": "Wille",
+   "zone_id": "root",
+   "class": "sensor",
+   "available": true
   }
  ],
  "caps": [
@@ -459,6 +480,24 @@
    "capability_id": "light_temperature",
    "value_num": 0.8,
    "value_bool": null
+  },
+  {
+   "device_id": "pf",
+   "capability_id": "presence",
+   "value_num": null,
+   "value_bool": true
+  },
+  {
+   "device_id": "pm",
+   "capability_id": "presence",
+   "value_num": null,
+   "value_bool": true
+  },
+  {
+   "device_id": "pw",
+   "capability_id": "presence",
+   "value_num": null,
+   "value_bool": false
   }
  ],
  "moods": [
