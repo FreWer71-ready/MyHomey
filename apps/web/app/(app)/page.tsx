@@ -7,8 +7,9 @@ import { SortableCards } from '@/components/SortableCards';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadCommute, loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
+import { commuteAlerts, direction, trainStatus } from '@/lib/commute';
 import { seenAgo } from '@/lib/time';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -44,11 +45,16 @@ function Hero({ bg, icon, label, href, popover, children }: {
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, openedToday, nameDay, playing, net, wine] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(),
+  const [h, prices, weather, openedToday, nameDay, playing, net, wine, commute] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
   ]);
   const wx = await loadWarnings(weather);
   const banners = warningBanners(wx, 3);
+  // Pendling: aktuell riktning (morgon mot Stockholm, annars hem) och störningar till varningsraden.
+  const dir = direction();
+  const trains = commute?.[dir] ?? [];
+  const next = trains.find((t) => !t.canceled) ?? null;
+  const trafficAlerts = commute ? commuteAlerts(commute, Date.now(), hhmm) : [];
   const names = joinNames(nameDay);
   // Utan egen väderstation (t.ex. Hue-hushåll) visas SMHI:s temperatur.
   const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
@@ -101,9 +107,15 @@ export default async function HomePage() {
       </header>
 
       {/* Varningar: egen rad i full bredd, bara när något kräver åtgärd. Sida vid sida på plattan. */}
-      {(warning || damp.length > 0 || net?.state === 'down' || banners.length > 0) && (
+      {(warning || damp.length > 0 || net?.state === 'down' || banners.length > 0 || trafficAlerts.length > 0) && (
         <div className="flex flex-col gap-2 lg:flex-row">
           {banners}
+          {trafficAlerts.slice(0, Math.max(1, 3 - banners.length)).map((a) => (
+            <Link key={a.id} href="/pendling" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-[#FF8A3D] px-3.5 py-1.5 text-[#1A1205]">
+              <Icon name={a.kind === 'train' ? 'train' : 'road'} size={22} />
+              <span className="font-extrabold lg:truncate">{a.label}</span>
+            </Link>
+          ))}
           {net?.state === 'down' && (
             <Link href="/larm#natverk" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-danger-strong px-3.5 py-1.5 text-white">
               <Icon name="wifi" size={22} />
@@ -207,6 +219,27 @@ export default async function HomePage() {
               <span className="text-[15px] font-bold">
                 {h.powerMeters ? `${h.powerMeters} mätare` : ''}{h.powerMeters && h.powerEstimated ? ' · ' : ''}{h.powerEstimated ? `${h.powerEstimated} uppskattade` : ''}
               </span>
+            </Hero>
+          ) }] : []),
+          ...(commute ? [{ id: 'pendling', node: (
+            <Hero href="/pendling" bg={tint('#4FA3FF', 0.45)} icon="train" label={dir === 'out' ? 'Mot Stockholm' : 'Mot Eskilstuna'}>
+              {next ? (
+                <>
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-4xl leading-none font-extrabold tracking-tight tabular-nums md:text-[42px]">{hhmm(next.est ?? next.dep)}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[13px] font-extrabold ${trainStatus(next).cls}`}>{trainStatus(next).text}</span>
+                  </span>
+                  <span className="truncate text-[15px] font-bold">
+                    {(() => {
+                      const after = trains.filter((t) => t.dep > next.dep && !t.canceled)[0];
+                      const off = trains.filter((t) => t.canceled).length;
+                      return [after && `sedan ${hhmm(after.est ?? after.dep)}`, off && `${off} inställt`, next.track && `spår ${next.track}`].filter(Boolean).join(' · ') || next.dest;
+                    })()}
+                  </span>
+                </>
+              ) : (
+                <span className="text-2xl leading-tight font-extrabold">Inga tåg</span>
+              )}
             </Hero>
           ) }] : []),
           ...(price.now ? [{ id: 'elpris', node: (

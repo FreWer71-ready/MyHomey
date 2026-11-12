@@ -12,6 +12,8 @@ const config: NextConfig = {
   env: {
     NEXT_PUBLIC_BASE_PATH: BASE_PATH,
     NEXT_PUBLIC_BUILT: built,
+    // Pendlingssidan (Trafikverket) kan stängas av per installation med COMMUTE=off.
+    NEXT_PUBLIC_COMMUTE: process.env.COMMUTE === 'off' ? 'off' : 'on',
     NEXT_PUBLIC_COMMIT: (process.env.VERCEL_GIT_COMMIT_SHA ?? 'lokal').slice(0, 7),
   },
   basePath: BASE_PATH,

@@ -45,6 +45,25 @@ const FLAT = {
       <path className="wx-twinkle" d="M10 7.8v8.4l6.5-4.2z" fill={C.teal} />
     </>
   ),
+  // Tåg framifrån: gungar lätt, strålkastarna blinkar.
+  train: (
+    <>
+      <g className="wx-bob">
+        <rect x={5} y={2.5} width={14} height={15} rx={4} fill={C.blue} />
+        <rect x={7} y={5} width={10} height={5.5} rx={1.4} fill={C.cloud} />
+        <circle className="wx-twinkle" cx={8.6} cy={14} r={1.3} fill={C.sun} />
+        <circle className="wx-twinkle" style={{ animationDelay: '1.5s' }} cx={15.4} cy={14} r={1.3} fill={C.sun} />
+      </g>
+      <path d="M8 18.5 5.5 22M16 18.5l2.5 3.5" fill="none" stroke={C.grey} strokeWidth={1.8} strokeLinecap="round" />
+    </>
+  ),
+  // Väg med mittlinje som rullar.
+  road: (
+    <>
+      <path d="M9 3h6l5 18H4z" fill={C.dark} />
+      <path className="wx-fall" d="M12 5v3M12 11v3M12 17v3" stroke={C.sun} strokeWidth={1.6} strokeLinecap="round" />
+    </>
+  ),
   // Vinglas: vinet gungar, små bubblor stiger, glaset glimmar.
   wine: (
     <>

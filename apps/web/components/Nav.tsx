@@ -12,6 +12,7 @@ const ITEMS: { href: string; label: string; icon: IconName; ready: boolean }[] =
   { href: '/rum', label: 'Rum', icon: 'rooms', ready: true },
   { href: '/favoriter', label: 'Favoriter', icon: 'star', ready: true },
   { href: '/energi', label: 'Energi', icon: 'bolt', ready: true },
+  { href: '/pendling', label: 'Pendling', icon: 'train', ready: true },
   { href: '/historik', label: 'Historik', icon: 'chart', ready: true },
   { href: '/larm', label: 'Larm', icon: 'bell', ready: true },
 ];
@@ -51,7 +52,7 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
       <div className="mx-auto mb-2 hidden size-12 items-center justify-center rounded-[18px] bg-sun text-ink md:flex">
         <Icon name="logo" size={30} />
       </div>
-      {ITEMS.map((it) =>
+      {ITEMS.filter((it) => it.href !== '/pendling' || process.env.NEXT_PUBLIC_COMMUTE !== 'off').map((it) =>
         it.ready ? (
           <Link
             key={it.href}

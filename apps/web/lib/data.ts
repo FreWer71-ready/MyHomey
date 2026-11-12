@@ -9,6 +9,7 @@ import { MEDIA_CAPS, nowPlaying, type MediaCap, type NowPlaying } from './media'
 import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
 import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } from './warnings';
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
+import { parseCommute, type Commute, type RawCommute } from './commute';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
@@ -350,4 +351,29 @@ export async function loadWarnings(weather: WeatherSummary | null): Promise<Warn
     get('https://api.krisinformation.se/v3/vmas'),
   ]);
   return { smhi: s ? smhiWarnings(s, area) : [], vma: v ? vmas(v, area) : [], storms: stormList };
+}
+
+/**
+ * Pendling (Trafikverket via edge-funktionen trafik). Null om avstängt (COMMUTE=off, t.ex. Ulrikas)
+ * eller om källan inte svarar.
+ */
+export async function loadCommute(): Promise<Commute | null> {
+  if (process.env.COMMUTE === 'off') return null;
+  if (DEMO) {
+    const at = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
+    return parseCommute({
+      out: [
+        { AdvertisedTrainIdent: '954', AdvertisedTimeAtLocation: at(12), EstimatedTimeAtLocation: at(19), LocationSignature: 'Et', ToLocation: [{ LocationName: 'U' }], TrackAtLocation: '1', Deviation: [{ Description: 'Försenad' }] },
+        { AdvertisedTrainIdent: '10922', AdvertisedTimeAtLocation: at(44), LocationSignature: 'Et', ToLocation: [{ LocationName: 'Cst' }], TrackAtLocation: '1' },
+        { AdvertisedTrainIdent: '958', AdvertisedTimeAtLocation: at(72), Canceled: true, LocationSignature: 'Et', ToLocation: [{ LocationName: 'U' }], Deviation: [{ Description: 'Inställt' }] },
+      ],
+      home: [{ AdvertisedTrainIdent: '10921', AdvertisedTimeAtLocation: at(25), LocationSignature: 'Cst', ToLocation: [{ LocationName: 'Et' }], TrackAtLocation: '16a' }],
+      arrivals: [{ AdvertisedTrainIdent: '954', LocationSignature: 'Cst', AdvertisedTimeAtLocation: at(75) }],
+      situations: [{ Deviation: [{ Id: 'k', MessageType: 'Vägarbete', MessageTypeValue: 'MaintenanceWorks', SeverityCode: 4, Message: 'Ett avstängt körfält. Risk för köbildning.', LocationDescriptor: 'Väg 56 från Stora Ekeby till Kvicksund S', EndTime: '2027-09-30T16:00:00+02:00' }] }],
+    });
+  }
+  const sb = await createClient();
+  const { data, error } = await sb.functions.invoke('trafik', { body: {} });
+  if (error || !data || data.error) return null;
+  return parseCommute(data as RawCommute);
 }

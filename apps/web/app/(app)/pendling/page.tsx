@@ -1,0 +1,96 @@
+import { notFound } from 'next/navigation';
+import { Icon, type IconName } from '@/components/Icon';
+import { loadCommute } from '@/lib/data';
+import { direction, trainStatus, type RoadEvent, type Train } from '@/lib/commute';
+import { hhmm } from '@/lib/prices';
+
+export const dynamic = 'force-dynamic';
+
+const fmtDate = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', day: 'numeric', month: 'short', year: 'numeric' }).format(ms);
+
+function Trains({ title, icon, list, active }: { title: string; icon: IconName; list: Train[]; active: boolean }) {
+  return (
+    <section className={`flex min-w-0 flex-col gap-2 rounded-[24px] glass p-3 ${active ? 'ring-2 ring-sun/60' : ''}`}>
+      <h2 className="flex items-center gap-3 text-xl font-extrabold">
+        <span className="flex size-10 items-center justify-center rounded-2xl bg-glass-hi"><Icon name={icon} size={24} /></span>
+        {title}
+      </h2>
+      {list.length === 0 && <p className="rounded-2xl bg-glass-2 p-3 font-bold text-dim">Inga avgångar de närmaste timmarna</p>}
+      <ol className="flex flex-col gap-1.5">
+        {list.map((t) => {
+          const s = trainStatus(t);
+          return (
+            <li key={t.id} className={`flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2 ${t.canceled ? 'opacity-80' : ''}`}>
+              <span className="flex w-[64px] shrink-0 flex-col leading-tight">
+                <span className={`text-xl font-extrabold tabular-nums ${t.canceled || t.delay >= 3 ? 'line-through decoration-2 opacity-70' : ''}`}>{hhmm(t.dep)}</span>
+                {!t.canceled && t.delay >= 3 && t.est && <span className="text-lg font-extrabold text-[#FF8A3D] tabular-nums">{hhmm(t.est)}</span>}
+              </span>
+              <span className="flex min-w-0 grow flex-col leading-tight">
+                <span className="truncate font-extrabold">
+                  {t.dest}{t.arr && !t.canceled ? <span className="font-bold text-dim"> · framme {hhmm(t.arr)}</span> : null}
+                </span>
+                <span className="truncate text-[14px] font-bold text-dim">
+                  {[t.product, `tåg ${t.ident}`, t.track && `spår ${t.track}`, ...t.notes].filter(Boolean).join(' · ')}
+                </span>
+              </span>
+              <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[14px] font-extrabold ${s.cls}`}>{s.text}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+function Road({ list }: { list: RoadEvent[] }) {
+  return (
+    <section className="flex flex-col gap-2 rounded-[24px] glass p-3">
+      <h2 className="flex items-center gap-3 text-xl font-extrabold">
+        <span className="flex size-10 items-center justify-center rounded-2xl bg-glass-hi"><Icon name="road" size={24} /></span>
+        Väg 56 Eskilstuna–Västerås
+        <span className="rounded-full bg-glass-2 px-3 py-0.5 text-base text-dim">{list.filter((r) => !r.suspended).length}</span>
+      </h2>
+      {list.length === 0 && <p className="rounded-2xl bg-ok-soft p-3 font-bold text-ok">Inga störningar på sträckan</p>}
+      <ul className="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
+        {list.map((r) => (
+          <li key={r.id} className={`flex items-start gap-3 rounded-2xl px-3 py-2 ${r.incident && !r.suspended ? 'bg-danger-strong text-white' : 'bg-glass-2'} ${r.suspended ? 'opacity-60' : ''}`}>
+            <span className="flex min-w-0 grow flex-col leading-tight">
+              <span className="font-extrabold">
+                {r.type}{r.severityText ? <span className="font-bold opacity-80"> · {r.severityText.toLowerCase()}</span> : null}
+                {r.suspended && <span className="font-bold opacity-80"> · pausat</span>}
+              </span>
+              {r.place && <span className="text-[14px] font-bold opacity-85">{r.place}</span>}
+              {r.text && <span className="text-[14px] font-bold opacity-85">{r.text}</span>}
+              {r.end && <span className="text-[13px] font-bold opacity-70">Pågår till {fmtDate(r.end)}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+export default async function CommutePage() {
+  if (process.env.COMMUTE === 'off') notFound();
+  const c = await loadCommute();
+  const dir = direction();
+  return (
+    <>
+      <h1 className="flex items-baseline justify-between gap-3 text-2xl font-extrabold">
+        Pendling
+        {c && <span className="text-[13px] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
+      </h1>
+      {!c ? (
+        <p className="rounded-2xl glass p-4 font-bold text-dim">Trafikinformationen är inte tillgänglig just nu.</p>
+      ) : (
+        <>
+          <div className={`grid grid-cols-1 gap-3 lg:grid-cols-2 ${dir === 'home' ? '[&>*:first-child]:order-2' : ''}`}>
+            <Trains title="Eskilstuna → Stockholm" icon="train" list={c.out} active={dir === 'out'} />
+            <Trains title="Stockholm → Eskilstuna" icon="train" list={c.home} active={dir === 'home'} />
+          </div>
+          <Road list={c.road} />
+        </>
+      )}
+    </>
+  );
+}
