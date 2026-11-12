@@ -29,24 +29,26 @@ export function LightTimeline({ rooms, since, now, kind = 'light' }: { rooms: Ro
   return (
     <div className="flex flex-col gap-4">
       {rooms.map((room) => (
-        <section key={room.name} className="rounded-[28px] glass p-5">
+        <section key={room.name} className="rounded-[28px] glass p-4 md:p-5">
           <h2 className="mb-3 text-xl font-extrabold">{room.name}</h2>
-          <div className="grid grid-cols-[minmax(0,180px)_1fr_auto] items-center gap-x-4 gap-y-2.5">
-            <span />
-            <div className="relative h-5 text-xs font-bold text-dim" aria-hidden="true">
-              {marks.map((m) => (
-                <span key={m.left} className="absolute -translate-x-1/2" style={{ left: `${m.left}%` }}>{m.label}</span>
+          {/* Mobil: namn och tid på en rad, stapeln i full bredd under. Större skärmar: allt på en rad. */}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 md:grid-cols-[minmax(0,180px)_1fr_auto] md:gap-y-2.5 md:[grid-auto-flow:dense]">
+            <span className="hidden md:block" />
+            <div className="relative col-span-2 h-5 text-xs font-bold text-dim md:col-span-1" aria-hidden="true">
+              {marks.map((m, i) => (
+                <span key={m.left} className={`absolute -translate-x-1/2 ${i % 2 ? 'max-md:hidden' : ''}`} style={{ left: `${m.left}%` }}>{m.label}</span>
               ))}
             </div>
-            <span />
+            <span className="hidden md:block" />
             {room.lamps.map((l) => (
               <div key={l.id} className="contents">
                 <span className="flex items-center gap-2 truncate font-bold">
                   <span className={`size-3 shrink-0 rounded-full ${l.onNow ? (presence ? 'bg-ok' : 'bg-sun') : 'bg-line'}`} />
                   <span className="truncate">{l.name}</span>
                 </span>
+                <span className="text-right text-sm font-extrabold md:col-start-3 md:w-24">{fmtDuration(l.onMinutes)}</span>
                 <div
-                  className="relative h-8 overflow-hidden rounded-xl bg-glass-2"
+                  className="relative col-span-2 mb-1.5 h-6 overflow-hidden rounded-xl bg-glass-2 md:col-span-1 md:col-start-2 md:mb-0 md:h-8"
                   role="img"
                   aria-label={`${l.name}: ${presence ? 'hemma' : 'tänd'} ${fmtDuration(l.onMinutes)}`}
                 >
@@ -61,7 +63,6 @@ export function LightTimeline({ rooms, since, now, kind = 'light' }: { rooms: Ro
                     />
                   ))}
                 </div>
-                <span className="w-24 text-right text-sm font-extrabold">{fmtDuration(l.onMinutes)}</span>
               </div>
             ))}
           </div>

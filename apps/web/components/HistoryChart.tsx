@@ -34,8 +34,10 @@ export function HistoryChart({ series, unit, decimals, bars, longPeriod, fit = 4
     ];
     const fmtY = (v: number) =>
       `${v.toLocaleString('sv-SE', { maximumFractionDigits: Math.abs(v) < 1 && v !== 0 ? 3 : decimals })}${unit}`;
-    const axis = { stroke: '#C3C8D6', font: '600 13px "Plus Jakarta Sans", system-ui', grid: { stroke: 'rgba(255,255,255,0.08)', width: 1 }, ticks: { show: false } };
-    const height = Math.max(180, Math.min(420, window.innerHeight - fit));
+    // Mobil: smalare y-axel, mindre text och lägre graf.
+    const narrow = el.clientWidth < 600;
+    const axis = { stroke: '#C3C8D6', font: `600 ${narrow ? 12 : 13}px "Plus Jakarta Sans", system-ui`, grid: { stroke: 'rgba(255,255,255,0.08)', width: 1 }, ticks: { show: false } };
+    const height = narrow ? 240 : Math.max(180, Math.min(420, window.innerHeight - fit));
 
     const u = new uPlot({
       width: el.clientWidth,
@@ -81,7 +83,10 @@ export function HistoryChart({ series, unit, decimals, bars, longPeriod, fit = 4
               : fmtTime(s, longPeriod));
           },
         },
-        { ...axis, size: 96, values: (_u, splits) => splits.map(fmtY) },
+        // Mobil: enheten som axeltitel i stället för på varje värde, så siffrorna får plats.
+        narrow
+          ? { ...axis, size: 46, label: unit.trim(), labelSize: 18, labelFont: axis.font, values: (_u, splits) => splits.map((v) => fmtY(v).replace(unit, '')) }
+          : { ...axis, size: 96, values: (_u, splits) => splits.map(fmtY) },
       ],
       series: [
         { label: 'Tid', value: (_u, v) => (v == null ? '–' : fmtTime(v, false) + (longPeriod ? ` ${fmtTime(v, true)}` : '')) },

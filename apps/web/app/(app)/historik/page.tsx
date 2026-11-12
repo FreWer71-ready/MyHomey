@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { HistoryChart } from '@/components/HistoryChart';
 import { Icon, type IconName } from '@/components/Icon';
 import { LightTimeline } from '@/components/LightTimeline';
+import { ScrollActive } from '@/components/ScrollActive';
 import { loadHistory, loadLightTimeline, loadPresenceTimeline, loadWine, loadWineHistory } from '@/lib/data';
 import {
   METRICS, PERIODS, fmtValue, isMetric, isPeriod, sumSeries, type MetricKey, type PeriodKey,
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic';
 type View = MetricKey | 'lights' | 'presence' | 'wine';
 const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'temp', label: METRICS.temp.label, icon: 'thermo' },
-  { key: 'hum', label: METRICS.hum.label, icon: 'drop' },
+  { key: 'hum', label: 'Fukt', icon: 'drop' },
   { key: 'power', label: METRICS.power.label, icon: 'bolt' },
   { key: 'energy', label: METRICS.energy.label, icon: 'chart' },
   { key: 'lights', label: 'Lampor', icon: 'bulb' },
@@ -22,7 +23,9 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
 const SHORT: PeriodKey[] = ['4h', '12h', '24h'];
 
 const chip = (active: boolean) =>
-  `flex min-h-11 items-center gap-2 rounded-full px-4 font-extrabold ${active ? 'bg-sun text-ink' : 'glass'}`;
+  `flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 font-extrabold ${active ? 'bg-sun text-ink' : 'glass'}`;
+/** Mobil: en rad som sveps i sidled (kant till kant). Större skärmar: radbryts som vanligt. */
+const scrollRow = 'scroll-x flex gap-1.5 max-md:-mx-3 max-md:overflow-x-auto max-md:px-3 md:flex-wrap';
 
 export default async function HistoryPage({
   searchParams,
@@ -51,9 +54,10 @@ export default async function HistoryPage({
 
   return (
     <>
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <ScrollActive />
+      <header className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3">
         <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Historik</h1>
-        {view !== 'wine' && <nav aria-label="Period" className="flex flex-wrap gap-1.5">
+        {view !== 'wine' && <nav aria-label="Period" className={scrollRow}>
           {(Object.keys(PERIODS) as PeriodKey[]).map((k) => (
             <Link key={k} href={href(view, k, sel)} aria-current={k === period ? 'page' : undefined} className={chip(k === period)}>
               {PERIODS[k].label}
@@ -62,18 +66,18 @@ export default async function HistoryPage({
         </nav>}
       </header>
 
-      <nav aria-label="Mått" className={`grid grid-cols-3 gap-2.5 ${views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
+      <nav aria-label="Mått" className={`scroll-x flex gap-2 max-lg:-mx-3 max-lg:overflow-x-auto max-lg:px-3 lg:grid lg:gap-2.5 ${views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
         {views.map((v) => (
           <Link
             key={v.key}
             href={href(v.key, period)}
             aria-current={v.key === view ? 'page' : undefined}
-            className={`flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 font-extrabold ${
+            className={`flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap rounded-[20px] px-3 font-extrabold lg:min-h-14 lg:min-w-0 lg:px-2.5 ${
               v.key === view ? 'bg-sun' : 'glass'
             }`}
           >
-            <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${v.key === view ? 'bg-glass-hi' : 'bg-glass-2'}`}>
-              <Icon name={v.icon} size={22} />
+            <span className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${v.key === view ? 'bg-glass-hi' : 'bg-glass-2'}`}>
+              <Icon name={v.icon} size={20} />
             </span>
             {v.label}
           </Link>
@@ -82,7 +86,7 @@ export default async function HistoryPage({
 
       {timeline && (
         <>
-          {view !== 'presence' && <nav aria-label="Rum" className="flex flex-wrap gap-1.5">
+          {view !== 'presence' && <nav aria-label="Rum" className={scrollRow}>
             <Link href={href(view, period)} aria-current={!sel ? 'page' : undefined} className={chip(!sel)}>Alla rum</Link>
             {timeline.rooms.map((r) => (
               <Link key={r.name} href={href(view, period, r.name)} aria-current={sel === r.name ? 'page' : undefined} className={chip(sel === r.name)}>
