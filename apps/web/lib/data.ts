@@ -145,20 +145,6 @@ export async function loadWeather(): Promise<WeatherSummary | null> {
   }
 }
 
-/** Antal rörelseregistreringar (alarm_motion → på) de senaste 60 minuterna. */
-export async function loadMotionCount(): Promise<number> {
-  if (DEMO) return 3;
-  const sb = await createClient();
-  const { count, error } = await sb
-    .from('readings')
-    .select('device_id', { count: 'exact', head: true })
-    .eq('capability_id', 'alarm_motion')
-    .eq('value', 1)
-    .gte('ts', new Date(Date.now() - 60 * 60_000).toISOString());
-  if (error) throw new Error(`Kunde inte läsa rörelser: ${error.message}`);
-  return count ?? 0;
-}
-
 /** Antal öppningar per dörr/fönster (alarm_contact → öppen) sedan midnatt. */
 export async function loadOpeningsToday(): Promise<Record<string, number>> {
   if (DEMO) return { hd: 7 };
@@ -184,12 +170,15 @@ export async function loadNameDay(): Promise<string[]> {
   return data?.names ?? []; // Namnsdagen får aldrig stoppa sidan.
 }
 
-/** Vad som spelas nu på mediaspelare (Google TV m.fl.). */
+/** Vad som spelas på Chromecast-enheter (Google TV, Nest hub; Spotify syns när den castar). */
 export async function loadNowPlaying(): Promise<NowPlaying[]> {
-  if (DEMO) return [{ id: 'tv', device: 'Google TV vardagsrum', title: 'Feels Like I’m Falling in Love', subtitle: 'Coldplay' }];
+  if (DEMO) return [
+    { id: 'tv', device: 'Google TV vardagsrum', kind: 'tv', playing: true, title: 'Netflix', subtitle: 'Stranger Things' },
+    { id: 'hub', device: 'Nest hub', kind: 'music', playing: false, title: 'Feels Like I’m Falling in Love', subtitle: 'Coldplay · Spotify' },
+  ];
   const sb = await createClient();
   const [devices, caps] = await Promise.all([
-    sb.from('devices').select('id,name').eq('class', 'speaker').eq('available', true),
+    sb.from('devices').select('id,name').eq('class', 'speaker').eq('available', true).like('driver_id', '%chromecast%'),
     sb.from('capability_state').select('device_id,capability_id,value_bool,value_text').in('capability_id', MEDIA_CAPS),
   ]);
   if (devices.error || caps.error) return []; // Media får aldrig stoppa sidan.

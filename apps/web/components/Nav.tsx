@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { FullscreenButton } from './FullscreenButton';
 import { LegendButton } from './LegendButton';
 import { RefreshButton } from './RefreshButton';
@@ -14,8 +15,32 @@ const ITEMS: { href: string; label: string; icon: IconName; ready: boolean }[] =
   { href: '/larm', label: 'Larm', icon: 'bell', ready: true },
 ];
 
-export function Nav() {
+const SEEN = 'seenAlarms';
+
+/** Sant om något larm inte setts; besök på Larm markerar allt som sett. */
+function useNewAlarms(alarms: string[], onLarm: boolean) {
+  const [fresh, setFresh] = useState(false);
+  const key = alarms.join('|');
+  useEffect(() => {
+    try {
+      if (onLarm) {
+        localStorage.setItem(SEEN, JSON.stringify(alarms));
+        setFresh(false);
+      } else {
+        const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN) ?? '[]'));
+        setFresh(alarms.some((a) => !seen.has(a)));
+      }
+    } catch {
+      setFresh(alarms.length > 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, onLarm]);
+  return fresh;
+}
+
+export function Nav({ alarms = [] }: { alarms?: string[] }) {
   const path = usePathname();
+  const fresh = useNewAlarms(alarms, path.startsWith('/larm'));
   const active = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
   return (
     <nav
@@ -35,8 +60,17 @@ export function Nav() {
               active(it.href) ? 'bg-glass-hi font-extrabold text-sun ring-1 ring-sun/60' : 'font-bold text-dim'
             }`}
           >
-            <Icon name={it.icon} size={24} />
-            {it.label}
+            {it.href === '/larm' && fresh ? (
+              <span className="relative">
+                <Icon name="bellAlert" size={24} />
+                <span className="absolute -top-0.5 -right-1 size-2.5 animate-ping rounded-full bg-danger" />
+                <span className="absolute -top-0.5 -right-1 size-2.5 rounded-full bg-danger" />
+              </span>
+            ) : (
+              <Icon name={it.icon} size={24} />
+            )}
+            {it.href === '/larm' && fresh ? <span className="text-danger">{it.label}</span> : it.label}
+            {it.href === '/larm' && fresh && <span className="sr-only">, nya larm</span>}
           </Link>
         ) : (
           <span

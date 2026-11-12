@@ -39,6 +39,17 @@ const FLAT = {
       <rect x={11} y={2} width={2} height={2.5} rx={1} fill={C.ray} />
     </g>
   ),
+  // Larm med nytt att se: röd klocka som skakar ivrigt, ljudvågor blinkar.
+  bellAlert: (
+    <>
+      <g className="wx-shake" style={{ transformOrigin: '12px 3px' }}>
+        <path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z" fill={C.red} />
+        <circle cx={12} cy={20.2} r={2} fill={C.orange} />
+        <rect x={11} y={2} width={2} height={2.5} rx={1} fill={C.red} />
+      </g>
+      <path className="wx-blink" d="M3.5 7.5a9 9 0 0 1 2.5-4M20.5 7.5a9 9 0 0 0-2.5-4" fill="none" stroke={C.red} strokeWidth={1.8} strokeLinecap="round" />
+    </>
+  ),
   thermo: (
     <>
       <path d="M9.5 4.5a2.5 2.5 0 0 1 5 0v9.2a4.5 4.5 0 1 1-5 0z" fill={C.cloud} />
@@ -120,6 +131,13 @@ const FLAT = {
     <>
       <path d="M14 3a9 9 0 1 0 7 13.5A7.2 7.2 0 0 1 14 3z" fill={C.moon} />
       <circle className="wx-twinkle" cx={19.5} cy={5} r={1.1} fill={C.moon} />
+    </>
+  ),
+  music: (
+    <>
+      <path d="M9 17V6l10-2v11" fill="none" stroke={C.violet} strokeWidth={2.2} strokeLinejoin="round" />
+      <ellipse className="wx-bob" cx={6.8} cy={17.5} rx={2.6} ry={2.1} fill={C.violet} />
+      <ellipse className="wx-bob" style={{ animationDelay: '0.5s' }} cx={16.8} cy={15.5} rx={2.6} ry={2.1} fill={C.teal} />
     </>
   ),
   tv: (

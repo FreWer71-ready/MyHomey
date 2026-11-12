@@ -4,7 +4,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { MoodButtons } from '@/components/MoodButtons';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadMotionCount, loadNameDay, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadHome, loadNameDay, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -13,9 +13,10 @@ import { fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
-function Hero({ bg, icon, label, children }: { bg: string; icon: IconName; label: string; children: React.ReactNode }) {
+function Hero({ bg, icon, label, href, children }: { bg: string; icon: IconName; label: string; href?: string; children: React.ReactNode }) {
+  const Box = href ? Link : 'div';
   return (
-    <div className="glass relative flex flex-col gap-1 overflow-hidden rounded-[24px] p-4" style={{ background: bg }}>
+    <Box href={href!} className="glass relative flex flex-col gap-1 overflow-hidden rounded-[24px] p-4" style={{ background: bg }}>
       <span className="relative flex items-center gap-2.5">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
           <Icon name={icon} size={22} />
@@ -23,34 +24,13 @@ function Hero({ bg, icon, label, children }: { bg: string; icon: IconName; label
         <span className="text-[15px] font-bold">{label}</span>
       </span>
       {children}
-    </div>
+    </Box>
   );
-}
-
-function Status({ icon, label, value, tone, href }: { icon: IconName; label: string; value: string; tone: 'ok' | 'info' | 'warn'; href?: string }) {
-  const tones = {
-    ok: ['glass', 'bg-glass-hi', 'text-dim'],
-    info: ['glass', 'bg-glass-hi', 'text-dim'],
-    warn: ['bg-warn-soft shadow-[inset_0_0_0_2px_var(--color-warn-strong)]', 'bg-glass-hi', 'text-warn'],
-  }[tone];
-  const cls = `flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5 ${tones[0]}`;
-  const body = (
-    <>
-      <span className={`flex size-12 shrink-0 items-center justify-center rounded-[16px] ${tones[1]}`}>
-        <Icon name={icon} size={26} />
-      </span>
-      <span className="flex flex-col gap-0.5">
-        <span className={`font-bold ${tones[2]}`}>{label}</span>
-        <span className="text-xl leading-tight font-extrabold">{value}</span>
-      </span>
-    </>
-  );
-  return href ? <Link href={href} className={cls}>{body}</Link> : <div className={cls}>{body}</div>;
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, motions, openedToday, nameDay, playing] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadMotionCount(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(),
+  const [h, prices, weather, openedToday, nameDay, playing] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(),
   ]);
   const names = joinNames(nameDay);
   const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
@@ -155,44 +135,22 @@ export default async function HomePage() {
           </span>
         </Hero>
         )}
-      </section>
-
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Status
-          icon={open.length ? 'shieldAlert' : 'shield'}
-          label={entrance ? `Dörrar · entré ${openedToday[entrance.id] ?? 0}× i dag` : 'Dörrar & fönster'}
-          value={open.length ? (open.length === 1 ? `${open[0].name} öppen` : `${open.length} öppna`) : 'Alla stängda'}
-          tone={open.length ? 'warn' : 'ok'}
+        {h.openings.length > 0 && (
+        <Hero
           href="/larm#oppet"
-        />
-        <Status
-          icon="motion"
-          label={h.motion ? `Rörelse · ${h.motion} aktiv nu` : 'Rörelse senaste timmen'}
-          value={motions ? `${motions} registreringar` : 'Lugnt'}
-          tone="info"
-        />
-        <Status
-          icon="battery"
-          label="Batteri"
-          value={h.lowBattery ? `${h.lowBattery} låga` : 'Alla ok'}
-          tone={h.lowBattery ? 'warn' : 'ok'}
-          href="/larm#batteri"
-        />
-        <Status
-          icon="wifi"
-          label="Enheter"
-          value={h.silent.length ? `${h.silent.length} svarar inte` : `${h.online} online`}
-          tone={h.silent.length ? 'warn' : 'ok'}
-          href="/larm#enheter"
-        />
+          bg={open.length ? tint('#FF8A3D', 0.4) : tint('#12B76A', 0.28)}
+          icon={open.length ? 'shieldAlert' : 'shield'}
+          label="Dörrar & fönster"
+        >
+          <span className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl">
+            {open.length ? (open.length === 1 ? 'Öppen' : `${open.length} öppna`) : 'Stängt'}
+          </span>
+          <span className="truncate text-[15px] font-bold">
+            {open.length === 1 ? open[0].name : entrance ? `Entré ${openedToday[entrance.id] ?? 0}× i dag` : `${h.openings.length} sensorer`}
+          </span>
+        </Hero>
+        )}
       </section>
-
-      {h.favoriteMoods.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-[22px] font-extrabold">Favoriter</h2>
-          <MoodButtons moods={h.favoriteMoods} />
-        </section>
-      )}
 
       <h2 className="text-[22px] font-extrabold">Rum</h2>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
@@ -203,16 +161,25 @@ export default async function HomePage() {
           ))}
       </section>
 
-      {/* Spelas nu: visas bara när något spelar. */}
+      {h.favoriteMoods.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-[22px] font-extrabold">Favoriter</h2>
+          <MoodButtons moods={h.favoriteMoods} />
+        </section>
+      )}
+
+      {/* Media: Google TV och det som castas (t.ex. Spotify på Nest hub). Pausat visas nedtonat. */}
       {playing.length > 0 && (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {playing.map((p) => (
-            <div key={p.id} className="glass flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5">
+            <div key={p.id} className={`glass flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5 ${p.playing ? '' : 'opacity-70'}`}>
               <span className="flex size-12 shrink-0 items-center justify-center rounded-[16px] bg-glass-hi">
-                <Icon name="tv" size={26} />
+                <Icon name={p.kind === 'tv' ? 'tv' : 'music'} size={26} />
               </span>
               <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="truncate font-bold text-dim">Spelas nu · {p.device}</span>
+                <span className="truncate font-bold text-dim">
+                  {p.kind === 'tv' ? 'På TV:n' : 'Spelas upp'} · {p.playing ? p.device : `pausad på ${p.device}`}
+                </span>
                 <span className="truncate text-xl leading-tight font-extrabold">{p.title}</span>
                 {p.subtitle && <span className="truncate text-[15px] font-bold text-dim">{p.subtitle}</span>}
               </span>

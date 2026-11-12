@@ -15,3 +15,20 @@ export const HUMIDITY_LIMIT = 70;
 export function humidityWarnings(rooms: Room[]) {
   return rooms.filter((r) => r.humidity != null && r.humidity >= HUMIDITY_LIMIT);
 }
+
+/**
+ * Nycklar för allt som syns under Larm. Menyn jämför dem med det användaren redan sett
+ * och markerar klockan när något nytt dykt upp. Öppna dörrar räknas inte (öppnas hela tiden).
+ */
+export function alarmKeys(
+  h: { lowBatteryList: { id: string }[]; silent: { id: string }[]; openings: Opening[]; rooms: Room[] },
+  weather: WeatherSummary | null,
+): string[] {
+  return [
+    ...h.lowBatteryList.map((b) => `b:${b.id}`),
+    ...h.silent.map((s) => `s:${s.id}`),
+    ...h.openings.filter((o) => o.open && o.kind === 'window').map((o) => `w:${o.id}`),
+    ...humidityWarnings(h.rooms).map((r) => `h:${r.id}`),
+    ...(rainWarning(weather, h.openings) ? ['rain'] : []),
+  ];
+}
