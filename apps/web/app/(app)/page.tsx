@@ -9,7 +9,7 @@ import { joinNames } from '@/lib/days';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { PRICE_AREA, hhmm, summarize } from '@/lib/prices';
-import { HEAT, fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
+import { fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +66,12 @@ export default async function HomePage() {
         <div className="shrink-0">
           <p className="text-[13px] font-bold tracking-wider text-fg uppercase">
             <Clock show="date" />
-            {names && <span> · namnsdag {names}</span>}
+            {names && (
+              <span className="text-dim">
+                {' · namnsdag '}
+                <span className="text-sun">{names}</span>
+              </span>
+            )}
           </p>
           <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
         </div>
@@ -189,16 +194,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-[22px] font-extrabold">Rum</h2>
-        <div className="flex flex-wrap gap-1.5 text-[13px] font-bold text-fg">
-          {HEAT.map((s) => (
-            <span key={s.label} className="rounded-full px-2.5 py-1" style={{ background: tint(s.color, 0.35) }}>
-              {s.label}
-            </span>
-          ))}
-        </div>
-      </div>
+      <h2 className="text-[22px] font-extrabold">Rum</h2>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {h.rooms
           .filter((r) => r.temp != null || r.humidity != null || r.lights.length > 0)
