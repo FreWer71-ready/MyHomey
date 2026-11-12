@@ -131,7 +131,8 @@ export const PLACE = { lat: Number(process.env.WEATHER_LAT ?? 59.3712), lon: Num
 export async function loadWeather(): Promise<WeatherSummary | null> {
   const now = Date.now();
   if (DEMO) {
-    const hours = [0, 1, 2, 3].map((h) => ({ time: Math.floor(now / 3600_000) * 3600_000 + h * 3600_000, symbol: h < 2 ? 'partlycloudy_night' : 'lightrain', precip: h < 2 ? 0 : 0.5, temp: 3 }));
+    const sym = ['partlycloudy_night', 'partlycloudy_night', 'lightrain', 'rain', 'cloudy', 'partlycloudy_day', 'clearsky_day', 'fair_day'];
+    const hours = Array.from({ length: 24 }, (_, h) => ({ time: Math.floor(now / 3600_000) * 3600_000 + h * 3600_000, symbol: sym[Math.floor(h / 3) % 8], precip: [2, 3].includes(Math.floor(h / 3) % 8) ? 0.4 + (h % 3) * 0.3 : 0, temp: 2 + 3 * Math.sin(h / 4) }));
     return { ...summarizeWeather(hours, now)!, source: 'SMHI' };
   }
   const { lat, lon } = PLACE;

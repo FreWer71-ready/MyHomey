@@ -103,7 +103,7 @@ test('batterilista, dörrar/fönster och enheter som inte svarar', () => {
 
 test('regnvarning kräver nederbörd och öppet fönster', async () => {
   const { rainWarning } = await import('./alerts.ts');
-  const w = { current: { time: 1, symbol: 'rain', precip: 1, temp: 2 }, nextPrecip: { time: 2, symbol: 'rain', precip: 1, temp: 2 }, rainSoon: true };
+  const w = { current: { time: 1, symbol: 'rain', precip: 1, temp: 2 }, nextPrecip: { time: 2, symbol: 'rain', precip: 1, temp: 2 }, rainSoon: true, hours: [] };
   const win = { id: 'w', name: 'Fönster', room: 'Kontor', open: true, kind: 'window' as const };
   const door = { ...win, id: 'd', kind: 'door' as const };
   assert.equal(rainWarning(w, [win])!.at, 2);

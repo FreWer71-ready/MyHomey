@@ -16,10 +16,14 @@ export const dynamic = 'force-dynamic';
 
 const fmtNum = (v: number) => v.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
 
-function Hero({ bg, icon, label, href, wide, children }: { bg: string; icon: IconName; label: string; href?: string; wide?: boolean; children: React.ReactNode }) {
-  const Box = href ? Link : 'div';
+function Hero({ bg, icon, label, href, popover, wide, children }: {
+  bg: string; icon: IconName; label: string; href?: string; popover?: string; wide?: boolean; children: React.ReactNode;
+}) {
+  // Länk, knapp som öppnar en popup (native popover) eller vanlig ruta.
+  const Box = href ? Link : popover ? 'button' : 'div';
+  const extra = popover ? { type: 'button' as const, popoverTarget: popover, 'aria-label': `${label}, visa prognos` } : {};
   return (
-    <Box href={href!} className={`glass relative flex flex-col gap-0.5 overflow-hidden rounded-[22px] px-3.5 py-3 lg:min-w-0 ${wide ? 'col-span-2 lg:flex-[1.55]' : 'lg:flex-1'}`} style={{ background: bg }}>
+    <Box href={href!} {...extra} className={`text-left glass relative flex flex-col gap-0.5 overflow-hidden rounded-[22px] px-3.5 py-3 lg:min-w-0 ${wide ? 'col-span-2 lg:flex-[1.55]' : 'lg:flex-1'}`} style={{ background: bg }}>
       <span className="relative flex items-center gap-2.5">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
           <Icon name={icon} size={20} />
@@ -105,7 +109,7 @@ export default async function HomePage() {
 
       <section className="grid grid-cols-2 gap-3 lg:flex">
         {(h.outdoorTemp != null || h.outdoorStale || weather) && (
-        <Hero wide bg={heatTint(h.outdoorTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
+        <Hero wide popover={weather ? 'prognos' : undefined} bg={heatTint(h.outdoorTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
           {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
           {sky && weather && (
             <span className="pointer-events-none absolute top-1 right-3 opacity-85">
@@ -189,6 +193,30 @@ export default async function HomePage() {
         </Hero>
         )}
       </section>
+
+      {weather && (
+        <div id="prognos" popover="auto" className="m-auto w-[min(94vw,880px)] rounded-[24px] border border-line bg-ground/95 p-4 text-fg shadow-2xl backdrop:bg-black/50">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-xl font-extrabold">Prognos 24 tim · {weather.source ?? 'SMHI'}</h2>
+            <button type="button" popoverTarget="prognos" popoverTargetAction="hide" className="rounded-full bg-glass-hi px-4 py-2 font-extrabold">Stäng</button>
+          </div>
+          <ol className="flex gap-2 overflow-x-auto pb-2">
+            {weather.hours.map((w, i) => {
+              const info = symbolInfo(w.symbol);
+              return (
+                <li key={w.time} className={`flex w-[68px] shrink-0 flex-col items-center gap-1 rounded-2xl px-1 py-2 ${i === 0 ? 'bg-glass-hi' : 'bg-glass-2'}`}>
+                  <span className="text-[13px] font-bold text-dim">{i === 0 ? 'Nu' : hhmm(w.time)}</span>
+                  <WeatherIcon kind={weatherKind(w.symbol)} size={40} label={info.label} />
+                  <span className="text-lg font-extrabold">{Number.isFinite(w.temp) ? `${Math.round(w.temp)}°` : '–'}</span>
+                  <span className={`text-[13px] font-bold ${w.precip >= 0.1 ? 'text-info' : 'text-mute'}`}>
+                    {w.precip >= 0.1 ? `${w.precip.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} mm` : '–'}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
 
       <h2 className="-mb-1 text-xl font-extrabold">Rum</h2>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">

@@ -8,6 +8,8 @@ export type WeatherSummary = {
   nextPrecip: WeatherHour | null;
   /** Nederbörd väntas inom 3 h (för fönstervarning). */
   rainSoon: boolean;
+  /** Kommande timmar (upp till 24) för prognosvyn. */
+  hours: WeatherHour[];
   /** Källa som gav prognosen. */
   source?: 'SMHI' | 'Yr';
 };
@@ -45,6 +47,7 @@ export function summarizeWeather(hours: WeatherHour[], now: number): WeatherSumm
     current: upcoming[0],
     nextPrecip: within(6).find((h) => h.precip >= WET) ?? null,
     rainSoon: within(3).some((h) => h.precip >= WET),
+    hours: upcoming.slice(0, 24),
   };
 }
 
