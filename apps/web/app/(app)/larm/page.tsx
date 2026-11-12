@@ -1,6 +1,7 @@
 import { Icon, type IconName } from '@/components/Icon';
 import { HUMIDITY_LIMIT, humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadNet, loadOpeningsToday, loadWeather } from '@/lib/data';
+import { loadHome, loadNet, loadOpeningsToday, loadWarnings, loadWeather } from '@/lib/data';
+import { when } from '@/components/WarningBanners';
 import { NET_LABEL } from '@/lib/net';
 import { HistoryChart } from '@/components/HistoryChart';
 import { STALE_HOURS } from '@/lib/home';
@@ -40,6 +41,8 @@ export default async function AlarmPage() {
   const open = h.openings.filter((o) => o.open);
   const wet = h.rooms.filter((r) => r.humidity != null);
   const damp = humidityWarnings(h.rooms);
+  const wx = await loadWarnings(weather);
+  const wxCount = wx.vma.length + wx.smhi.length + wx.storms.length;
 
   return (
     <>
@@ -54,6 +57,34 @@ export default async function AlarmPage() {
           </span>
         </div>
       )}
+
+      {/* Vädervarningar (SMHI), VMA (Krisinformation) och kommande oväder – visas bara när något finns. */}
+      {wxCount > 0 && <Section id="vader" icon="rain" title="Väder & VMA" count={wxCount} tone="warn">
+        {(
+          <ul className="flex flex-col gap-2">
+            {wx.vma.map((v) => (
+              <li key={v.id} className="flex flex-col gap-0.5 rounded-2xl bg-danger-strong px-3 py-2 text-white">
+                <span className="font-extrabold">VMA: {v.headline}</span>
+                {v.text && <span className="text-sm font-bold">{v.text}</span>}
+                <span className="text-[13px] font-bold opacity-90">{v.area}{v.url && <> · <a href={v.url} target="_blank" rel="noopener noreferrer" className="underline">Läs mer</a></>}</span>
+              </li>
+            ))}
+            {wx.smhi.map((w) => (
+              <li key={w.id} className={`flex flex-col gap-0.5 rounded-2xl px-3 py-2 ${w.level === 'red' ? 'bg-danger-strong text-white' : w.level === 'orange' ? 'bg-[#FF8A3D] text-[#1A1205]' : 'bg-[#E8B400] text-[#1A1205]'}`}>
+                <span className="font-extrabold">{w.level === 'red' ? 'Röd' : w.level === 'orange' ? 'Orange' : 'Gul'} varning: {w.event}</span>
+                <span className="text-[13px] font-bold">{w.area}{w.start ? ` · ${when(w.start)}` : ''}{w.end ? `–${when(w.end)}` : ''}</span>
+                {w.text && <span className="text-sm font-bold">{w.text}</span>}
+              </li>
+            ))}
+            {wx.storms.map((s) => (
+              <li key={s.kind} className="flex items-center justify-between gap-3 rounded-2xl bg-glass-2 px-3 py-2">
+                <span className="font-extrabold">{s.label}</span>
+                <span className="text-sm font-bold text-dim">från {when(s.at)} · prognos SMHI</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Section id="batteri" icon="battery" title="Lågt batteri" count={h.lowBatteryList.length} tone={h.lowBatteryList.length ? 'warn' : 'ok'}>

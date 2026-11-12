@@ -5,6 +5,8 @@ export type WeatherHour = {
   time: number; symbol: string; precip: number; temp: number;
   /** Vind m/s och riktning den kommer ifrån (grader), molnighet 0–1, åskrisk 0–1. Valfria. */
   wind?: number; windFrom?: number; clouds?: number; thunder?: number;
+  /** Vindbyar m/s (SMHI). */
+  gust?: number;
 };
 export type WeatherSummary = {
   current: WeatherHour;
@@ -125,6 +127,7 @@ export function parseSmhi(json: SmhiJson, isDay: (ms: number) => boolean): Weath
         precip: t.data.precipitation_amount_mean_deterministic ?? t.data.precipitation_amount_mean ?? 0,
         temp: t.data.air_temperature ?? NaN,
         wind: t.data.wind_speed,
+        gust: t.data.wind_speed_of_gust,
         windFrom: t.data.wind_from_direction,
         clouds: t.data.cloud_area_fraction == null ? undefined : t.data.cloud_area_fraction / 8, // oktas
         thunder: t.data.thunderstorm_probability == null ? undefined : t.data.thunderstorm_probability / 100,

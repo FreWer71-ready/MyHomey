@@ -7,6 +7,7 @@ import { solarElevation } from './sky';
 import { parseMet, parseSmhi, smhiDays, summarizeWeather, type WeatherSummary } from './weather';
 import { MEDIA_CAPS, nowPlaying, type MediaCap, type NowPlaying } from './media';
 import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
+import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } from './warnings';
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
@@ -319,4 +320,34 @@ export async function loadWineHistory(): Promise<[number, number][]> {
   }
   if (pts.length) pts.push([Math.round(Date.now() / 1000), pts[pts.length - 1][1]]);
   return pts;
+}
+
+export type Warnings = { smhi: SmhiWarning[]; vma: Vma[]; storms: Storm[] };
+
+/**
+ * SMHI:s vädervarningar och VMA (Krisinformation) för området (WARNING_AREA, standard Södermanland/Eskilstuna)
+ * samt kommande oväder ur prognosen. Cachas 5 min; en källa som inte svarar ger bara tom lista.
+ */
+export async function loadWarnings(weather: WeatherSummary | null): Promise<Warnings> {
+  const area = new RegExp(process.env.WARNING_AREA ?? 'Södermanland|Eskilstuna', 'i');
+  const stormList = storms(weather?.hours ?? []);
+  if (DEMO) {
+    return {
+      smhi: [{ id: 'd1', level: 'yellow', event: 'Kraftig vind', area: 'Södermanlands län', start: Date.now() + 6 * 3600_000, end: Date.now() + 20 * 3600_000, text: 'Byvindar 23–25 m/s.' }],
+      vma: [], storms: stormList,
+    };
+  }
+  const get = async (url: string) => {
+    try {
+      const res = await fetch(url, { next: { revalidate: 300 }, signal: AbortSignal.timeout(6000) });
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null;
+    }
+  };
+  const [s, v] = await Promise.all([
+    get('https://opendata-download-warnings.smhi.se/ibww/api/version/1/warning.json'),
+    get('https://api.krisinformation.se/v3/vmas'),
+  ]);
+  return { smhi: s ? smhiWarnings(s, area) : [], vma: v ? vmas(v, area) : [], storms: stormList };
 }

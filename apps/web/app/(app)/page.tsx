@@ -5,8 +5,9 @@ import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { SortableCards } from '@/components/SortableCards';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
+import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadNameDay, loadNet, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { seenAgo } from '@/lib/time';
 import { symbolInfo, weatherKind } from '@/lib/weather';
@@ -46,6 +47,8 @@ export default async function HomePage() {
   const [h, prices, weather, openedToday, nameDay, playing, net, wine] = await Promise.all([
     loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(),
   ]);
+  const wx = await loadWarnings(weather);
+  const banners = warningBanners(wx, 3);
   const names = joinNames(nameDay);
   // Utan egen väderstation (t.ex. Hue-hushåll) visas SMHI:s temperatur.
   const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
@@ -98,8 +101,9 @@ export default async function HomePage() {
       </header>
 
       {/* Varningar: egen rad i full bredd, bara när något kräver åtgärd. Sida vid sida på plattan. */}
-      {(warning || damp.length > 0 || net?.state === 'down') && (
+      {(warning || damp.length > 0 || net?.state === 'down' || banners.length > 0) && (
         <div className="flex flex-col gap-2 lg:flex-row">
+          {banners}
           {net?.state === 'down' && (
             <Link href="/larm#natverk" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-danger-strong px-3.5 py-1.5 text-white">
               <Icon name="wifi" size={22} />

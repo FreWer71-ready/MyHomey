@@ -2,6 +2,7 @@
 import type { Opening, Room } from './home';
 import type { WeatherSummary } from './weather';
 import type { Net } from './net';
+import type { SmhiWarning, Vma } from './warnings';
 
 /** Nederbörd inom 3 h och minst ett fönster öppet. */
 export function rainWarning(weather: WeatherSummary | null, openings: Opening[]) {
@@ -25,8 +26,11 @@ export function alarmKeys(
   h: { lowBatteryList: { id: string }[]; silent: { id: string }[]; openings: Opening[]; rooms: Room[] },
   weather: WeatherSummary | null,
   net: Net | null = null,
+  wx: { smhi: SmhiWarning[]; vma: Vma[] } | null = null,
 ): string[] {
   return [
+    ...(wx?.vma ?? []).map((v) => `vma:${v.id}`),
+    ...(wx?.smhi ?? []).map((w) => `smhi:${w.id}:${w.level}`),
     ...(net?.state === 'down' ? ['net:down'] : []),
     ...(net?.offline ?? []).map((d) => `nd:${d.id}`),
     ...(net?.updates ?? []).map((d) => `fw:${d.id}`),
