@@ -9,7 +9,7 @@ import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadCommute, loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
-import { TONE_COLOR, commuteAlerts, direction, trainStatus, trainTone } from '@/lib/commute';
+import { TONE_COLOR, commuteAlerts, direction, groupRoad, trainStatus, trainTone } from '@/lib/commute';
 import { seenAgo } from '@/lib/time';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -25,22 +25,35 @@ const WINE_DOT: Record<string, string> = { red: '#9B1B30', white: '#F2E6A8', ros
 
 const fmtNum = (v: number) => v.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
 
+/** Storlek för de stora korten (Ute, Pendling): hela bredden i mobil, 2×2 på plattan. */
+const BIG = 'col-span-2 lg:row-span-2';
+
 function Hero({ bg, icon, label, href, popover, children }: {
   bg: string; icon: IconName; label: string; href?: string; popover?: string; children: React.ReactNode;
 }) {
-  // Länk, knapp som öppnar en popup (native popover) eller vanlig ruta.
+  // Länk, knapp som öppnar en popup (native popover) eller vanlig ruta. Fyller sin ruta i rutnätet.
   const Box = href ? Link : popover ? 'button' : 'div';
   const extra = popover ? { type: 'button' as const, popoverTarget: popover, 'aria-label': `${label}, visa prognos` } : {};
   return (
-    <Box href={href!} {...extra} className={`text-left glass relative flex flex-col gap-0.5 overflow-hidden rounded-[22px] px-3.5 py-3 w-full min-w-0`} style={{ background: bg }}>
-      <span className="relative flex items-center gap-2.5">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
-          <Icon name={icon} size={20} />
+    <Box href={href!} {...extra} className="glass relative flex h-full w-full min-w-0 flex-col gap-1 overflow-hidden rounded-[22px] px-3 py-2.5 text-left" style={{ background: bg }}>
+      <span className="relative flex min-w-0 items-center gap-2">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
+          <Icon name={icon} size={18} />
         </span>
-        <span className="text-[15px] font-bold">{label}</span>
+        <span className="truncate text-[15px] font-bold">{label}</span>
       </span>
       {children}
     </Box>
+  );
+}
+
+/** Värderad för små kort: stort värde nere till vänster, kort tillägg till höger. */
+function Value({ value, aside, small }: { value: React.ReactNode; aside?: string; small?: boolean }) {
+  return (
+    <span className="mt-auto flex min-w-0 items-end justify-between gap-2">
+      <span className={`leading-none font-extrabold tracking-tight whitespace-nowrap ${small ? 'text-[26px]' : 'text-[34px]'}`}>{value}</span>
+      {aside && <span className="truncate pb-0.5 text-[13px] font-bold opacity-90">{aside}</span>}
+    </span>
   );
 }
 
@@ -53,8 +66,9 @@ export default async function HomePage() {
   // Pendling: aktuell riktning (morgon mot Stockholm, annars hem) och störningar till varningsraden.
   const dir = direction();
   const trains = commute?.[dir] ?? [];
-  const next = trains.find((t) => !t.canceled) ?? null;
   const trafficAlerts = commute ? commuteAlerts(commute, Date.now(), hhmm) : [];
+  const roads = commute ? groupRoad(commute.road) : [];
+  const shownRooms = h.rooms.filter((r) => r.temp != null || r.humidity != null || r.lights.length > 0);
   const names = joinNames(nameDay);
   // Utan egen väderstation (t.ex. Hue-hushåll) visas SMHI:s temperatur.
   const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
@@ -67,7 +81,7 @@ export default async function HomePage() {
   const damp = humidityWarnings(h.rooms);
 
   return (
-    <>
+    <div className="flex flex-col gap-3 lg:min-h-[calc(100dvh-2rem)]">
       {/* Rubrik: tid och datum samlat till vänster (läsbart på håll), närvaro till höger. */}
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <h1 className="sr-only">Hemma</h1>
@@ -150,21 +164,22 @@ export default async function HomePage() {
         </Link>
       )}
 
-      {/* Korten går att ordna: håll inne ett kort, dra, tryck Klar (sparas per enhet). */}
+      {/* Kort i rutnät: Ute och Pendling stora (2×2), övriga lika stora. På plattan fyller rutnätet höjden.
+          Korten går att ordna: håll inne, dra (byter bara med kort av samma storlek), tryck Klar. */}
+      <div className="flex flex-col gap-3 lg:min-h-0 lg:flex-1">
       <SortableCards
-        storageKey="hem-kort"
-        className="grid grid-cols-2 gap-3 lg:flex"
+        storageKey="hem-kort-v2"
+        className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-flow-dense lg:grid-cols-6 lg:[grid-template-rows:repeat(2,minmax(92px,1fr))]"
         items={[
-          ...((h.outdoorTemp != null || h.outdoorStale || weather) ? [{ id: 'ute', wide: true, node: (
+          ...((h.outdoorTemp != null || h.outdoorStale || weather) ? [{ id: 'ute', span: BIG, node: (
             <Hero popover={weather ? 'prognos' : undefined} bg={heatTint(outTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
-              {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
               {sky && weather && (
                 <span className="pointer-events-none absolute top-1 right-3 opacity-85">
-                  <WeatherIcon kind={weatherKind(weather.current.symbol)} size={100} label={sky.label} />
+                  <WeatherIcon kind={weatherKind(weather.current.symbol)} size={92} label={sky.label} />
                 </span>
               )}
               {outTemp != null ? (
-                <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
+                <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[44px]">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
               ) : h.outdoorStale && (
                 <span className="relative flex flex-col pr-24">
                   <span className="text-2xl leading-tight font-extrabold">Ej tillgänglig</span>
@@ -173,7 +188,7 @@ export default async function HomePage() {
               )}
               {!weather && <span className="relative text-[15px] font-bold opacity-80">Prognos ej tillgänglig</span>}
               {weather && (
-                <span className="relative text-[15px] font-bold">
+                <span className="relative truncate text-[15px] font-bold">
                   {weather.nextPrecip && weather.nextPrecip.time <= weather.current.time
                     ? `${sky?.label} just nu`
                     : `${sky?.label} · ${
@@ -197,74 +212,66 @@ export default async function HomePage() {
                   )}
                 </span>
               )}
-            </Hero>
-          ) }] : []),
-          ...(h.lightsTotal > 0 ? [{ id: 'lampor', node: (
-            <Hero bg={tint('#FFC21A', 0.5)} icon="bulb" label="Lampor tända">
-              <span className="flex items-center justify-between gap-2">
-                <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{h.lightsOn}</span>
-                <span className="text-[15px] font-bold">av {h.lightsTotal}</span>
-              </span>
-            </Hero>
-          ) }] : []),
-          ...(h.openings.length > 0 ? [{ id: 'dorrar', node: (
-            <Hero
-              href="/larm#oppet"
-              bg={open.length ? tint('#FF8A3D', 0.5) : tint('#12B76A', 0.42)}
-              icon={open.length ? 'shieldAlert' : 'shield'}
-              label="Dörrar & fönster"
-            >
-              <span className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl">
-                {open.length ? (open.length === 1 ? 'Öppen' : `${open.length} öppna`) : 'Stängt'}
-              </span>
-              <span className="truncate text-[15px] font-bold">
-                {open.length === 1 ? open[0].name : entrance ? `Entré ${openedToday[entrance.id] ?? 0}× i dag` : `${h.openings.length} sensorer`}
-              </span>
-            </Hero>
-          ) }] : []),
-          ...(h.powerMeters + h.powerEstimated > 0 ? [{ id: 'effekt', node: (
-            <Hero bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu">
-              <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtWatt(h.powerW)}</span>
-              <span className="text-[15px] font-bold">
-                {h.powerMeters ? `${h.powerMeters} mätare` : ''}{h.powerMeters && h.powerEstimated ? ' · ' : ''}{h.powerEstimated ? `${h.powerEstimated} uppskattade` : ''}
-              </span>
-            </Hero>
-          ) }] : []),
-          ...(commute ? [{ id: 'pendling', node: (
-            <Hero href="/pendling" bg={next ? tint(TONE_COLOR[trainTone(next)], 0.5) : tint('#4FA3FF', 0.45)} icon="train" label={dir === 'out' ? 'Mot Stockholm' : 'Mot Eskilstuna'}>
-              {next ? (
-                <>
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-4xl leading-none font-extrabold tracking-tight tabular-nums md:text-[42px]">{hhmm(next.est ?? next.dep)}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[13px] font-extrabold ${trainStatus(next).cls}`}>{trainStatus(next).text}</span>
-                  </span>
-                  <span className="truncate text-[15px] font-bold">
-                    {(() => {
-                      const after = trains.filter((t) => t.dep > next.dep && !t.canceled)[0];
-                      const off = trains.filter((t) => t.canceled).length;
-                      return [after && `sedan ${hhmm(after.est ?? after.dep)}`, off && `${off} inställt`, next.track && `spår ${next.track}`].filter(Boolean).join(' · ') || next.dest;
-                    })()}
-                  </span>
-                </>
-              ) : (
-                <span className="text-2xl leading-tight font-extrabold">Inga tåg</span>
+              {/* De närmaste timmarna längst ner. */}
+              {weather && weather.hours.length > 1 && (
+                <span className="relative mt-auto hidden justify-between gap-1 pt-1 lg:flex">
+                  {weather.hours.slice(1, 5).map((w) => (
+                    <span key={w.time} className="flex items-center gap-1 rounded-xl bg-black/15 px-1.5 py-0.5">
+                      <span className="text-[13px] font-bold opacity-85">{hhmm(w.time).slice(0, 2)}</span>
+                      <WeatherIcon kind={weatherKind(w.symbol)} size={22} label={symbolInfo(w.symbol).label} />
+                      <span className="text-[14px] font-extrabold">{Number.isFinite(w.temp) ? `${Math.round(w.temp)}°` : '–'}</span>
+                    </span>
+                  ))}
+                </span>
               )}
             </Hero>
           ) }] : []),
+          ...(commute ? [{ id: 'pendling', span: BIG, node: (
+            <Hero href="/pendling" bg={tint('#4FA3FF', 0.4)} icon="train" label={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`}>
+              {trains.length === 0 && <span className="text-xl font-extrabold">Inga tåg de närmaste timmarna</span>}
+              <span className="flex flex-col gap-1">
+                {trains.slice(0, 3).map((t) => (
+                  <span key={t.id} className="flex items-center gap-2 rounded-xl px-2 py-0.5" style={{ background: tint(TONE_COLOR[trainTone(t)], 0.5) }}>
+                    <span className={`w-[52px] shrink-0 text-lg font-extrabold tabular-nums ${t.canceled ? 'line-through opacity-70' : ''}`}>{hhmm(t.canceled ? t.dep : t.est ?? t.dep)}</span>
+                    <span className="min-w-0 grow truncate text-[14px] font-bold">{t.dest}{t.track ? ` · spår ${t.track}` : ''}</span>
+                    <span className="shrink-0 text-[13px] font-extrabold">{trainStatus(t).text}</span>
+                  </span>
+                ))}
+              </span>
+              {/* Vägen till Västerås: en rad med värsta läget. */}
+              <span className="mt-auto flex items-center gap-2 pt-1 text-[14px] font-bold">
+                <span className="size-2.5 shrink-0 rounded-full" style={{ background: roads.length ? TONE_COLOR[roads.some((g) => g.tone === 'bad') ? 'bad' : 'warn'] : TONE_COLOR.ok }} />
+                <span className="truncate">
+                  {roads.length === 0 ? 'Väg 56/E18: fritt' : roads.length === 1 ? `${roads[0].road}: ${roads[0].type.toLowerCase()}` : `Väg 56/E18: ${roads.length} ärenden`}
+                </span>
+              </span>
+            </Hero>
+          ) }] : []),
+          ...(h.lightsTotal > 0 ? [{ id: 'lampor', node: (
+            <Hero bg={tint('#FFC21A', 0.5)} icon="bulb" label="Lampor">
+              <Value value={h.lightsOn} aside={`av ${h.lightsTotal}`} />
+            </Hero>
+          ) }] : []),
+          ...(h.openings.length > 0 ? [{ id: 'dorrar', node: (
+            <Hero href="/larm#oppet" bg={open.length ? tint('#FF8A3D', 0.5) : tint('#12B76A', 0.42)} icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar">
+              <Value
+                value={open.length ? (open.length === 1 ? 'Öppen' : `${open.length} öppna`) : 'Stängt'} small
+                aside={open.length === 1 ? open[0].name : entrance ? `Entré ${openedToday[entrance.id] ?? 0}×` : `${h.openings.length} st`}
+              />
+            </Hero>
+          ) }] : []),
+          ...(h.powerMeters + h.powerEstimated > 0 ? [{ id: 'effekt', node: (
+            <Hero bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt">
+              <Value value={fmtWatt(h.powerW)} small aside={h.powerEstimated ? 'delvis uppsk.' : `${h.powerMeters} mätare`} />
+            </Hero>
+          ) }] : []),
           ...(price.now ? [{ id: 'elpris', node: (
-            <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={`Elpris ${PRICE_AREA}${price.level ? ` · ${price.level.label}` : ''}`}>
-              <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">
-                {Math.round(price.now.ore)}
-                <span className="text-xl"> öre</span>
-              </span>
-              <span className="text-[15px] font-bold">
-                {price.cheapest1h && `Billigast ${hhmm(price.cheapest1h.start)}–${hhmm(price.cheapest1h.end)}`}
-              </span>
+            <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={`Elpris${price.level ? ` · ${price.level.label}` : ''}`}>
+              <Value value={<>{Math.round(price.now.ore)}<span className="text-lg"> öre</span></>} aside={price.cheapest1h ? `bill. kl ${hhmm(price.cheapest1h.start).slice(0, 2)}` : PRICE_AREA} />
             </Hero>
           ) }] : []),
         ]}
       />
-
       {weather && (
         <div id="prognos" popover="auto" className="m-auto w-[min(94vw,880px)] rounded-[24px] border border-line bg-ground/95 p-4 text-fg shadow-2xl backdrop:bg-black/50">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -314,30 +321,28 @@ export default async function HomePage() {
       )}
 
       <h2 className="sr-only">Rum</h2>
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {h.rooms
-          .filter((r) => r.temp != null || r.humidity != null || r.lights.length > 0)
-          .map((r) => (
-            <RoomTile key={r.id} room={r} />
-          ))}
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:min-h-0 lg:flex-[1.3] lg:grid-cols-6 lg:[grid-template-rows:repeat(var(--rows),minmax(118px,1fr))]" style={{ '--rows': Math.max(1, Math.ceil((shownRooms.length + (wine ? 1 : 0)) / 6)) } as React.CSSProperties}>
+        {shownRooms.map((r) => (
+          <RoomTile key={r.id} room={r} />
+        ))}
         {/* Vinkällaren (Trandvine) som ett eget rumskort. */}
         {wine && (
           <a
             href="https://wine.trand.se" target="_blank" rel="noopener noreferrer" title="Öppna Trandvine i nytt fönster"
-            className="flex flex-col gap-1.5 rounded-[20px] p-3" style={{ background: tint('#9B2C4A', 0.5) }}
+            className="flex h-full min-h-[118px] flex-col gap-1 overflow-hidden rounded-[20px] p-2.5" style={{ background: tint('#9B2C4A', 0.5) }}
           >
-            <span className="flex items-center gap-2.5">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
-                <Icon name="wine" size={22} />
+            <span className="flex items-center gap-2">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
+                <Icon name="wine" size={20} />
               </span>
-              <span className="min-w-0 grow truncate text-lg font-extrabold">Vinkällaren</span>
+              <span className="min-w-0 grow truncate text-[17px] font-extrabold">Vinkällaren</span>
               <span className="text-dim" aria-hidden="true">↗</span>
             </span>
             <span className="flex items-baseline gap-1.5">
-              <span className="text-[28px] leading-none font-extrabold tracking-tight">{wine.total}</span>
+              <span className="text-[26px] leading-none font-extrabold tracking-tight">{wine.total}</span>
               <span className="font-extrabold">flaskor</span>
             </span>
-            <span className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[14px] font-bold">
+            <span className="mt-auto flex flex-wrap gap-x-2 gap-y-0.5 text-[13px] font-bold">
               {WINE_ORDER.filter((c) => wine.by_color[c]).map((c) => (
                 <span key={c} className="flex items-center gap-1">
                   <span className="size-2.5 rounded-full shadow-[0_0_0_1px_rgb(255_255_255/0.4)]" style={{ background: WINE_DOT[c] }} />
@@ -348,8 +353,8 @@ export default async function HomePage() {
           </a>
         )}
       </section>
+      </div>
 
-      {/* Media: bara det som spelas just nu (Google TV, det som castas till t.ex. Nest hub). */}
       {/* Fast plats längst ner: det som spelas, annars (eller bredvid) en kort prognos för kommande dagar. */}
       {(playing.length > 0 || (weather?.days?.length ?? 0) > 0) && (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -374,6 +379,6 @@ export default async function HomePage() {
           )}
         </section>
       )}
-    </>
+    </div>
   );
 }

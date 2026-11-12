@@ -7,17 +7,18 @@ import { SceneButtons } from './SceneButtons';
 
 export function RoomTile({ room }: { room: Room }) {
   return (
-    <div className="flex flex-col gap-2 rounded-[20px] p-3" style={{ background: heatTint(room.temp) }}>
-      <Link href={`/rum/${room.id}`} className="flex flex-col gap-1.5">
-        <span className="flex items-center gap-2.5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
-            <Icon name={room.icon} size={20} />
+    // Lika höga rutor: namn överst, värden i mitten, lampknappar alltid längst ner.
+    <div className="flex h-full min-h-[118px] flex-col justify-between gap-1.5 overflow-hidden rounded-[20px] p-2.5" style={{ background: heatTint(room.temp) }}>
+      <Link href={`/rum/${room.id}`} className="flex flex-col gap-1">
+        <span className="flex items-center gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
+            <Icon name={room.icon} size={18} />
           </span>
-          <span className="min-w-0 grow truncate text-lg font-extrabold">{room.name}</span>
+          <span className="min-w-0 grow truncate text-[17px] font-extrabold">{room.name}</span>
         </span>
         <span className="flex items-center gap-2.5">
           {room.temp != null && (
-            <span className="text-[28px] leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}<TrendArrow trend={room.tempTrend} /></span>
+            <span className="text-[26px] leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}<TrendArrow trend={room.tempTrend} /></span>
           )}
           {room.humidity != null && (
             <span className="flex items-center gap-0.5 font-extrabold text-fg">
