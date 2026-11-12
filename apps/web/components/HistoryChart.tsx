@@ -12,8 +12,10 @@ const fmtTime = (s: number, long: boolean) =>
     : { hour: '2-digit', minute: '2-digit', timeZone: TZ });
 
 /** Linje- eller stapeldiagram med uPlot. Klick på en serie i förklaringen döljer/visar den. */
-export function HistoryChart({ series, unit, decimals, bars, longPeriod }: {
+export function HistoryChart({ series, unit, decimals, bars, longPeriod, fit = 420 }: {
   series: ChartSeries[]; unit: string; decimals: number; bars: boolean; longPeriod: boolean;
+  /** Pixlar som resten av vyn behöver; grafen tar det som blir över (180–420 px). */
+  fit?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -31,7 +33,7 @@ export function HistoryChart({ series, unit, decimals, bars, longPeriod }: {
     const fmtY = (v: number) =>
       `${v.toLocaleString('sv-SE', { maximumFractionDigits: Math.abs(v) < 1 && v !== 0 ? 3 : decimals })}${unit}`;
     const axis = { stroke: '#C3C8D6', font: '600 13px "Plus Jakarta Sans", system-ui', grid: { stroke: 'rgba(255,255,255,0.08)', width: 1 }, ticks: { show: false } };
-    const height = Math.max(260, Math.min(420, window.innerHeight - 420));
+    const height = Math.max(180, Math.min(420, window.innerHeight - fit));
 
     const u = new uPlot({
       width: el.clientWidth,
@@ -70,7 +72,7 @@ export function HistoryChart({ series, unit, decimals, bars, longPeriod }: {
       ro.disconnect();
       u.destroy();
     };
-  }, [series, unit, decimals, bars, longPeriod]);
+  }, [series, unit, decimals, bars, longPeriod, fit]);
 
   return <div ref={ref} className="history-chart w-full" />;
 }

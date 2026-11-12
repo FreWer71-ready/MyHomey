@@ -7,7 +7,7 @@ import { Icon } from './Icon';
 type State = { id: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null;
 
 /** Knappar som aktiverar Homey-moods. */
-export function MoodButtons({ moods }: { moods: { id: string; name: string; room?: string | null }[] }) {
+export function MoodButtons({ moods, row = false }: { moods: { id: string; name: string; room?: string | null }[]; row?: boolean }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [state, setState] = useState<State>(null);
@@ -31,9 +31,9 @@ export function MoodButtons({ moods }: { moods: { id: string; name: string; room
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className="flex flex-wrap gap-2.5">
+      <ul className={`flex gap-2.5 ${row ? 'flex-wrap lg:flex-nowrap lg:overflow-x-auto lg:pb-1' : 'flex-wrap'}`}>
         {moods.map((m) => (
-          <li key={m.id}>
+          <li key={m.id} className="shrink-0">
             <button
               type="button"
               onClick={() => run(m.id)}

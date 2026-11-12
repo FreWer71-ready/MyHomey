@@ -19,10 +19,10 @@ const fmtNum = (v: number) => v.toLocaleString('sv-SE', { maximumFractionDigits:
 function Hero({ bg, icon, label, href, wide, children }: { bg: string; icon: IconName; label: string; href?: string; wide?: boolean; children: React.ReactNode }) {
   const Box = href ? Link : 'div';
   return (
-    <Box href={href!} className={`glass relative flex flex-col gap-1 overflow-hidden rounded-[24px] p-4 lg:min-w-0 ${wide ? 'col-span-2 lg:flex-[1.55]' : 'lg:flex-1'}`} style={{ background: bg }}>
+    <Box href={href!} className={`glass relative flex flex-col gap-0.5 overflow-hidden rounded-[22px] px-3.5 py-3 lg:min-w-0 ${wide ? 'col-span-2 lg:flex-[1.55]' : 'lg:flex-1'}`} style={{ background: bg }}>
       <span className="relative flex items-center gap-2.5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
-          <Icon name={icon} size={22} />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
+          <Icon name={icon} size={20} />
         </span>
         <span className="text-[15px] font-bold">{label}</span>
       </span>
@@ -109,11 +109,11 @@ export default async function HomePage() {
           {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
           {sky && weather && (
             <span className="pointer-events-none absolute top-1 right-3 opacity-85">
-              <WeatherIcon kind={weatherKind(weather.current.symbol)} size={120} label={sky.label} />
+              <WeatherIcon kind={weatherKind(weather.current.symbol)} size={100} label={sky.label} />
             </span>
           )}
           {h.outdoorTemp != null && (
-            <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtTemp(h.outdoorTemp)}</span>
+            <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(h.outdoorTemp)}</span>
           )}
           {weather && (
             <span className="relative text-[15px] font-bold">
@@ -145,20 +145,20 @@ export default async function HomePage() {
         {h.lightsTotal > 0 && (
         <Hero bg={tint('#FFC21A', 0.28)} icon="bulb" label="Lampor tända">
           <span className="flex items-center justify-between gap-2">
-            <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{h.lightsOn}</span>
+            <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{h.lightsOn}</span>
             <span className="text-[15px] font-bold">av {h.lightsTotal}</span>
           </span>
         </Hero>
         )}
         {h.powerMeters > 0 && (
         <Hero bg={tint('#8B5CF6', 0.28)} icon="bolt" label="Effekt nu">
-          <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">{fmtWatt(h.powerW)}</span>
+          <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtWatt(h.powerW)}</span>
           <span className="text-[15px] font-bold">{h.powerMeters} mätare</span>
         </Hero>
         )}
         {price.now && (
         <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={`Elpris ${PRICE_AREA}${price.level ? ` · ${price.level.label}` : ''}`}>
-          <span className="text-4xl leading-none font-extrabold tracking-tight md:text-5xl">
+          <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">
             {Math.round(price.now.ore)}
             <span className="text-xl"> öre</span>
           </span>
@@ -184,7 +184,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      <h2 className="text-[22px] font-extrabold">Rum</h2>
+      <h2 className="-mb-1 text-xl font-extrabold">Rum</h2>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {h.rooms
           .filter((r) => r.temp != null || r.humidity != null || r.lights.length > 0)
@@ -193,27 +193,28 @@ export default async function HomePage() {
           ))}
       </section>
 
-      {h.favoriteMoods.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-[22px] font-extrabold">Favoriter</h2>
-          <MoodButtons moods={h.favoriteMoods} />
-        </section>
-      )}
-
-      {/* Media: Google TV och det som castas (t.ex. Spotify på Nest hub). Pausat visas nedtonat. */}
-      {playing.length > 0 && (
-        <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {/* Favoriter och media på en rad på plattan; favoriterna scrollar i sidled om de inte får plats. */}
+      {(h.favoriteMoods.length > 0 || playing.length > 0) && (
+        <section className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          {h.favoriteMoods.length > 0 && (
+            <div className="flex min-w-0 flex-col gap-2 lg:flex-1">
+              <h2 className="text-xl font-extrabold lg:sr-only">Favoriter</h2>
+              <MoodButtons moods={h.favoriteMoods} row />
+            </div>
+          )}
+          {/* Media: Google TV och det som castas (t.ex. Spotify på Nest hub). Pausat visas nedtonat. */}
           {playing.map((p) => (
-            <div key={p.id} className={`glass flex min-h-[76px] items-center gap-3 rounded-[22px] px-4 py-2.5 ${p.playing ? '' : 'opacity-70'}`}>
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-[16px] bg-glass-hi">
-                <Icon name={p.kind === 'tv' ? 'tv' : 'music'} size={26} />
+            <div key={p.id} className={`glass flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 py-1.5 lg:w-[290px] lg:shrink-0 ${p.playing ? '' : 'opacity-70'}`}>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-glass-hi">
+                <Icon name={p.kind === 'tv' ? 'tv' : 'music'} size={22} />
               </span>
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="truncate font-bold text-dim">
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-[13px] font-bold text-dim">
                   {p.kind === 'tv' ? 'På TV:n' : 'Spelas upp'} · {p.playing ? p.device : `pausad på ${p.device}`}
                 </span>
-                <span className="truncate text-xl leading-tight font-extrabold">{p.title}</span>
-                {p.subtitle && <span className="truncate text-[15px] font-bold text-dim">{p.subtitle}</span>}
+                <span className="truncate text-[17px] leading-tight font-extrabold">
+                  {p.title}{p.subtitle && <span className="font-bold text-dim"> · {p.subtitle}</span>}
+                </span>
               </span>
             </div>
           ))}

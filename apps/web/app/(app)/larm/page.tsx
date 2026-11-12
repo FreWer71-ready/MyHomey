@@ -19,9 +19,9 @@ function Section({ id, icon, title, count, tone, children }: {
   id: string; icon: IconName; title: string; count: number; tone: 'ok' | 'warn'; children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-4 rounded-[24px] glass p-4">
-      <h2 className="mb-3 flex items-center gap-3 text-[22px] font-extrabold">
-        <span className={`flex size-11 items-center justify-center rounded-2xl ${tone === 'warn' ? 'bg-warn-soft ring-1 ring-warn-strong' : 'bg-glass-hi'}`}>
+    <section id={id} className="scroll-mt-4 rounded-[24px] glass p-3">
+      <h2 className="mb-2 flex items-center gap-3 text-xl font-extrabold">
+        <span className={`flex size-10 items-center justify-center rounded-2xl ${tone === 'warn' ? 'bg-warn-soft ring-1 ring-warn-strong' : 'bg-glass-hi'}`}>
           <Icon name={icon} size={24} />
         </span>
         {title}
@@ -32,7 +32,7 @@ function Section({ id, icon, title, count, tone, children }: {
   );
 }
 
-const Empty = ({ text }: { text: string }) => <p className="rounded-2xl bg-glass-2 p-4 font-bold text-dim">{text}</p>;
+const Empty = ({ text }: { text: string }) => <p className="rounded-2xl bg-glass-2 p-3 font-bold text-dim">{text}</p>;
 
 export default async function AlarmPage() {
   const [h, weather, openedToday, net] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday(), loadNet()]);
@@ -60,7 +60,7 @@ export default async function AlarmPage() {
           {h.lowBatteryList.length ? (
             <ul className="flex flex-col gap-2">
               {h.lowBatteryList.map((b) => (
-                <li key={b.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-4 py-3">
+                <li key={b.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
                   <span className="min-w-0 grow">
                     <span className="block truncate font-extrabold">{b.name}</span>
                     <span className="block text-sm font-bold text-dim">{b.room || 'Inget rum'}</span>
@@ -81,7 +81,7 @@ export default async function AlarmPage() {
           {h.silent.length ? (
             <ul className="flex flex-col gap-2">
               {h.silent.map((s) => (
-                <li key={s.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-4 py-3">
+                <li key={s.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
                   <span className="min-w-0 grow">
                     <span className="block truncate font-extrabold">{s.name}</span>
                     <span className="block text-sm font-bold text-dim">{s.room || 'Inget rum'}</span>
@@ -98,7 +98,7 @@ export default async function AlarmPage() {
         <Section id="oppet" icon="window" title="Öppna dörrar och fönster" count={open.length} tone={open.length ? 'warn' : 'ok'}>
           <ul className="flex flex-col gap-2">
             {h.openings.map((o) => (
-              <li key={o.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-4 py-3">
+              <li key={o.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
                 <Icon name={o.kind === 'door' ? 'door' : 'window'} size={22} />
                 <span className="min-w-0 grow">
                   <span className="block truncate font-extrabold">{o.name}</span>
@@ -118,7 +118,7 @@ export default async function AlarmPage() {
           {wet.length ? (
             <ul className="flex flex-col gap-2">
               {wet.map((r) => (
-                <li key={r.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-4 py-3">
+                <li key={r.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
                   <span className="min-w-0 grow font-extrabold">{r.name}</span>
                   <span className="text-sm font-bold text-dim">gräns {HUMIDITY_LIMIT} %</span>
                   <span className={`rounded-full px-3 py-1 font-extrabold ${r.humidity! >= HUMIDITY_LIMIT ? 'bg-teal text-white' : 'bg-ok-soft text-ok'}`}>
@@ -150,23 +150,18 @@ export default async function AlarmPage() {
               ['Upptid 24 h', net.uptime == null ? '–' : `${net.uptime.toLocaleString('sv-SE', { maximumFractionDigits: 2 })} %`, ''],
               ['Abonnemang', net.downMbit == null ? '–' : `${net.downMbit}/${net.upMbit} Mbit`, ''],
             ].map(([k, v, c]) => (
-              <div key={k} className="flex flex-col rounded-2xl bg-glass-2 px-3 py-2">
+              <div key={k} className="flex flex-col rounded-2xl bg-glass-2 px-3 py-1.5">
                 <span className="text-sm font-bold text-dim">{k}</span>
-                <span className={`text-xl font-extrabold ${c}`}>{v}</span>
+                <span className={`text-lg leading-tight font-extrabold ${c}`}>{v}</span>
               </div>
             ))}
           </div>
-          {net.latencySeries.length > 1 && (
-            <div className="mt-3">
-              <HistoryChart series={[{ id: 'lat', label: 'Svarstid', color: '#2BB5C4', points: net.latencySeries }]} unit=" ms" decimals={0} bars={false} longPeriod={false} />
-            </div>
-          )}
-          <ul className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+          <ul className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
             {net.devices.map((d) => {
               const up = d.status === 'online';
               const fw = d.firmware_status && d.firmware_status !== 'upToDate';
               return (
-                <li key={d.id} className="flex items-center justify-between gap-3 rounded-2xl bg-glass-2 px-3 py-2">
+                <li key={d.id} className="flex items-center justify-between gap-2 rounded-2xl bg-glass-2 px-3 py-1.5">
                   <span className="flex min-w-0 flex-col">
                     <span className="truncate font-extrabold">{d.name}</span>
                     <span className="text-sm font-bold text-dim">{d.model}{d.is_console ? ' · router' : ''}</span>
@@ -179,7 +174,17 @@ export default async function AlarmPage() {
               );
             })}
           </ul>
-          {net.clients != null && <p className="mt-2 font-bold text-dim">{net.clients} anslutna klienter</p>}
+          {net.latencySeries.length > 1 && (
+            <details className="group mt-2 rounded-2xl bg-glass-2">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 font-extrabold">
+                Svarstid senaste dygnet{net.clients != null ? ` · ${net.clients} anslutna klienter` : ''}
+                <span className="text-dim transition-transform group-open:rotate-180">▾</span>
+              </summary>
+              <div className="px-2 pb-2">
+                <HistoryChart series={[{ id: 'lat', label: 'Svarstid', color: '#2BB5C4', points: net.latencySeries }]} unit=" ms" decimals={0} bars={false} longPeriod={false} fit={430} />
+              </div>
+            </details>
+          )}
         </Section>
       )}
     </>

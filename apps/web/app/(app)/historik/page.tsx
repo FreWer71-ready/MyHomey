@@ -89,7 +89,7 @@ export default async function HistoryPage({
       )}
 
       {!timeline && (
-        <section className="rounded-[24px] glass p-4">
+        <section className="rounded-[24px] glass p-3">
           {chartSeries.length ? (
             <HistoryChart
               series={chartSeries.map(({ id, label, color, points }) => ({ id, label, color, points }))}
@@ -97,6 +97,7 @@ export default async function HistoryPage({
               decimals={cfg.decimals}
               bars={!!cfg.delta}
               longPeriod={!SHORT.includes(period)}
+              fit={500}
             />
           ) : (
             <p className="p-10 text-center text-lg font-bold text-dim">Ingen historik för perioden än.</p>
@@ -105,7 +106,7 @@ export default async function HistoryPage({
       )}
 
       {series.length > 0 && (
-        <section aria-label="Filtrera på rum" className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4">
+        <section aria-label="Filtrera på rum" className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
           {series.map((s) => {
             const active = sel === s.id;
             return (
@@ -113,7 +114,7 @@ export default async function HistoryPage({
                 key={s.id}
                 href={active ? href(view, period) : href(view, period, s.id)}
                 aria-pressed={active}
-                className={`flex flex-col gap-1 rounded-3xl glass p-3.5 ${
+                className={`flex flex-col rounded-[20px] glass px-3 py-2 ${
                   active ? 'shadow-[inset_0_0_0_3px_var(--color-ink)]' : sel ? 'opacity-55' : ''
                 }`}
               >
@@ -121,10 +122,10 @@ export default async function HistoryPage({
                   <span className="size-3.5 shrink-0 rounded-full" style={{ background: cfg.delta ? '#8B5CF6' : s.color }} />
                   <span className="truncate">{s.label}</span>
                 </span>
-                <span className="text-2xl font-extrabold tracking-tight">
+                <span className="text-xl leading-tight font-extrabold tracking-tight">
                   {fmtValue(metric, cfg.delta ? s.total : s.latest)}
                 </span>
-                <span className="text-sm font-bold text-dim">
+                <span className="truncate text-[13px] font-bold text-dim">
                   {cfg.delta
                     ? `förbrukat ${PERIODS[period].label}`
                     : `min ${fmtValue(metric, s.min)} · max ${fmtValue(metric, s.max)}`}

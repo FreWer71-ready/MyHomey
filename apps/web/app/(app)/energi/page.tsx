@@ -10,12 +10,12 @@ export const dynamic = 'force-dynamic';
 
 function Card({ bg, icon, label, value, sub }: { bg: string; icon: IconName; label: string; value: string; sub: string }) {
   return (
-    <div className="glass flex flex-col gap-1 rounded-[24px] p-4" style={{ background: bg }}>
+    <div className="glass flex flex-col gap-0.5 rounded-[22px] px-3.5 py-3" style={{ background: bg }}>
       <span className="flex items-center gap-2.5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-glass-hi"><Icon name={icon} size={22} /></span>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi"><Icon name={icon} size={20} /></span>
         <span className="text-[15px] font-bold">{label}</span>
       </span>
-      <span className="text-[40px] leading-tight font-extrabold tracking-tight">{value}</span>
+      <span className="text-[34px] leading-tight font-extrabold tracking-tight">{value}</span>
       <span className="text-[15px] font-bold">{sub}</span>
     </div>
   );
@@ -29,14 +29,15 @@ const kwh = (v: number | null) => (v == null ? '–' : `${v.toLocaleString('sv-S
 
 const span = (w: { start: number; end: number } | null) => (w ? `${hhmm(w.start)}–${hhmm(w.end)}` : '–');
 
-export default async function EnergyPage({ searchParams }: { searchParams: Promise<{ vy?: string; p?: string }> }) {
+export default async function EnergyPage({ searchParams }: { searchParams: Promise<{ vy?: string; p?: string; g?: string }> }) {
   const q = await searchParams;
   const view: View = q.vy === 'forbrukning' ? 'forbrukning' : 'pris';
   const period: PeriodKey = USE_PERIODS.includes(q.p as PeriodKey) ? (q.p as PeriodKey) : '24h';
   const [prices, h] = await Promise.all([loadPrices(), loadHome()]);
   const now = Date.now();
   const s = summarize(prices, now);
-  const href = (v: View, pp: PeriodKey = period) => `/energi?vy=${v}${v === 'forbrukning' ? `&p=${pp}` : ''}`;
+  const kwhChart = q.g === 'kwh';
+  const href = (v: View, pp: PeriodKey = period, g = kwhChart) => `/energi?vy=${v}${v === 'forbrukning' ? `&p=${pp}${g ? '&g=kwh' : ''}` : ''}`;
 
   return (
     <>
@@ -72,12 +73,12 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
         )}
       </header>
 
-      {view === 'pris' ? <PriceView prices={prices} s={s} now={now} /> : <UseView period={period} powerW={h.powerW} meters={h.powerMeters} href={href} />}
+      {view === 'pris' ? <PriceView prices={prices} s={s} now={now} /> : <UseView period={period} powerW={h.powerW} meters={h.powerMeters} href={href} kwhChart={kwhChart} />}
     </>
   );
 }
 
-async function UseView({ period, powerW, meters, href }: { period: PeriodKey; powerW: number; meters: number; href: (v: View, p?: PeriodKey) => string }) {
+async function UseView({ period, powerW, meters, href, kwhChart }: { period: PeriodKey; powerW: number; meters: number; href: (v: View, p?: PeriodKey, g?: boolean) => string; kwhChart: boolean }) {
   const [power, energy] = await Promise.all([loadHistory('power', period), loadHistory('energy', period)]);
   const total = power.length ? sumSeries(power, 'Effekt totalt', '#8B5CF6') : null;
   const used = energy.length ? sumSeries(energy, 'Förbrukning', '#2BB5C4') : null;
@@ -103,22 +104,26 @@ async function UseView({ period, powerW, meters, href }: { period: PeriodKey; po
         <Card bg={tint('#F0503C')} icon="bolt" label="Högsta effekt" value={total?.max == null ? '–' : fmtWatt(Math.round(total.max))} sub={PERIODS[period].label} />
       </section>
 
-      <section className="rounded-[24px] glass p-4">
-        <h2 className="mb-2 text-[22px] font-extrabold">Effekt</h2>
-        {total ? <HistoryChart series={[total]} unit=" W" decimals={0} bars={false} longPeriod={longPeriod} />
-          : <p className="p-10 text-center text-lg font-bold text-dim">Ingen effektdata för perioden.</p>}
-      </section>
-
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
-        <div className="rounded-[24px] glass p-4">
-          <h2 className="mb-2 text-[22px] font-extrabold">Förbrukning per intervall</h2>
-          {used ? <HistoryChart series={[used]} unit=" kWh" decimals={2} bars longPeriod={longPeriod} />
-            : <p className="p-10 text-center text-lg font-bold text-dim">Ingen mätardata för perioden.</p>}
+        <div className="min-w-0 rounded-[24px] glass p-3">
+          <div className="mb-1 flex flex-wrap gap-1.5">
+            {([[false, 'Effekt (W)'], [true, 'kWh per intervall']] as const).map(([g, label]) => (
+              <Link key={label} href={href('forbrukning', period, g)} aria-current={kwhChart === g ? 'page' : undefined}
+                className={`flex min-h-10 items-center rounded-full px-4 font-extrabold ${kwhChart === g ? 'bg-sun text-ink' : 'bg-glass-hi'}`}>
+                {label}
+              </Link>
+            ))}
+          </div>
+          {kwhChart
+            ? used ? <HistoryChart series={[used]} unit=" kWh" decimals={2} bars longPeriod={longPeriod} fit={480} />
+              : <p className="p-10 text-center text-lg font-bold text-dim">Ingen mätardata för perioden.</p>
+            : total ? <HistoryChart series={[total]} unit=" W" decimals={0} bars={false} longPeriod={longPeriod} fit={480} />
+              : <p className="p-10 text-center text-lg font-bold text-dim">Ingen effektdata för perioden.</p>}
         </div>
-        <div className="flex flex-col gap-2 rounded-[24px] glass p-4">
-          <h2 className="text-[22px] font-extrabold">Drar mest nu</h2>
+        <div className="flex flex-col gap-1.5 rounded-[24px] glass p-3">
+          <h2 className="text-xl font-extrabold">Drar mest nu</h2>
           {top.length ? top.map((x) => (
-            <div key={x.id} className="flex items-center justify-between gap-3 rounded-[16px] bg-glass-hi px-3 py-2">
+            <div key={x.id} className="flex items-center justify-between gap-3 rounded-[14px] bg-glass-hi px-3 py-1.5">
               <span className="truncate font-bold">{x.label}</span>
               <span className="shrink-0 text-lg font-extrabold">{fmtValue('power', x.latest)}</span>
             </div>
@@ -153,32 +158,32 @@ function PriceView({ prices, s, now }: { prices: Price[]; s: ReturnType<typeof s
         <Card bg={tint('#F0503C')} icon="bolt" label="Högst i dag" value={fmtOre(s.todayMax?.ore)} sub={s.todayMax ? `kl ${hhmm(s.todayMax.start)}` : '–'} />
       </section>
 
-      <section className="rounded-[24px] glass p-4">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-[22px] font-extrabold">Pris per timme</h2>
+      <section className="rounded-[24px] glass p-3">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xl font-extrabold">Pris per timme</h2>
           <span className="font-bold text-dim">{s.hasTomorrow ? 'I dag och i morgon' : 'I dag · morgondagens priser kommer ca 13'} · spotpris SE3 exkl. moms och nät</span>
         </div>
         {series.length ? (
-          <HistoryChart series={series} unit=" öre" decimals={0} bars longPeriod={false} />
+          <HistoryChart series={series} unit=" öre" decimals={0} bars longPeriod={false} fit={500} />
         ) : (
           <p className="p-10 text-center text-lg font-bold text-dim">Inga priser hämtade än.</p>
         )}
       </section>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="flex items-center gap-4 rounded-[24px] glass p-4">
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-ok-soft text-ok"><Icon name="bolt" size={30} /></span>
+        <div className="flex items-center gap-3 rounded-[22px] glass px-3.5 py-2.5">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-ok-soft text-ok"><Icon name="bolt" size={30} /></span>
           <span className="flex flex-col">
             <span className="font-bold text-dim">Billigaste timmen</span>
-            <span className="text-2xl font-extrabold">{span(s.cheapest1h)}</span>
+            <span className="text-xl leading-tight font-extrabold">{span(s.cheapest1h)}</span>
             <span className="font-bold">{fmtOre(s.cheapest1h?.ore)} i snitt</span>
           </span>
         </div>
-        <div className="flex items-center gap-4 rounded-[24px] glass p-4">
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-ok-soft text-ok"><Icon name="power" size={30} /></span>
+        <div className="flex items-center gap-3 rounded-[22px] glass px-3.5 py-2.5">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-ok-soft text-ok"><Icon name="power" size={30} /></span>
           <span className="flex flex-col">
             <span className="font-bold text-dim">Bästa 3 timmarna · tvätt, disk, laddning</span>
-            <span className="text-2xl font-extrabold">{span(s.cheapest3h)}</span>
+            <span className="text-xl leading-tight font-extrabold">{span(s.cheapest3h)}</span>
             <span className="font-bold">{fmtOre(s.cheapest3h?.ore)} i snitt</span>
           </span>
         </div>
