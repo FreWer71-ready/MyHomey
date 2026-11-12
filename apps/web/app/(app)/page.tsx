@@ -112,7 +112,7 @@ export default async function HomePage() {
         <div className="flex flex-col gap-2 lg:min-h-[36px] lg:flex-row">
           {banners}
           {trafficAlerts.slice(0, Math.max(1, 3 - banners.length)).map((a) => (
-            <Link key={a.id} href="/pendling" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-[#FF8A3D] px-3.5 py-1.5 text-[#1A1205]">
+            <Link key={a.id} href="/pendling" role="alert" className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] px-3.5 py-1.5 ${a.tone === 'bad' ? 'bg-danger-strong text-white' : 'bg-[#E8B400] text-[#1A1205]'}`}>
               <Icon name={a.kind === 'train' ? 'train' : 'road'} size={22} />
               <span className="font-extrabold lg:truncate">{a.label}</span>
             </Link>

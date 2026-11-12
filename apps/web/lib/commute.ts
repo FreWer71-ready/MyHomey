@@ -117,20 +117,34 @@ export function direction(now = Date.now()): 'out' | 'home' {
   return h < 12 ? 'out' : 'home';
 }
 
-export type CommuteAlert = { id: string; kind: 'train' | 'road'; label: string };
+export type CommuteAlert = { id: string; kind: 'train' | 'road'; tone: 'warn' | 'bad'; label: string };
 
-/** Varningar för startsidan: inställda/försenade (≥10 min) tåg inom 3 h i aktuell riktning och incidenter på vägen. */
+/**
+ * Sammanfattade störningar för startsidan, högst ett kort för tåg och ett för väg.
+ * Tåg: inställda/försenade (≥10 min) inom 3 h i aktuell riktning (rött om något är inställt, annars gult).
+ * Väg: incidenter (olycka, hinder, avstängning m.m.) på väg 56/E18. Detaljer finns på Pendling.
+ */
 export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) => string): CommuteAlert[] {
   const dir = direction(now);
-  const soon = c[dir].filter((x) => x.dep < now + 3 * 3600_000);
-  const train = soon.filter((x) => x.canceled || x.delay >= 10).slice(0, 2).map((x) => ({
-    id: `tag-${x.id}`, kind: 'train' as const,
-    label: `Tåg ${fmt(x.dep)} ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'} ${x.canceled ? 'inställt' : `+${x.delay} min`}`,
-  }));
-  const roads = c.road.filter((r) => r.incident && (r.severity >= 3 || /Accident|Obstruction|Closure|Restriction/i.test(r.code))).slice(0, 1).map((r) => ({
-    id: `vag-${r.id}`, kind: 'road' as const, label: `${r.road}: ${r.type.toLowerCase()}${r.place ? ` · ${r.place}` : ''}`,
-  }));
-  return [...train, ...roads];
+  const out: CommuteAlert[] = [];
+  const bad = c[dir].filter((x) => x.dep < now + 3 * 3600_000 && (x.canceled || x.delay >= 10));
+  if (bad.length) {
+    const list = bad.slice(0, 3).map((x) => `${fmt(x.dep)} ${x.canceled ? 'inställt' : `+${x.delay} min`}`).join(', ');
+    out.push({
+      id: `tag-${bad.map((x) => x.id).join('-')}`, kind: 'train', tone: bad.some((x) => x.canceled) ? 'bad' : 'warn',
+      label: `Tåg ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}: ${list}${bad.length > 3 ? ` + ${bad.length - 3} till` : ''}`,
+    });
+  }
+  const inc = c.road.filter((r) => r.incident && (r.severity >= 3 || /Accident|Obstruction|Closure|Restriction/i.test(r.code)));
+  if (inc.length) {
+    const roads = [...new Set(inc.map((r) => r.road))].join(' & ');
+    const first = inc[0];
+    out.push({
+      id: `vag-${inc.map((r) => r.id).join('-')}`, kind: 'road', tone: 'bad',
+      label: `${roads}: ${first.type.toLowerCase()}${first.place ? ` · ${first.place}` : ''}${inc.length > 1 ? ` + ${inc.length - 1} till` : ''}`,
+    });
+  }
+  return out;
 }
 
 /** Färgläge: grönt = i tid/ingen påverkan, gult = liten försening/påverkan, rött = stor. */

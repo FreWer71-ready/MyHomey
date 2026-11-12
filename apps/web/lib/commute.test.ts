@@ -49,8 +49,9 @@ test('pendling: riktning och varningar', () => {
   const morning = Date.parse('2026-11-12T10:30:00+01:00');
   const shifted = { ...c, out: c.out.map((x) => ({ ...x, dep: x.dep - 5 * 3600_000 })) };
   const fmt = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', minute: '2-digit' }).format(ms);
-  assert.deepEqual(commuteAlerts(shifted, morning, fmt).map((a) => a.label), [
-    'Tåg 11:02 mot Stockholm +12 min', 'Tåg 11:34 mot Stockholm inställt', 'Väg 56: olycka',
+  assert.deepEqual(commuteAlerts(shifted, morning, fmt).map((a) => [a.label, a.tone]), [
+    ['Tåg mot Stockholm: 11:02 +12 min, 11:34 inställt', 'bad'],
+    ['Väg 56 & E18: olycka + 1 till', 'bad'],
   ]);
 });
 
