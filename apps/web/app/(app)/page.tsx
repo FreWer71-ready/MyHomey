@@ -3,6 +3,7 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
+import { SortableCards } from '@/components/SortableCards';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadNameDay, loadNet, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
@@ -16,14 +17,14 @@ export const dynamic = 'force-dynamic';
 
 const fmtNum = (v: number) => v.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
 
-function Hero({ bg, icon, label, href, popover, wide, children }: {
-  bg: string; icon: IconName; label: string; href?: string; popover?: string; wide?: boolean; children: React.ReactNode;
+function Hero({ bg, icon, label, href, popover, children }: {
+  bg: string; icon: IconName; label: string; href?: string; popover?: string; children: React.ReactNode;
 }) {
   // Länk, knapp som öppnar en popup (native popover) eller vanlig ruta.
   const Box = href ? Link : popover ? 'button' : 'div';
   const extra = popover ? { type: 'button' as const, popoverTarget: popover, 'aria-label': `${label}, visa prognos` } : {};
   return (
-    <Box href={href!} {...extra} className={`text-left glass relative flex flex-col gap-0.5 overflow-hidden rounded-[22px] px-3.5 py-3 lg:min-w-0 ${wide ? 'col-span-2 lg:flex-[1.55]' : 'lg:flex-1'}`} style={{ background: bg }}>
+    <Box href={href!} {...extra} className={`text-left glass relative flex flex-col gap-0.5 overflow-hidden rounded-[22px] px-3.5 py-3 w-full min-w-0`} style={{ background: bg }}>
       <span className="relative flex items-center gap-2.5">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
           <Icon name={icon} size={20} />
@@ -109,94 +110,99 @@ export default async function HomePage() {
         </div>
       )}
 
-      <section className="grid grid-cols-2 gap-3 lg:flex">
-        {(h.outdoorTemp != null || h.outdoorStale || weather) && (
-        <Hero wide popover={weather ? 'prognos' : undefined} bg={heatTint(h.outdoorTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
-          {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
-          {sky && weather && (
-            <span className="pointer-events-none absolute top-1 right-3 opacity-85">
-              <WeatherIcon kind={weatherKind(weather.current.symbol)} size={100} label={sky.label} />
-            </span>
-          )}
-          {h.outdoorTemp != null ? (
-            <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(h.outdoorTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
-          ) : h.outdoorStale && (
-            <span className="relative flex flex-col pr-24">
-              <span className="text-2xl leading-tight font-extrabold">Ej tillgänglig</span>
-              <span className="text-[13px] font-bold">Inget från väderstationen på 4 tim</span>
-            </span>
-          )}
-          {!weather && <span className="relative text-[15px] font-bold opacity-80">Prognos ej tillgänglig</span>}
-          {weather && (
-            <span className="relative text-[15px] font-bold">
-              {weather.nextPrecip && weather.nextPrecip.time <= weather.current.time
-                ? `${sky?.label} just nu`
-                : `${sky?.label} · ${
-                    weather.nextPrecip
-                      ? `${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} från ${hhmm(weather.nextPrecip.time)}`
-                      : 'uppehåll 6 tim'
-                  }`}
-            </span>
-          )}
-          {h.station && (
-            <span className="relative flex flex-wrap items-center gap-x-2 text-[15px] font-bold">
-              {h.station.wind != null && (
-                <span>
-                  Vind {fmtNum(h.station.wind)}{h.station.gust != null && h.station.gust > h.station.wind ? `–${fmtNum(h.station.gust)}` : ''} m/s{h.station.dir ? ` ${h.station.dir}` : ''}
+      {/* Korten går att ordna: håll inne ett kort, dra, tryck Klar (sparas per enhet). */}
+      <SortableCards
+        storageKey="hem-kort"
+        className="grid grid-cols-2 gap-3 lg:flex"
+        items={[
+          ...((h.outdoorTemp != null || h.outdoorStale || weather) ? [{ id: 'ute', wide: true, node: (
+            <Hero popover={weather ? 'prognos' : undefined} bg={heatTint(h.outdoorTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
+              {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
+              {sky && weather && (
+                <span className="pointer-events-none absolute top-1 right-3 opacity-85">
+                  <WeatherIcon kind={weatherKind(weather.current.symbol)} size={100} label={sky.label} />
                 </span>
               )}
-              {h.station.road != null && (
-                <span className={h.station.road <= 0.5 ? 'rounded-full bg-danger-strong px-2 text-white' : ''}>
-                  · Väg {fmtTemp(h.station.road)}{h.station.road <= 0.5 ? ' halka' : ''}
+              {h.outdoorTemp != null ? (
+                <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(h.outdoorTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
+              ) : h.outdoorStale && (
+                <span className="relative flex flex-col pr-24">
+                  <span className="text-2xl leading-tight font-extrabold">Ej tillgänglig</span>
+                  <span className="text-[13px] font-bold">Inget från väderstationen på 4 tim</span>
                 </span>
               )}
-            </span>
-          )}
-        </Hero>
-        )}
-        {h.lightsTotal > 0 && (
-        <Hero bg={tint('#FFC21A', 0.5)} icon="bulb" label="Lampor tända">
-          <span className="flex items-center justify-between gap-2">
-            <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{h.lightsOn}</span>
-            <span className="text-[15px] font-bold">av {h.lightsTotal}</span>
-          </span>
-        </Hero>
-        )}
-        {h.openings.length > 0 && (
-        <Hero
-          href="/larm#oppet"
-          bg={open.length ? tint('#FF8A3D', 0.5) : tint('#12B76A', 0.42)}
-          icon={open.length ? 'shieldAlert' : 'shield'}
-          label="Dörrar & fönster"
-        >
-          <span className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl">
-            {open.length ? (open.length === 1 ? 'Öppen' : `${open.length} öppna`) : 'Stängt'}
-          </span>
-          <span className="truncate text-[15px] font-bold">
-            {open.length === 1 ? open[0].name : entrance ? `Entré ${openedToday[entrance.id] ?? 0}× i dag` : `${h.openings.length} sensorer`}
-          </span>
-        </Hero>
-        )}
-        {h.powerMeters + h.powerEstimated > 0 && (
-        <Hero bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu">
-          <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtWatt(h.powerW)}</span>
-          <span className="text-[15px] font-bold">
-            {h.powerMeters ? `${h.powerMeters} mätare` : ''}{h.powerMeters && h.powerEstimated ? ' · ' : ''}{h.powerEstimated ? `${h.powerEstimated} uppskattade` : ''}
-          </span>
-        </Hero>
-        )}
-        {price.now && (
-        <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={`Elpris ${PRICE_AREA}${price.level ? ` · ${price.level.label}` : ''}`}>
-          <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">
-            {Math.round(price.now.ore)}
-            <span className="text-xl"> öre</span>
-          </span>
-          <span className="text-[15px] font-bold">
-            {price.cheapest1h && `Billigast ${hhmm(price.cheapest1h.start)}–${hhmm(price.cheapest1h.end)}`}
-          </span>
-        </Hero>
-        )}
-      </section>
+              {!weather && <span className="relative text-[15px] font-bold opacity-80">Prognos ej tillgänglig</span>}
+              {weather && (
+                <span className="relative text-[15px] font-bold">
+                  {weather.nextPrecip && weather.nextPrecip.time <= weather.current.time
+                    ? `${sky?.label} just nu`
+                    : `${sky?.label} · ${
+                        weather.nextPrecip
+                          ? `${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} från ${hhmm(weather.nextPrecip.time)}`
+                          : 'uppehåll 6 tim'
+                      }`}
+                </span>
+              )}
+              {h.station && (
+                <span className="relative flex flex-wrap items-center gap-x-2 text-[15px] font-bold">
+                  {h.station.wind != null && (
+                    <span>
+                      Vind {fmtNum(h.station.wind)}{h.station.gust != null && h.station.gust > h.station.wind ? `–${fmtNum(h.station.gust)}` : ''} m/s{h.station.dir ? ` ${h.station.dir}` : ''}
+                    </span>
+                  )}
+                  {h.station.road != null && (
+                    <span className={h.station.road <= 0.5 ? 'rounded-full bg-danger-strong px-2 text-white' : ''}>
+                      · Väg {fmtTemp(h.station.road)}{h.station.road <= 0.5 ? ' halka' : ''}
+                    </span>
+                  )}
+                </span>
+              )}
+            </Hero>
+          ) }] : []),
+          ...(h.lightsTotal > 0 ? [{ id: 'lampor', node: (
+            <Hero bg={tint('#FFC21A', 0.5)} icon="bulb" label="Lampor tända">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{h.lightsOn}</span>
+                <span className="text-[15px] font-bold">av {h.lightsTotal}</span>
+              </span>
+            </Hero>
+          ) }] : []),
+          ...(h.openings.length > 0 ? [{ id: 'dorrar', node: (
+            <Hero
+              href="/larm#oppet"
+              bg={open.length ? tint('#FF8A3D', 0.5) : tint('#12B76A', 0.42)}
+              icon={open.length ? 'shieldAlert' : 'shield'}
+              label="Dörrar & fönster"
+            >
+              <span className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl">
+                {open.length ? (open.length === 1 ? 'Öppen' : `${open.length} öppna`) : 'Stängt'}
+              </span>
+              <span className="truncate text-[15px] font-bold">
+                {open.length === 1 ? open[0].name : entrance ? `Entré ${openedToday[entrance.id] ?? 0}× i dag` : `${h.openings.length} sensorer`}
+              </span>
+            </Hero>
+          ) }] : []),
+          ...(h.powerMeters + h.powerEstimated > 0 ? [{ id: 'effekt', node: (
+            <Hero bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu">
+              <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtWatt(h.powerW)}</span>
+              <span className="text-[15px] font-bold">
+                {h.powerMeters ? `${h.powerMeters} mätare` : ''}{h.powerMeters && h.powerEstimated ? ' · ' : ''}{h.powerEstimated ? `${h.powerEstimated} uppskattade` : ''}
+              </span>
+            </Hero>
+          ) }] : []),
+          ...(price.now ? [{ id: 'elpris', node: (
+            <Hero bg={price.level?.bg ?? 'var(--color-glass)'} icon="money" label={`Elpris ${PRICE_AREA}${price.level ? ` · ${price.level.label}` : ''}`}>
+              <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">
+                {Math.round(price.now.ore)}
+                <span className="text-xl"> öre</span>
+              </span>
+              <span className="text-[15px] font-bold">
+                {price.cheapest1h && `Billigast ${hhmm(price.cheapest1h.start)}–${hhmm(price.cheapest1h.end)}`}
+              </span>
+            </Hero>
+          ) }] : []),
+        ]}
+      />
 
       {weather && (
         <div id="prognos" popover="auto" className="m-auto w-[min(94vw,880px)] rounded-[24px] border border-line bg-ground/95 p-4 text-fg shadow-2xl backdrop:bg-black/50">
