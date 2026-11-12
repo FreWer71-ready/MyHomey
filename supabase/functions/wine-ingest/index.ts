@@ -14,6 +14,11 @@ Deno.serve(async (req) => {
 
   const { data: user } = await db.from("app_users").select("household_id").eq("email", p.email.toLowerCase()).maybeSingle();
   if (!user) return json({ ok: true, ignored: "okänd användare" });
+  // Historik: ny punkt bara när antalet ändrats.
+  const { data: prev } = await db.from("wine_cellar").select("total").eq("household_id", user.household_id).maybeSingle();
+  if (!prev || prev.total !== p.total) {
+    await db.from("wine_history").insert({ household_id: user.household_id, ts: new Date().toISOString(), total: p.total, by_color: p.by_color ?? null });
+  }
   const { error } = await db.from("wine_cellar").upsert({
     household_id: user.household_id, total: p.total, by_color: p.by_color ?? {}, latest: p.latest ?? null,
     value: p.value ?? null, ready: p.ready ?? null, past: p.past ?? null, updated_at: new Date().toISOString(),

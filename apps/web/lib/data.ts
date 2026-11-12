@@ -299,3 +299,24 @@ export async function loadWine(): Promise<WineCellar | null> {
   const { data } = await sb.from('wine_cellar').select('total,by_color,latest,updated_at').maybeSingle();
   return (data as WineCellar | null) ?? null;
 }
+
+/** Vinkällarens historik som trappsteg: [unix-sekunder, antal], förlängd till nu. */
+export async function loadWineHistory(): Promise<[number, number][]> {
+  let rows: { ts: string; total: number }[];
+  if (DEMO) {
+    rows = [['2025-10-31', 2], ['2026-01-01', 3], ['2026-10-27', 6], ['2026-10-28', 11], ['2026-10-30', 10], ['2026-10-31', 27]]
+      .map(([d, n]) => ({ ts: `${d}T00:00:00Z`, total: n as number }));
+  } else {
+    const sb = await createClient();
+    const { data } = await sb.from('wine_history').select('ts,total').order('ts');
+    rows = data ?? [];
+  }
+  const pts: [number, number][] = [];
+  for (const r of rows) {
+    const t = Math.round(Date.parse(r.ts) / 1000);
+    if (pts.length) pts.push([t - 1, pts[pts.length - 1][1]]); // trappsteg: gamla värdet fram till ändringen
+    pts.push([t, r.total]);
+  }
+  if (pts.length) pts.push([Math.round(Date.now() / 1000), pts[pts.length - 1][1]]);
+  return pts;
+}

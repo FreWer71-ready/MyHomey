@@ -2,14 +2,14 @@ import Link from 'next/link';
 import { HistoryChart } from '@/components/HistoryChart';
 import { Icon, type IconName } from '@/components/Icon';
 import { LightTimeline } from '@/components/LightTimeline';
-import { loadHistory, loadLightTimeline, loadPresenceTimeline } from '@/lib/data';
+import { loadHistory, loadLightTimeline, loadPresenceTimeline, loadWine, loadWineHistory } from '@/lib/data';
 import {
   METRICS, PERIODS, fmtValue, isMetric, isPeriod, sumSeries, type MetricKey, type PeriodKey,
 } from '@/lib/history';
 
 export const dynamic = 'force-dynamic';
 
-type View = MetricKey | 'lights' | 'presence';
+type View = MetricKey | 'lights' | 'presence' | 'wine';
 const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'temp', label: METRICS.temp.label, icon: 'thermo' },
   { key: 'hum', label: METRICS.hum.label, icon: 'drop' },
@@ -17,6 +17,7 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'energy', label: METRICS.energy.label, icon: 'chart' },
   { key: 'lights', label: 'Lampor', icon: 'bulb' },
   { key: 'presence', label: 'Närvaro', icon: 'home' },
+  { key: 'wine', label: 'Vinkällare', icon: 'wine' },
 ];
 const SHORT: PeriodKey[] = ['4h', '12h', '24h'];
 
@@ -27,13 +28,17 @@ export default async function HistoryPage({
   searchParams,
 }: { searchParams: Promise<{ m?: string; p?: string; s?: string }> }) {
   const { m, p, s: sel } = await searchParams;
-  const view: View = m === 'lights' || m === 'presence' ? m : isMetric(m) ? m : 'temp';
-  const metric: MetricKey = view === 'lights' || view === 'presence' ? 'temp' : view;
+  const view: View = m === 'lights' || m === 'presence' || m === 'wine' ? m : isMetric(m) ? m : 'temp';
+  const metric: MetricKey = view === 'lights' || view === 'presence' || view === 'wine' ? 'temp' : view;
   const period: PeriodKey = isPeriod(p) ? p : '24h';
   const cfg = METRICS[metric];
-  const [series, timeline] = view === 'lights' || view === 'presence'
-    ? [[], await (view === 'presence' ? loadPresenceTimeline(period) : loadLightTimeline(period))]
-    : [await loadHistory(metric, period), null];
+  const [wine, winePts] = await Promise.all([loadWine(), view === 'wine' ? loadWineHistory() : Promise.resolve([] as [number, number][])]);
+  const [series, timeline] = view === 'wine'
+    ? [[], null]
+    : view === 'lights' || view === 'presence'
+      ? [[], await (view === 'presence' ? loadPresenceTimeline(period) : loadLightTimeline(period))]
+      : [await loadHistory(metric, period), null];
+  const views = VIEWS.filter((v) => v.key !== 'wine' || wine);
 
   // Valt rum/serie (?s=) filtrerar grafen; samma tryck igen visar alla.
   const shown = sel ? series.filter((x) => x.id === sel) : series;
@@ -48,17 +53,17 @@ export default async function HistoryPage({
     <>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Historik</h1>
-        <nav aria-label="Period" className="flex flex-wrap gap-1.5">
+        {view !== 'wine' && <nav aria-label="Period" className="flex flex-wrap gap-1.5">
           {(Object.keys(PERIODS) as PeriodKey[]).map((k) => (
             <Link key={k} href={href(view, k, sel)} aria-current={k === period ? 'page' : undefined} className={chip(k === period)}>
               {PERIODS[k].label}
             </Link>
           ))}
-        </nav>
+        </nav>}
       </header>
 
-      <nav aria-label="Mått" className="grid grid-cols-3 gap-2.5 lg:grid-cols-6">
-        {VIEWS.map((v) => (
+      <nav aria-label="Mått" className={`grid grid-cols-3 gap-2.5 ${views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
+        {views.map((v) => (
           <Link
             key={v.key}
             href={href(v.key, period)}
@@ -89,7 +94,43 @@ export default async function HistoryPage({
         </>
       )}
 
-      {!timeline && (
+      {view === 'wine' && (
+        <section className="flex flex-col gap-3">
+          <div className="rounded-[24px] glass p-3">
+            <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 px-1">
+              <h2 className="text-xl font-extrabold">Flaskor i källaren</h2>
+              <a href="https://wine.trand.se" target="_blank" rel="noopener noreferrer" className="font-bold text-sun">Öppna Trandvine ↗</a>
+            </div>
+            {winePts.length > 1 ? (
+              <HistoryChart series={[{ id: 'wine', label: 'Flaskor', color: '#E0577A', points: winePts }]} unit=" fl" decimals={0} bars={false} longPeriod fit={430} />
+            ) : (
+              <p className="p-10 text-center text-lg font-bold text-dim">Ingen historik än.</p>
+            )}
+          </div>
+          {wine && (
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              {[
+                ['I källaren nu', `${wine.total} flaskor`],
+                ['Som mest', `${Math.max(0, ...winePts.map((p) => p[1]))} flaskor`],
+                ['Senaste 30 dagarna', (() => {
+                  const ago = Date.now() / 1000 - 30 * 86400;
+                  const before = [...winePts].reverse().find((p) => p[0] <= ago)?.[1] ?? 0;
+                  const d = wine.total - before;
+                  return `${d > 0 ? '+' : ''}${d} flaskor`;
+                })()],
+                ['Senast tillagd', [wine.latest?.producer, wine.latest?.year].filter(Boolean).join(' ') || '–'],
+              ].map(([k, v]) => (
+                <div key={k} className="flex flex-col rounded-[20px] glass px-3 py-2">
+                  <span className="text-[13px] font-bold text-dim">{k}</span>
+                  <span className="truncate text-xl leading-tight font-extrabold">{v}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {!timeline && view !== 'wine' && (
         <section className="rounded-[24px] glass p-3">
           {chartSeries.length ? (
             <HistoryChart

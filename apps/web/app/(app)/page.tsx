@@ -276,12 +276,16 @@ export default async function HomePage() {
           ))}
         {/* Vinkällaren (Trandvine) som ett eget rumskort. */}
         {wine && (
-          <div className="flex flex-col gap-1.5 rounded-[20px] p-3" style={{ background: tint('#9B2C4A', 0.5) }}>
+          <a
+            href="https://wine.trand.se" target="_blank" rel="noopener noreferrer" title="Öppna Trandvine i nytt fönster"
+            className="flex flex-col gap-1.5 rounded-[20px] p-3" style={{ background: tint('#9B2C4A', 0.5) }}
+          >
             <span className="flex items-center gap-2.5">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
                 <Icon name="wine" size={22} />
               </span>
               <span className="min-w-0 grow truncate text-lg font-extrabold">Vinkällaren</span>
+              <span className="text-dim" aria-hidden="true">↗</span>
             </span>
             <span className="flex items-baseline gap-1.5">
               <span className="text-[28px] leading-none font-extrabold tracking-tight">{wine.total}</span>
@@ -295,7 +299,7 @@ export default async function HomePage() {
                 </span>
               ))}
             </span>
-          </div>
+          </a>
         )}
       </section>
 

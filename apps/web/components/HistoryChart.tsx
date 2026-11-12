@@ -72,8 +72,14 @@ export function HistoryChart({ series, unit, decimals, bars, longPeriod, fit = 4
         {
           ...axis,
           // Hela dagar på långa perioder, annars jämna timmar.
-          incrs: longPeriod ? [86400, 2 * 86400, 7 * 86400] : [900, 1800, 3600, 2 * 3600, 3 * 3600, 6 * 3600],
-          values: (_u, splits) => splits.map((s) => fmtTime(s, longPeriod)),
+          incrs: longPeriod ? [86400, 2 * 86400, 7 * 86400, 14 * 86400, 30 * 86400, 61 * 86400, 91 * 86400] : [900, 1800, 3600, 2 * 3600, 3 * 3600, 6 * 3600],
+          // Över ~2 månader: månad och år (t.ex. "okt 25"), annars veckodag/datum eller klockslag.
+          values: (u, splits) => {
+            const span = (u.scales.x.max ?? 0) - (u.scales.x.min ?? 0);
+            return splits.map((s) => span > 60 * 86400
+              ? new Date(s * 1000).toLocaleDateString('sv-SE', { month: 'short', year: '2-digit', timeZone: TZ }).replace('.', '')
+              : fmtTime(s, longPeriod));
+          },
         },
         { ...axis, size: 96, values: (_u, splits) => splits.map(fmtY) },
       ],
