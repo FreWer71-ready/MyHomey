@@ -20,7 +20,16 @@ if (a.mood) {
 
 const SCENES = {
   ljust: { on: true, dim: 1.0, temp: 0.3 }, // light_temperature: 0 = kallt, 1 = varmt
-  mys: { on: true, dim: 0.3, temp: 0.9 },
+  // Mys = solnedgång: färglampor turas om mellan orange, bärnsten och rosaorange,
+  // vita lampor går på varmaste varmvitt.
+  mys: {
+    on: true, dim: 0.35, temp: 1.0,
+    colors: [
+      { hue: 0.07, sat: 0.9, dim: 0.35 }, // orange
+      { hue: 0.11, sat: 0.65, dim: 0.4 }, // bärnsten
+      { hue: 0.03, sat: 0.75, dim: 0.3 }, // rosaorange
+    ],
+  },
   slack: { on: false },
 };
 const s = SCENES[a.scene];
@@ -34,10 +43,22 @@ const set = (d, capabilityId, value) =>
     ? Homey.devices.setCapabilityValue({ deviceId: d.id, capabilityId, value })
     : null;
 
+const has = (d, id) => d.capabilities.includes(id);
+let n = 0; // räknare för färglampor, så färgerna sprids i rummet
+
 const results = await Promise.allSettled(lights.map(async (d) => {
   if (!s.on) return set(d, 'onoff', false);
-  await set(d, 'dim', s.dim);
-  await set(d, 'light_temperature', s.temp);
+  const color = s.colors && has(d, 'light_hue') && has(d, 'light_saturation') ? s.colors[n++ % s.colors.length] : null;
+  if (color) {
+    await set(d, 'light_mode', 'color');
+    await set(d, 'light_hue', color.hue);
+    await set(d, 'light_saturation', color.sat);
+    await set(d, 'dim', color.dim);
+  } else {
+    await set(d, 'light_mode', 'temperature');
+    await set(d, 'light_temperature', s.temp);
+    await set(d, 'dim', s.dim);
+  }
   return set(d, 'onoff', true);
 }));
 
