@@ -52,7 +52,8 @@ export type Station = { wind: number | null; gust: number | null; dir: string | 
 export type Home = {
   outdoorTemp: number | null;
   /** Personer från närvaroappar i Homey (t.ex. Smart Presence, capability presence). */
-  people: { id: string; name: string; present: boolean }[];
+  /** since = när närvaron senast ändrades (för den som är borta: senast sedd). */
+  people: { id: string; name: string; present: boolean; since: string | null }[];
   outdoorTrend: Trend;
   /** Det finns en väderstation men den har inte rapporterat på WEATHER_MAX_HOURS. */
   outdoorStale: boolean;
@@ -233,7 +234,7 @@ export function buildHome(
     outdoorTemp: avg(nums(stations, 'measure_temperature')),
     people: devices
       .filter((d) => typeof cap(d, 'presence')?.value_bool === 'boolean')
-      .map((d) => ({ id: d.id, name: d.name.trim(), present: cap(d, 'presence')!.value_bool === true }))
+      .map((d) => ({ id: d.id, name: d.name.trim(), present: cap(d, 'presence')!.value_bool === true, since: cap(d, 'presence')!.last_updated ?? null }))
       .sort((a, b) => a.name.localeCompare(b.name, 'sv')),
     outdoorStale: allStations.length > 0 && stations.length === 0,
     outdoorTrend: trendOf(stations, TREND_OUTDOOR),

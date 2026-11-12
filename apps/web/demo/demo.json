@@ -497,7 +497,8 @@
    "device_id": "pw",
    "capability_id": "presence",
    "value_num": null,
-   "value_bool": false
+   "value_bool": false,
+   "last_updated": "2026-11-12T06:19:00Z"
   }
  ],
  "moods": [

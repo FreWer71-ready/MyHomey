@@ -191,5 +191,13 @@ test('SMHI dygn: från i morgon, min/max, summerad nederbörd, symbol nära kl 1
 test('närvaro från Smart Presence (capability presence)', () => {
   const ds: Device[] = [...devices, { id: 'pf', name: 'Fredrik ', zone_id: 'root', class: 'sensor', available: true }, { id: 'pm', name: 'Molly', zone_id: 'root', class: 'sensor', available: true }];
   const h = buildHome(zones, ds, [...caps, c('pf', 'presence', true), c('pm', 'presence', false)]);
-  assert.deepEqual(h.people, [{ id: 'pf', name: 'Fredrik', present: true }, { id: 'pm', name: 'Molly', present: false }]);
+  assert.deepEqual(h.people.map((p) => [p.name, p.present]), [['Fredrik', true], ['Molly', false]]);
+});
+
+test('senast sedd: i dag, i går, äldre', async () => {
+  const { seenAgo } = await import('./time.ts');
+  const now = Date.parse('2026-11-12T12:00:00Z');
+  assert.equal(seenAgo('2026-11-12T06:19:00Z', now), '07:19');
+  assert.equal(seenAgo('2026-11-11T21:10:00Z', now), 'i går 22:10');
+  assert.equal(seenAgo('2026-07-25T07:45:00Z', now), '25 juli');
 });

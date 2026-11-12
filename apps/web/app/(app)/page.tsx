@@ -6,6 +6,7 @@ import { RoomTile } from '@/components/RoomTile';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadNameDay, loadNet, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
+import { seenAgo } from '@/lib/time';
 import { NET_LABEL } from '@/lib/net';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -40,7 +41,6 @@ export default async function HomePage() {
     loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(),
   ]);
   const names = joinNames(nameDay);
-  const home = h.people.filter((p) => p.present);
   const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
   const price = summarize(prices, Date.now());
   const open = h.openings.filter((o) => o.open);
@@ -63,16 +63,20 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
-            {/* Närvaro (Smart Presence i Homey): vilka som är hemma just nu. */}
+            {/* Närvaro (Smart Presence i Homey): grönt = hemma, rött = borta med när personen sågs senast. */}
             {h.people.length > 0 && (
               <span className="flex flex-wrap items-center gap-1.5">
-                {home.length ? home.map((p) => (
-                  <span key={p.id} className="flex items-center gap-1.5 rounded-full bg-ok-soft px-3 py-1 text-[15px] font-extrabold text-ok">
-                    <span className="size-2 rounded-full bg-ok" />{p.name}
+                {[...h.people].sort((x, y) => Number(y.present) - Number(x.present)).map((p) => (
+                  <span
+                    key={p.id}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[15px] font-extrabold ${p.present ? 'bg-ok-soft text-ok' : 'bg-danger-strong text-white'}`}
+                    title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}
+                  >
+                    <span className={`size-2 rounded-full ${p.present ? 'bg-ok' : 'bg-white'}`} />
+                    {p.name}
+                    {!p.present && p.since && <span className="font-bold opacity-90">· {seenAgo(p.since)}</span>}
                   </span>
-                )) : (
-                  <span className="rounded-full bg-glass-hi px-3 py-1 text-[15px] font-bold text-dim">Ingen hemma</span>
-                )}
+                ))}
               </span>
             )}
           </div>
@@ -114,10 +118,6 @@ export default async function HomePage() {
               {net.state === 'ok' ? `${net.isp ?? 'Internet'} · ${net.latency == null ? '–' : Math.round(net.latency)} ms` : NET_LABEL[net.state]}
             </Link>
           )}
-          <span className="hidden items-center gap-2 rounded-full bg-ok-soft px-3 py-1.5 text-[14px] font-bold text-ok xl:flex">
-            <span className="size-2.5 rounded-full bg-ok" />
-            Live · {h.online} enheter
-          </span>
           <Clock show="time" className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl" />
         </div>
       </header>
