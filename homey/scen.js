@@ -50,12 +50,12 @@ const results = await Promise.allSettled(lights.map(async (d) => {
   if (!s.on) return set(d, 'onoff', false);
   const color = s.colors && has(d, 'light_hue') && has(d, 'light_saturation') ? s.colors[n++ % s.colors.length] : null;
   if (color) {
-    await set(d, 'light_mode', 'color');
+    await Promise.resolve(set(d, 'light_mode', 'color')).catch(() => {}); // inte alla lampor tillåter det
     await set(d, 'light_hue', color.hue);
     await set(d, 'light_saturation', color.sat);
     await set(d, 'dim', color.dim);
   } else {
-    await set(d, 'light_mode', 'temperature');
+    await Promise.resolve(set(d, 'light_mode', 'temperature')).catch(() => {});
     await set(d, 'light_temperature', s.temp);
     await set(d, 'dim', s.dim);
   }
