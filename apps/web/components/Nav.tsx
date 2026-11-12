@@ -47,7 +47,7 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
   return (
     <nav
       aria-label="Huvudmeny"
-      className="fixed inset-x-0 bottom-0 z-10 flex gap-1 border-t border-line bg-glass p-2 md:sticky md:top-0 md:h-dvh md:overflow-y-auto md:border-t-0 md:border-r md:w-[88px] md:shrink-0 md:flex-col md:gap-2 md:px-2.5 md:py-4"
+      className="fixed inset-x-0 bottom-0 z-20 flex gap-1 border-t border-line bg-ground p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:bg-glass md:pb-4 md:top-0 md:h-dvh md:overflow-y-auto md:border-t-0 md:border-r md:w-[88px] md:shrink-0 md:flex-col md:gap-2 md:px-2.5 md:py-4"
     >
       <div className="mx-auto mb-2 hidden size-12 items-center justify-center rounded-[18px] bg-sun text-ink md:flex">
         <Icon name="logo" size={30} />
