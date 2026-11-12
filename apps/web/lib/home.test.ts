@@ -201,3 +201,11 @@ test('senast sedd: i dag, i går, äldre', async () => {
   assert.equal(seenAgo('2026-11-11T21:10:00Z', now), 'i går 22:10');
   assert.equal(seenAgo('2026-07-25T07:45:00Z', now), '25 juli');
 });
+
+test('närvaro äldre än 4 veckor visas inte', () => {
+  const now = Date.parse('2026-11-12T12:00:00Z');
+  const ds: Device[] = [{ id: 'a', name: 'Fredrik', zone_id: 'root', class: 'sensor', available: true }, { id: 'b', name: 'Felix', zone_id: 'root', class: 'sensor', available: true }];
+  const p = (id: string, v: boolean, at: string): Cap => ({ device_id: id, capability_id: 'presence', value_num: null, value_bool: v, last_updated: at });
+  const h = buildHome(zones, ds, [p('a', false, '2026-11-12T06:19:00Z'), p('b', false, '2026-07-25T07:45:00Z')], [], now);
+  assert.deepEqual(h.people.map((x) => x.name), ['Fredrik']);
+});

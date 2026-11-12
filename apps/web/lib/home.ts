@@ -101,6 +101,8 @@ export const STALE_HOURS = 48;
 export const TEMP_MAX_DAYS = 5;
 /** Väderstationens värden räknas som ej tillgängliga om stationen inte rapporterat på så här länge. */
 export const WEATHER_MAX_HOURS = 4;
+/** Personer vars närvaro inte ändrats på så här länge visas inte (mobilen spåras troligen inte längre). */
+export const PRESENCE_MAX_DAYS = 28;
 const STATION_CAPS = ['measure_temperature', 'measure_wind_strength', 'measure_gust_strength', 'measure_wind_angle', 'measure_temperature.surface'];
 /** Bara kontaktsensorer med fönster i namnet räknas som fönster (regnvarning). */
 const WINDOW = /fönster|window/i;
@@ -233,7 +235,10 @@ export function buildHome(
   return {
     outdoorTemp: avg(nums(stations, 'measure_temperature')),
     people: devices
-      .filter((d) => typeof cap(d, 'presence')?.value_bool === 'boolean')
+      .filter((d) => {
+        const p = cap(d, 'presence');
+        return typeof p?.value_bool === 'boolean' && (!p.last_updated || now - Date.parse(p.last_updated) <= PRESENCE_MAX_DAYS * 86400_000);
+      })
       .map((d) => ({ id: d.id, name: d.name.trim(), present: cap(d, 'presence')!.value_bool === true, since: cap(d, 'presence')!.last_updated ?? null }))
       .sort((a, b) => a.name.localeCompare(b.name, 'sv')),
     outdoorStale: allStations.length > 0 && stations.length === 0,
