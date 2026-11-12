@@ -272,3 +272,20 @@ export async function loadPresenceTimeline(period: PeriodKey): Promise<{ rooms: 
   if (devices.error || rows.error) throw new Error(`Kunde inte läsa närvaro: ${(devices.error ?? rows.error)!.message}`);
   return { rooms: buildPresence(rows.data as OnOffRow[], devices.data as Device[], since, now), since, now };
 }
+
+export type HueScene = { id: string; name: string; room: string | null; colors: string[]; dynamic: boolean; active: boolean };
+
+/** Hue-scener via edge-funktionen hue. connected=false om Hue inte är kopplat än. */
+export async function loadHueScenes(): Promise<{ connected: boolean; scenes: HueScene[] }> {
+  if (DEMO) {
+    return { connected: true, scenes: [
+      { id: 'h1', name: 'Solnedgång Savannah', room: 'Vardagsrum', colors: ['#ff8a3d', '#ff5a5a', '#ffc21a'], dynamic: true, active: false },
+      { id: 'h2', name: 'Läsa', room: 'Vardagsrum', colors: ['#fff4e0'], dynamic: false, active: true },
+      { id: 'h3', name: 'Nordljus', room: 'Vardagsrum', colors: ['#2bb5c4', '#34c27a', '#8b5cf6'], dynamic: true, active: false },
+    ] };
+  }
+  const sb = await createClient();
+  const { data, error } = await sb.functions.invoke('hue', { body: { action: 'scenes' } });
+  if (error || !data) return { connected: false, scenes: [] };
+  return { connected: !!data.connected, scenes: (data.scenes ?? []) as HueScene[] };
+}

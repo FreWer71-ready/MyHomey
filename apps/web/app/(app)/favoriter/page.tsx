@@ -1,6 +1,7 @@
 import { Icon } from '@/components/Icon';
 import { MoodButtons } from '@/components/MoodButtons';
-import { loadFlows, loadHome } from '@/lib/data';
+import { loadFlows, loadHome, loadHueScenes } from '@/lib/data';
+import { HueScenes } from '@/components/HueScenes';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,10 @@ function groupByRoom(moods: { id: string; name: string; room: string | null }[])
     a.name === 'Hela hemmet' ? -1 : b.name === 'Hela hemmet' ? 1 : a.name.localeCompare(b.name, 'sv'));
 }
 
-export default async function FavoritesPage() {
-  const [h, flows] = await Promise.all([loadHome(), loadFlows()]);
+export default async function FavoritesPage({ searchParams }: { searchParams: Promise<{ hue?: string }> }) {
+  const { hue: hueResult } = await searchParams;
+  const [h, flows, hue] = await Promise.all([loadHome(), loadFlows(), loadHueScenes()]);
+  const hueRooms = [...new Set(hue.scenes.map((s) => s.room ?? 'Övrigt'))].sort((a, b) => a.localeCompare(b, 'sv'));
   const favorites = groupByRoom(h.favoriteMoods);
   const all = groupByRoom([
     ...h.homeMoods.map((m) => ({ ...m, room: null })),
@@ -60,6 +63,33 @@ export default async function FavoritesPage() {
           )}
         </div>
       </div>
+
+      {/* Philips Hue: anslut en gång, sedan alla Hue-scener per rum. */}
+      {hueResult === 'ok' && <p role="status" className="rounded-[16px] bg-ok-soft px-4 py-2 font-extrabold text-ok">Hue är anslutet.</p>}
+      {hueResult === 'fel' && <p role="alert" className="rounded-[16px] bg-[rgb(240_80_60/0.2)] px-4 py-2 font-extrabold text-danger">Det gick inte att ansluta Hue. Försök igen.</p>}
+      {hue.connected ? (
+        hue.scenes.length > 0 && (
+          <details className="group rounded-[24px] glass">
+            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 text-lg font-extrabold">
+              Hue-scener ({hue.scenes.length})
+              <span className="text-dim transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <div className="flex flex-col gap-3 px-4 pb-4">
+              {hueRooms.map((r) => (
+                <section key={r} className="flex flex-col gap-2">
+                  <h3 className="font-extrabold text-dim">{r}</h3>
+                  <HueScenes scenes={hue.scenes.filter((s) => (s.room ?? 'Övrigt') === r)} />
+                </section>
+              ))}
+            </div>
+          </details>
+        )
+      ) : (
+        <a href="/mydashboard/api/hue/login" className="flex min-h-14 items-center justify-between gap-3 rounded-[24px] glass px-4 text-lg font-extrabold">
+          Anslut Philips Hue för att använda Hue-scener
+          <span className="rounded-full bg-sun px-4 py-1.5 text-ink">Anslut</span>
+        </a>
+      )}
 
       {all.length > 0 && (
         <details className="group rounded-[24px] glass">

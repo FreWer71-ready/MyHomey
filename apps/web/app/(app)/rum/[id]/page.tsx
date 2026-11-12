@@ -5,14 +5,15 @@ import { notFound } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import { MoodButtons } from '@/components/MoodButtons';
 import { SceneButtons } from '@/components/SceneButtons';
-import { loadHome } from '@/lib/data';
+import { loadHome, loadHueScenes } from '@/lib/data';
+import { HueScenes } from '@/components/HueScenes';
 import { fmtPercent, fmtTemp, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
 export default async function RoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const home = await loadHome();
+  const [home, hue] = await Promise.all([loadHome(), loadHueScenes()]);
   const isHome = id === home.rootZoneId;
   const room = home.rooms.find((r) => r.id === id);
   if (!room && !isHome) notFound();
@@ -96,6 +97,16 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
       {room.lights.length > 0 ? (
         <>
           <SceneButtons zoneId={room.id} room={room.name} size="large" />
+          {/* Hue-scener för rummet (Hue-rum med samma namn som Homey-zonen). */}
+          {(() => {
+            const own = hue.scenes.filter((s) => s.room?.trim().toLowerCase() === room.name.trim().toLowerCase());
+            return own.length > 0 && (
+              <>
+                <h2 className="text-[22px] font-extrabold">Hue-scener</h2>
+                <HueScenes scenes={own} />
+              </>
+            );
+          })()}
           <h2 className="text-[22px] font-extrabold">Belysning</h2>
           <ul className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {room.lights.map((l) => (

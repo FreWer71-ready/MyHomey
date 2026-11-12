@@ -70,3 +70,12 @@ export async function runFlow(flowId: string, advanced: boolean): Promise<Result
   if (!/^[\w-]{1,64}$/.test(flowId)) return { ok: false, error: 'Ogiltigt flow' };
   return command({ flow: flowId, advanced: String(advanced) }, { type: 'flow', flow_id: flowId });
 }
+
+/** Aktivera en Hue-scen (statisk eller dynamisk) via edge-funktionen hue. */
+export async function runHueScene(sceneId: string, dynamic: boolean): Promise<Result> {
+  if (!/^[\w-]{1,64}$/.test(sceneId)) return { ok: false, error: 'Ogiltig scen' };
+  if (process.env.NODE_ENV === 'development' && process.env.DEMO_DATA) return { ok: true };
+  const sb = await createClient();
+  const { data, error } = await sb.functions.invoke('hue', { body: { action: 'activate', id: sceneId, dynamic } });
+  return error || !data?.ok ? { ok: false, error: 'Hue svarar inte' } : { ok: true };
+}
