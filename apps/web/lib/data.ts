@@ -234,3 +234,13 @@ export async function loadNet(): Promise<Net | null> {
   if (status.error || isp.error || devices.error) return null; // Nätverket får aldrig stoppa sidan.
   return summarizeNet(status.data as NetStatusRow | null, (isp.data ?? []) as NetIsp[], (devices.data ?? []) as NetDevice[]);
 }
+
+export type Flow = { id: string; name: string; advanced: boolean };
+
+/** Favoritflows från Homey (tabellen innehåller bara favoriter). */
+export async function loadFlows(): Promise<Flow[]> {
+  if (DEMO) return [{ id: 'f1', name: 'Godnatt', advanced: false }, { id: 'f2', name: 'Morgonrutin', advanced: true }, { id: 'f3', name: 'Lämnar huset', advanced: false }];
+  const sb = await createClient();
+  const { data, error } = await sb.from('flows').select('id,name,advanced').order('name');
+  return error ? [] : (data as Flow[]);
+}

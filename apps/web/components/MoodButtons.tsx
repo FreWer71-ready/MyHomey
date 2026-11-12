@@ -1,13 +1,15 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { runMood } from '@/app/actions/scene';
+import { runFlow, runMood } from '@/app/actions/scene';
 import { Icon } from './Icon';
 
 type State = { id: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null;
 
-/** Knappar som aktiverar Homey-moods. */
-export function MoodButtons({ moods, large = false }: { moods: { id: string; name: string; room?: string | null }[]; large?: boolean }) {
+type Item = { id: string; name: string; room?: string | null; advanced?: boolean };
+
+/** Knappar som aktiverar Homey-moods eller startar flows (kind="flow"). */
+export function MoodButtons({ moods, large = false, kind = 'mood' }: { moods: Item[]; large?: boolean; kind?: 'mood' | 'flow' }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [state, setState] = useState<State>(null);
@@ -15,7 +17,8 @@ export function MoodButtons({ moods, large = false }: { moods: { id: string; nam
   const run = (id: string) => {
     setState({ id, status: 'busy' });
     start(async () => {
-      const r = await runMood(id);
+      const item = moods.find((m) => m.id === id);
+      const r = kind === 'flow' ? await runFlow(id, !!item?.advanced) : await runMood(id);
       setState({ id, status: r.ok ? 'ok' : 'error', msg: r.error });
       if (r.ok) {
         setTimeout(() => router.refresh(), 4000);
@@ -38,9 +41,9 @@ export function MoodButtons({ moods, large = false }: { moods: { id: string; nam
               type="button"
               onClick={() => run(m.id)}
               disabled={state?.status === 'busy'}
-              className={`flex items-center gap-2.5 rounded-[20px] bg-violet-btn text-lg font-extrabold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18),0_2px_10px_rgb(0_0_0/0.3)] transition-shadow ${large ? 'min-h-20 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
+              className={`flex items-center gap-2.5 rounded-[20px] ${kind === 'flow' ? 'bg-teal-btn' : 'bg-violet-btn'} text-lg font-extrabold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18),0_2px_10px_rgb(0_0_0/0.3)] transition-shadow ${large ? 'min-h-20 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
             >
-              <Icon name="moon" size={24} />
+              <Icon name={kind === 'flow' ? 'play' : 'moon'} size={24} />
               {m.room ? (
                 <span className="flex flex-col items-start leading-tight">
                   {m.name}

@@ -4,6 +4,7 @@
 //           2) HomeyScript → "Kör": Dashboard (fördröjning 2 s)
 // Argument (JSON från dashboarden):
 //   {"zone":"<zon-id>","scene":"ljust|mys|slack"}  eller  {"mood":"<mood-id>"}
+//   {"flow":"<flow-id>","advanced":"true|false"}
 //   {"device":"<enhets-id>","on":"true|false","dim":"0–1","temp":"0–1","hue":"0–1","sat":"0–1"} (alla valfria utom device)
 
 const a = JSON.parse(args[0] || '{}');
@@ -16,6 +17,14 @@ if (a.mood) {
   }
   await activate.call(moods, { id: a.mood });
   log(`mood ${a.mood} aktiverat`);
+  return true;
+}
+
+if (a.flow) {
+  // Startar flödet (kräver kortet "Detta flöde startas" i vanliga flöden).
+  if (a.advanced === 'true' || a.advanced === true) await Homey.flow.triggerAdvancedFlow({ id: a.flow });
+  else await Homey.flow.triggerFlow({ id: a.flow });
+  log(`flow ${a.flow} startat`);
   return true;
 }
 

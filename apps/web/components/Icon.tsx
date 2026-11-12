@@ -39,6 +39,12 @@ const FLAT = {
       <rect x={11} y={2} width={2} height={2.5} rx={1} fill={C.ray} />
     </g>
   ),
+  play: (
+    <>
+      <circle cx={12} cy={12} r={9.5} fill={C.cloud} />
+      <path className="wx-twinkle" d="M10 7.8v8.4l6.5-4.2z" fill={C.teal} />
+    </>
+  ),
   star: (
     <>
       <path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill={C.sun} stroke={C.ray} strokeWidth={1} strokeLinejoin="round" />

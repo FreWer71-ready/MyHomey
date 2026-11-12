@@ -64,3 +64,9 @@ export async function runLight(deviceId: string, c: LightCommand): Promise<Resul
   if (Object.keys(tag).length === 1) return { ok: false, error: 'Inget att ändra' };
   return command(tag, { type: 'light', device_id: deviceId, payload: c });
 }
+
+/** Starta ett Homey-flow (vanligt eller avancerat). */
+export async function runFlow(flowId: string, advanced: boolean): Promise<Result> {
+  if (!/^[\w-]{1,64}$/.test(flowId)) return { ok: false, error: 'Ogiltigt flow' };
+  return command({ flow: flowId, advanced: String(advanced) }, { type: 'flow', flow_id: flowId });
+}

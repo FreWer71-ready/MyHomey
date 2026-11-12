@@ -17,6 +17,15 @@ const [zones, devices, moods] = await Promise.all([
 const me = Homey.users ? await Homey.users.getUserMe().catch(() => null) : null;
 const favorites = new Set(me?.properties?.favoriteMoods ?? []);
 
+// Favoritflows: hämta bara namnen på de som är favoriter (vanliga eller avancerade).
+const flows = [];
+for (const id of me?.properties?.favoriteFlows ?? []) {
+  const basic = await Homey.flow.getFlow({ id }).catch(() => null);
+  const adv = basic ? null : await Homey.flow.getAdvancedFlow({ id }).catch(() => null);
+  const f = basic || adv;
+  if (f) flows.push({ id, name: f.name, advanced: !basic });
+}
+
 const payload = {
   v: 1,
   source: 'homeyscript',
@@ -25,6 +34,7 @@ const payload = {
   ...(moods && {
     moods: Object.values(moods).map((m) => ({ id: m.id, name: m.name, zone: m.zone || null, favorite: favorites.has(m.id) })),
   }),
+  ...(me && { flows }),
   devices: Object.values(devices).map((d) => ({
     id: d.id,
     name: d.name,
@@ -50,5 +60,5 @@ const res = await fetch(URL, {
 const text = await res.text();
 if (!res.ok) throw new Error(`Ingest ${res.status}: ${text}`);
 
-log(`${payload.devices.length} enheter, ${moods ? Object.keys(moods).length : 'inga'} moods (${favorites.size} favoriter) → ${text}`);
+log(`${payload.devices.length} enheter, ${moods ? Object.keys(moods).length : 'inga'} moods (${favorites.size} favoriter), ${flows.length} favoritflows → ${text}`);
 return true;

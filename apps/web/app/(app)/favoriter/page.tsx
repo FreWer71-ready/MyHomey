@@ -1,6 +1,6 @@
 import { Icon } from '@/components/Icon';
 import { MoodButtons } from '@/components/MoodButtons';
-import { loadHome } from '@/lib/data';
+import { loadFlows, loadHome } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ function groupByRoom(moods: { id: string; name: string; room: string | null }[])
 }
 
 export default async function FavoritesPage() {
-  const h = await loadHome();
+  const [h, flows] = await Promise.all([loadHome(), loadFlows()]);
   const favorites = groupByRoom(h.favoriteMoods);
   const all = groupByRoom([
     ...h.homeMoods.map((m) => ({ ...m, room: null })),
@@ -41,8 +41,15 @@ export default async function FavoritesPage() {
         ))
       ) : (
         <p className="rounded-[20px] glass p-4 text-lg font-bold text-dim">
-          Inga favoriter än. Markera moods som favoriter i Homey-appen så dyker de upp här.
+          Inga favoritmoods än. Markera moods och flows som favoriter i Homey-appen så dyker de upp här.
         </p>
+      )}
+
+      {flows.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xl font-extrabold">Flows</h2>
+          <MoodButtons moods={flows} kind="flow" large />
+        </section>
       )}
 
       {all.length > 0 && (
