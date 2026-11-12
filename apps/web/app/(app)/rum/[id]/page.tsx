@@ -101,10 +101,17 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
           {(() => {
             const own = hue.scenes.filter((s) => s.room?.trim().toLowerCase() === room.name.trim().toLowerCase());
             return own.length > 0 && (
-              <>
-                <h2 className="text-[22px] font-extrabold">Hue-scener</h2>
-                <HueScenes scenes={own} />
-              </>
+              <details className="group rounded-[24px] border border-line bg-card">
+                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 text-[20px] font-extrabold">
+                  <span>
+                    Hue-scener <span className="text-base font-bold text-dim">({own.length}{own.some((s) => s.active) ? ` · ${own.find((s) => s.active)!.name} på` : ''})</span>
+                  </span>
+                  <span className="text-dim transition-transform group-open:rotate-180">▾</span>
+                </summary>
+                <div className="px-3 pb-3">
+                  <HueScenes scenes={own} />
+                </div>
+              </details>
             );
           })()}
           <h2 className="text-[22px] font-extrabold">Belysning</h2>
