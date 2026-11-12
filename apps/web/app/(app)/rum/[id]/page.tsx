@@ -1,10 +1,11 @@
 import Link from 'next/link';
+import { LightControl } from '@/components/LightControl';
 import { notFound } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import { MoodButtons } from '@/components/MoodButtons';
 import { SceneButtons } from '@/components/SceneButtons';
 import { loadHome } from '@/lib/data';
-import { fmtPercent, fmtTemp, heatTint, tint } from '@/lib/scale';
+import { fmtPercent, fmtTemp, heatTint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,32 +96,9 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
         <>
           <SceneButtons zoneId={room.id} room={room.name} size="large" />
           <h2 className="text-[22px] font-extrabold">Belysning</h2>
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {room.lights.map((l) => (
-              <li
-                key={l.id}
-                className="glass flex min-h-25 items-center gap-3.5 rounded-3xl p-4"
-                style={l.on ? { background: tint('#FFC21A', 0.24) } : undefined}
-              >
-                <span
-                  className={`flex size-14 shrink-0 items-center justify-center rounded-[18px] ${
-                    l.on ? 'bg-glass-hi' : 'bg-glass-2 opacity-45 grayscale'
-                  }`}
-                >
-                  <Icon name="bulb" size={28} />
-                </span>
-                <span className="flex min-w-0 grow flex-col gap-2">
-                  <span className="truncate text-[17px] font-extrabold">{l.name}</span>
-                  <span className="flex items-center gap-2">
-                    <span className="flex h-2.5 grow overflow-hidden rounded-full bg-deep/12">
-                      <span className="h-full rounded-full bg-deep" style={{ width: `${l.on ? (l.dim ?? 100) : 0}%` }} />
-                    </span>
-                    <span className="w-10 text-right text-sm font-extrabold">
-                      {l.on ? (l.dim == null ? 'På' : `${l.dim} %`) : 'Av'}
-                    </span>
-                  </span>
-                </span>
-              </li>
+              <LightControl key={l.id} light={l} />
             ))}
           </ul>
         </>

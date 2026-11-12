@@ -5,7 +5,7 @@ const SCENES = ['ljust', 'mys', 'slack'];
 type Result = { ok: boolean; error?: string };
 
 /** Anropar Homeys webhook "scen" (flödet kör DB Scen) och loggar kommandot. */
-async function command(tag: Record<string, string>, log: Record<string, string>): Promise<Result> {
+async function command(tag: Record<string, string>, log: Record<string, unknown>): Promise<Result> {
   if (process.env.NODE_ENV === 'development' && process.env.DEMO_DATA) return { ok: true };
 
   const sb = await createClient();
@@ -46,4 +46,21 @@ export async function runScene(zoneId: string, scene: string): Promise<Result> {
 export async function runMood(moodId: string): Promise<Result> {
   if (!/^[\w-]{1,64}$/.test(moodId)) return { ok: false, error: 'Ogiltigt mood' };
   return command({ mood: moodId }, { type: 'mood', mood_id: moodId });
+}
+
+export type LightCommand = { on?: boolean; dim?: number; temp?: number; hue?: number; sat?: number };
+
+/** Styr en enskild lampa: av/på, ljusstyrka, färgtemperatur eller färg (värden 0–1). */
+export async function runLight(deviceId: string, c: LightCommand): Promise<Result> {
+  if (!/^[\w-]{1,64}$/.test(deviceId)) return { ok: false, error: 'Ogiltig lampa' };
+  const tag: Record<string, string> = { device: deviceId };
+  if (typeof c.on === 'boolean') tag.on = String(c.on);
+  for (const k of ['dim', 'temp', 'hue', 'sat'] as const) {
+    const v = c[k];
+    if (v === undefined) continue;
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1) return { ok: false, error: `Ogiltigt värde för ${k}` };
+    tag[k] = String(Math.round(v * 1000) / 1000);
+  }
+  if (Object.keys(tag).length === 1) return { ok: false, error: 'Inget att ändra' };
+  return command(tag, { type: 'light', device_id: deviceId, payload: c });
 }

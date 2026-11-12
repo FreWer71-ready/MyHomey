@@ -122,3 +122,9 @@ svg.ico {
 .history-chart .u-legend .u-series:first-child { display: none; }
 .history-chart .u-legend .u-marker { border-radius: 50%; width: 12px; height: 12px; }
 .history-chart .u-legend .u-off { opacity: 0.35; }
+
+/* Stora, tumvänliga reglage (ljusstyrka, vit ton). Bakgrunden sätts inline. */
+.slider { appearance: none; -webkit-appearance: none; width: 100%; height: 14px; border-radius: 999px; outline: none; cursor: pointer; touch-action: pan-y; }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: #fff; box-shadow: 0 1px 6px rgb(0 0 0 / 0.45); }
+.slider::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 1px 6px rgb(0 0 0 / 0.45); }
+.slider:focus-visible { box-shadow: 0 0 0 3px var(--color-sun); }

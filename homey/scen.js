@@ -4,6 +4,7 @@
 //           2) HomeyScript → "Kör": Dashboard (fördröjning 2 s)
 // Argument (JSON från dashboarden):
 //   {"zone":"<zon-id>","scene":"ljust|mys|slack"}  eller  {"mood":"<mood-id>"}
+//   {"device":"<enhets-id>","on":"true|false","dim":"0–1","temp":"0–1","hue":"0–1","sat":"0–1"} (alla valfria utom device)
 
 const a = JSON.parse(args[0] || '{}');
 
@@ -15,6 +16,37 @@ if (a.mood) {
   }
   await activate.call(moods, { id: a.mood });
   log(`mood ${a.mood} aktiverat`);
+  return true;
+}
+
+if (a.device) {
+  const d = await Homey.devices.getDevice({ id: a.device });
+  const has = (id) => d.capabilities.includes(id);
+  const set = (capabilityId, value) => Homey.devices.setCapabilityValue({ deviceId: d.id, capabilityId, value });
+  const num = (k) => (a[k] === undefined ? null : Math.min(1, Math.max(0, Number(a[k]))));
+  const done = [];
+  // Färg före vitt; läget byts automatiskt av de flesta lampor, annars försöker vi sätta det.
+  if (num('hue') !== null && has('light_hue')) {
+    await set('light_mode', 'color').catch(() => {});
+    await set('light_hue', num('hue'));
+    if (num('sat') !== null && has('light_saturation')) await set('light_saturation', num('sat'));
+    done.push('färg');
+  } else if (num('temp') !== null && has('light_temperature')) {
+    await set('light_mode', 'temperature').catch(() => {});
+    await set('light_temperature', num('temp'));
+    done.push('vit');
+  }
+  if (num('dim') !== null && has('dim')) {
+    await set('dim', Math.max(0.01, num('dim')));
+    done.push('dim');
+  }
+  if (a.on !== undefined) {
+    await set('onoff', a.on === true || a.on === 'true');
+    done.push(String(a.on) === 'true' ? 'på' : 'av');
+  } else if (done.length) {
+    await set('onoff', true); // Ändrad lampa tänds.
+  }
+  log(`${d.name}: ${done.join(', ') || 'inget'}`);
   return true;
 }
 

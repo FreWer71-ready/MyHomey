@@ -13,7 +13,15 @@ export type Cap = {
 export type Mood = { id: string; name: string; zone_id: string | null; favorite?: boolean };
 
 export type RoomIcon = 'sofa' | 'bed' | 'door' | 'drop' | 'wc' | 'pot' | 'box';
-export type Light = { id: string; name: string; on: boolean; dim: number | null };
+export type Light = {
+  id: string; name: string; on: boolean;
+  /** Ljusstyrka 0–100 %, null om lampan saknar dimmer. */
+  dim: number | null;
+  /** Vad lampan klarar: dimmer, färgtemperatur (vit), färg. */
+  can: { dim: boolean; temp: boolean; color: boolean };
+  /** light_temperature 0 = kallt … 1 = varmt; hue/sat 0–1. */
+  temp: number | null; hue: number | null; sat: number | null;
+};
 export type Room = {
   id: string;
   name: string;
@@ -65,6 +73,7 @@ export const CAPS = [
   'measure_temperature', 'measure_humidity', 'onoff', 'dim', 'measure_power',
   'alarm_contact', 'alarm_motion', 'measure_battery', 'alarm_battery', 'alarm_connectivity',
   'measure_wind_strength', 'measure_gust_strength', 'measure_wind_angle', 'measure_temperature.surface',
+  'light_temperature', 'light_hue', 'light_saturation',
 ];
 
 const COMPASS = ['N', 'NNO', 'NO', 'ONO', 'O', 'OSO', 'SO', 'SSO', 'S', 'SSV', 'SV', 'VSV', 'V', 'VNV', 'NV', 'NNV'];
@@ -118,7 +127,12 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
     const onoff = cap(d, 'onoff');
     if (d.class !== 'light' || !onoff) return null;
     const dim = cap(d, 'dim')?.value_num;
-    return { id: d.id, name: d.name.trim(), on: onoff.value_bool === true, dim: dim == null ? null : Math.round(dim * 100) };
+    const num = (id: string) => cap(d, id)?.value_num ?? null;
+    return {
+      id: d.id, name: d.name.trim(), on: onoff.value_bool === true, dim: dim == null ? null : Math.round(dim * 100),
+      can: { dim: !!cap(d, 'dim'), temp: !!cap(d, 'light_temperature'), color: !!cap(d, 'light_hue') && !!cap(d, 'light_saturation') },
+      temp: num('light_temperature'), hue: num('light_hue'), sat: num('light_saturation'),
+    };
   };
   const allLights = active.map(lightOf).filter((l): l is Light => l !== null);
 
