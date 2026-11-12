@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 const TZ = 'Europe/Stockholm';
 const fmtDate = (d: Date) =>
-  d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'short', timeZone: TZ }).replace('.', '');
+  d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ }).replace('.', '');
 const fmtTime = (d: Date) => d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
 
 /** Datum eller klocka, uppdateras varje halvminut. Renderas först i webbläsaren. */

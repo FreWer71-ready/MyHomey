@@ -7,7 +7,6 @@ import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadNameDay, loadNet, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { seenAgo } from '@/lib/time';
-import { NET_LABEL } from '@/lib/net';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { PRICE_AREA, hhmm, summarize } from '@/lib/prices';
@@ -50,77 +49,65 @@ export default async function HomePage() {
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 lg:flex-nowrap">
-        <div className="shrink-0">
-          <p className="text-[13px] font-bold tracking-wider text-fg uppercase">
-            <Clock show="date" />
+      {/* Rubrik: tid och datum samlat till vänster (läsbart på håll), närvaro till höger. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <h1 className="sr-only">Hemma</h1>
+        <div className="flex min-w-0 items-center gap-4">
+          <Clock show="time" className="text-[52px] leading-none font-extrabold tracking-tight tabular-nums md:text-[58px]" />
+          <div className="flex min-w-0 flex-col leading-tight">
+            <Clock show="date" className="text-xl font-extrabold first-letter:uppercase" />
             {names && (
-              <span className="text-dim">
-                {' · namnsdag '}
-                <span className="text-sun">{names}</span>
-              </span>
-            )}
-          </p>
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
-            {/* Närvaro (Smart Presence i Homey): grönt = hemma, rött = borta med när personen sågs senast. */}
-            {h.people.length > 0 && (
-              <span className="flex flex-wrap items-center gap-1.5">
-                {[...h.people].sort((x, y) => Number(y.present) - Number(x.present) || (y.since ?? '').localeCompare(x.since ?? '')).map((p) => (
-                  <span
-                    key={p.id}
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[15px] font-extrabold ${p.present ? 'bg-ok-soft text-ok' : 'bg-[rgb(240_80_60/0.2)] text-danger'}`}
-                    title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}
-                  >
-                    <span className={`size-2 rounded-full ${p.present ? 'bg-ok' : 'bg-danger'}`} />
-                    {p.name}
-                    {!p.present && p.since && <span className="font-bold opacity-80">· {seenAgo(p.since)}</span>}
-                  </span>
-                ))}
+              <span className="text-[15px] font-bold text-dim">
+                Namnsdag <span className="text-sun">{names}</span>
               </span>
             )}
           </div>
         </div>
-        {/* Varningar: i rubrikraden på plattan (sparar höjd), egen rad på mobil. */}
-        {(warning || damp.length > 0 || net?.state === 'down') && (
-          <div className="order-last flex w-full min-w-0 flex-col gap-1.5 lg:order-none lg:w-auto lg:grow">
-            {net?.state === 'down' && (
-              <Link href="/larm#natverk" role="alert" className="flex items-center gap-2.5 rounded-[16px] bg-danger-strong px-3.5 py-2 text-white">
-                <Icon name="wifi" size={22} />
-                <span className="truncate font-extrabold">Internet nere{net.isp ? ` · ${net.isp}` : ''} – kolla routern</span>
-              </Link>
-            )}
-            {warning && (
-              <Link href="/larm" role="alert" className="flex items-center gap-2.5 rounded-[16px] bg-info-strong px-3.5 py-2 text-white">
-                <Icon name="rain" size={22} />
-                <span className="truncate font-extrabold">
-                  Nederbörd kl {hhmm(warning.at)} – stäng {warning.windows.map((w) => w.name).join(', ')}
-                </span>
-              </Link>
-            )}
-            {damp.length > 0 && (
-              <Link href="/larm#fukt" role="alert" className="flex items-center gap-2.5 rounded-[16px] bg-teal px-3.5 py-2 text-white">
-                <Icon name="drop" size={22} />
-                <span className="truncate font-extrabold">
-                  Fukt {damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')} – vädra eller kör fläkten
-                </span>
-              </Link>
-            )}
-          </div>
+        {/* Närvaro (Smart Presence): grönt = hemma, dov röd = borta med senast sedd. */}
+        {h.people.length > 0 && (
+          <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-1.5">
+            {[...h.people].sort((x, y) => Number(y.present) - Number(x.present) || (y.since ?? '').localeCompare(x.since ?? '')).map((p) => (
+              <li
+                key={p.id}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[15px] font-extrabold ${p.present ? 'bg-ok-soft text-ok' : 'bg-[rgb(240_80_60/0.2)] text-danger'}`}
+                title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}
+              >
+                <span className={`size-2 rounded-full ${p.present ? 'bg-ok' : 'bg-danger'}`} />
+                {p.name}
+                {!p.present && p.since && <span className="font-bold opacity-80">· {seenAgo(p.since)}</span>}
+              </li>
+            ))}
+          </ul>
         )}
-        <div className="flex shrink-0 items-center gap-4">
-          {net && net.state !== 'down' && (
-            <Link
-              href="/larm#natverk"
-              className={`hidden items-center gap-2 rounded-full px-3 py-1.5 text-[14px] font-bold lg:flex ${net.state === 'ok' ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn'}`}
-            >
-              <Icon name="wifi" size={18} />
-              {net.state === 'ok' ? `${net.isp ?? 'Internet'} · ${net.latency == null ? '–' : Math.round(net.latency)} ms` : NET_LABEL[net.state]}
+      </header>
+
+      {/* Varningar: egen rad i full bredd, bara när något kräver åtgärd. Sida vid sida på plattan. */}
+      {(warning || damp.length > 0 || net?.state === 'down') && (
+        <div className="flex flex-col gap-2 lg:flex-row">
+          {net?.state === 'down' && (
+            <Link href="/larm#natverk" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-danger-strong px-3.5 py-1.5 text-white">
+              <Icon name="wifi" size={22} />
+              <span className="font-extrabold lg:truncate">Internet nere{net.isp ? ` · ${net.isp}` : ''} – kolla routern</span>
             </Link>
           )}
-          <Clock show="time" className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl" />
+          {warning && (
+            <Link href="/larm" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-info-strong px-3.5 py-1.5 text-white">
+              <Icon name="rain" size={22} />
+              <span className="font-extrabold lg:truncate">
+                Nederbörd kl {hhmm(warning.at)} – stäng {warning.windows.map((w) => w.name).join(', ')}
+              </span>
+            </Link>
+          )}
+          {damp.length > 0 && (
+            <Link href="/larm#fukt" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-teal px-3.5 py-1.5 text-white">
+              <Icon name="drop" size={22} />
+              <span className="font-extrabold lg:truncate">
+                Fukt {damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')} – vädra eller kör fläkten
+              </span>
+            </Link>
+          )}
         </div>
-      </header>
+      )}
 
       <section className="grid grid-cols-2 gap-3 lg:flex">
         {(h.outdoorTemp != null || h.outdoorStale || weather) && (
@@ -257,7 +244,7 @@ export default async function HomePage() {
         </div>
       )}
 
-      <h2 className="-mb-1 text-xl font-extrabold">Rum</h2>
+      <h2 className="sr-only">Rum</h2>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {h.rooms
           .filter((r) => r.temp != null || r.humidity != null || r.lights.length > 0)
