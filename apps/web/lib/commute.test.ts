@@ -35,13 +35,11 @@ test('pendling: avgångna tåg bort, försening, inställt, ankomst och slutstat
   assert.equal(c.home.length, 0); // 15:23 har gått
 });
 
-test('pendling: väg 56 och E18 inom sträckan, incidenter först, pausade sist', () => {
+test('pendling: väg 56 och E18 inom sträckan, incidenter först, pausade bort', () => {
   const c = parseCommute(raw, 'Et', 'Cst', now);
-  assert.deepEqual(c.road.map((r) => r.id), ['b', 'e', 'a']);
+  assert.deepEqual(c.road.map((r) => r.id), ['b', 'e']); // a är pausat
   assert.equal(c.road[1].road, 'E18');
   assert.equal(c.road[0].place, null);
-  assert.equal(c.road[2].text, 'Broarbete');
-  assert.equal(c.road[2].suspended, true);
 });
 
 test('pendling: riktning och varningar', () => {

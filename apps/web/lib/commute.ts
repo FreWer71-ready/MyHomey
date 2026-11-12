@@ -21,7 +21,7 @@ export type Train = {
 };
 export type RoadEvent = {
   id: string; road: string; type: string; code: string; incident: boolean; text: string | null; place: string | null; severity: number;
-  severityText: string | null; end: number | null; suspended: boolean;
+  severityText: string | null; end: number | null;
 };
 export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; fetched: number };
 
@@ -77,11 +77,11 @@ function inBox(d: RawDeviation) {
   return lat >= box.lat[0] && lat <= box.lat[1] && lon >= box.lon[0] && lon <= box.lon[1];
 }
 
-/** En händelse per situation: den allvarligaste avvikelsen. Pågående incidenter först, pausade sist. */
+/** En händelse per situation: den allvarligaste avvikelsen. Pausade (Suspended) tas bort; incidenter först. */
 function road(raw: RawCommute['situations'], now: number): RoadEvent[] {
   const out: RoadEvent[] = [];
   for (const s of raw ?? []) {
-    const devs = (s.Deviation ?? []).filter((d) => inBox(d) && (t(d.EndTime) ?? Infinity) > now && (t(d.StartTime) ?? 0) <= now + 24 * 3600_000);
+    const devs = (s.Deviation ?? []).filter((d) => !d.Suspended && inBox(d) && (t(d.EndTime) ?? Infinity) > now && (t(d.StartTime) ?? 0) <= now + 24 * 3600_000);
     if (!devs.length) continue;
     const d = [...devs].sort((a, b) => (b.SeverityCode ?? 0) - (a.SeverityCode ?? 0) || Number(!!b.Message) - Number(!!a.Message))[0];
     out.push({
@@ -95,10 +95,9 @@ function road(raw: RawCommute['situations'], now: number): RoadEvent[] {
       severity: Math.max(...devs.map((x) => x.SeverityCode ?? 0)),
       severityText: d.SeverityText ?? null,
       end: t(d.EndTime),
-      suspended: devs.every((x) => x.Suspended),
     });
   }
-  return out.sort((a, b) => Number(a.suspended) - Number(b.suspended) || Number(b.incident) - Number(a.incident) || b.severity - a.severity);
+  return out.sort((a, b) => Number(b.incident) - Number(a.incident) || b.severity - a.severity);
 }
 
 export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Date.now(), max = 6): Commute {
@@ -126,7 +125,7 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
     id: `tag-${x.id}`, kind: 'train' as const,
     label: `Tåg ${fmt(x.dep)} ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'} ${x.canceled ? 'inställt' : `+${x.delay} min`}`,
   }));
-  const roads = c.road.filter((r) => r.incident && !r.suspended && (r.severity >= 3 || /Accident|Obstruction|Closure|Restriction/i.test(r.code))).slice(0, 1).map((r) => ({
+  const roads = c.road.filter((r) => r.incident && (r.severity >= 3 || /Accident|Obstruction|Closure|Restriction/i.test(r.code))).slice(0, 1).map((r) => ({
     id: `vag-${r.id}`, kind: 'road' as const, label: `${r.road}: ${r.type.toLowerCase()}${r.place ? ` · ${r.place}` : ''}`,
   }));
   return [...train, ...roads];
