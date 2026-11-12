@@ -8,7 +8,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 Deno.serve(async (req) => {
   const { data: secret } = await db.rpc("get_secret", { secret_name: "wine_secret" });
   if (!secret || req.headers.get("x-wine-secret") !== secret) return json({ error: "unauthorized" }, 401);
-  let p: { email?: string; total?: number; by_color?: Record<string, number>; latest?: unknown; value?: number };
+  let p: { email?: string; total?: number; by_color?: Record<string, number>; latest?: unknown; value?: number; ready?: number; past?: number };
   try { p = await req.json(); } catch { return json({ error: "invalid json" }, 400); }
   if (!p.email || typeof p.total !== "number") return json({ error: "email och total krävs" }, 400);
 
@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
   if (!user) return json({ ok: true, ignored: "okänd användare" });
   const { error } = await db.from("wine_cellar").upsert({
     household_id: user.household_id, total: p.total, by_color: p.by_color ?? {}, latest: p.latest ?? null,
-    value: p.value ?? null, updated_at: new Date().toISOString(),
+    value: p.value ?? null, ready: p.ready ?? null, past: p.past ?? null, updated_at: new Date().toISOString(),
   });
   return error ? json({ error: error.message }, 500) : json({ ok: true });
 });

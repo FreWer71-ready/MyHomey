@@ -15,8 +15,10 @@ import { fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
-/** Vinfärger från Trandvine på svenska. */
-const WINE_COLOR: Record<string, string> = { red: 'röda', white: 'vita', rose: 'rosé', 'rosé': 'rosé', sparkling: 'mousserande', orange: 'orange', dessert: 'dessert', fortified: 'starkvin' };
+/** Vinfärger från Trandvine: ordning, namn och färgprick. */
+const WINE_ORDER = ['red', 'white', 'rose', 'sparkling', 'dessert', 'fortified', 'okänd'];
+const WINE_COLOR: Record<string, string> = { red: 'Röda', white: 'Vita', rose: 'Rosé', sparkling: 'Bubbel', dessert: 'Dessert', fortified: 'Starkvin', 'okänd': 'Övriga' };
+const WINE_DOT: Record<string, string> = { red: '#9B1B30', white: '#F2E6A8', rose: '#F4A6B8', sparkling: '#F7E7A1', dessert: '#D69A2D', fortified: '#6B2A1A', 'okänd': '#9AA1B5' };
 
 const fmtNum = (v: number) => v.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
 
@@ -271,11 +273,34 @@ export default async function HomePage() {
           .map((r) => (
             <RoomTile key={r.id} room={r} />
           ))}
+        {/* Vinkällaren (Trandvine) som ett eget rumskort. */}
+        {wine && (
+          <div className="flex flex-col gap-1.5 rounded-[20px] p-3" style={{ background: tint('#9B2C4A', 0.5) }}>
+            <span className="flex items-center gap-2.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
+                <Icon name="wine" size={22} />
+              </span>
+              <span className="min-w-0 grow truncate text-lg font-extrabold">Vinkällaren</span>
+            </span>
+            <span className="flex items-baseline gap-1.5">
+              <span className="text-[28px] leading-none font-extrabold tracking-tight">{wine.total}</span>
+              <span className="font-extrabold">flaskor</span>
+            </span>
+            <span className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[14px] font-bold">
+              {WINE_ORDER.filter((c) => wine.by_color[c]).map((c) => (
+                <span key={c} className="flex items-center gap-1">
+                  <span className="size-2.5 rounded-full shadow-[0_0_0_1px_rgb(255_255_255/0.4)]" style={{ background: WINE_DOT[c] }} />
+                  {WINE_COLOR[c]} {wine.by_color[c]}
+                </span>
+              ))}
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Media: Google TV och det som castas (t.ex. Spotify på Nest hub). Pausat visas nedtonat. */}
-      {(playing.length > 0 || wine) && (
-        <section className={`grid grid-cols-1 gap-3 ${playing.length + (wine ? 1 : 0) >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+      {playing.length > 0 && (
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {playing.map((p) => (
             <div key={p.id} className={`glass flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 py-1.5 ${p.playing ? '' : 'opacity-70'}`}>
               <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-glass-hi">
@@ -291,23 +316,6 @@ export default async function HomePage() {
               </span>
             </div>
           ))}
-          {/* Vinkällaren från Trandvine. */}
-          {wine && (
-            <div className="glass flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 py-1.5">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-glass-hi">
-                <Icon name="wine" size={22} />
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-[13px] font-bold text-dim">
-                  Vinkällaren · {Object.entries(wine.by_color).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${n} ${WINE_COLOR[c] ?? c}`).join(', ')}
-                </span>
-                <span className="truncate text-[17px] leading-tight font-extrabold">
-                  {wine.total} flaskor
-                  {wine.latest?.name && <span className="font-bold text-dim"> · senast {[wine.latest.producer, wine.latest.name, wine.latest.year].filter(Boolean).join(' ')}</span>}
-                </span>
-              </span>
-            </div>
-          )}
         </section>
       )}
     </>

@@ -45,11 +45,15 @@ const FLAT = {
       <path className="wx-twinkle" d="M10 7.8v8.4l6.5-4.2z" fill={C.teal} />
     </>
   ),
+  // Vinglas: vinet gungar, små bubblor stiger, glaset glimmar.
   wine: (
     <>
-      <path d="M7 3h10l-.6 5.2a4.4 4.4 0 0 1-8.8 0z" fill={C.cloud} opacity={0.35} />
-      <path className="wx-bob" d="M7.4 6.5h9.2l-.2 1.7a4.4 4.4 0 0 1-8.8 0z" fill={C.red} />
-      <path d="M12 12.6V19M8.5 20.5h7" fill="none" stroke={C.grey} strokeWidth={1.8} strokeLinecap="round" />
+      <path d="M6.5 2.8h11l-.7 5.6a4.8 4.8 0 0 1-9.6 0z" fill={C.cloud} opacity={0.3} />
+      <path className="wx-slosh" d="M7.1 6.2c1.6-.6 3.2.6 4.9 0s3.3-.6 4.9 0l-.3 2.2a4.6 4.6 0 0 1-9.2 0z" fill={C.red} />
+      <circle className="wx-rise" cx={10.6} cy={9} r={0.55} fill={C.cloud} />
+      <circle className="wx-rise" style={{ animationDelay: '1.1s' }} cx={13.3} cy={9.4} r={0.45} fill={C.cloud} />
+      <path className="wx-twinkle" d="M15.6 3.8l.5 1.6" stroke={C.cloud} strokeWidth={1.1} strokeLinecap="round" />
+      <path d="M12 13.3V19.4M8.4 20.6h7.2" fill="none" stroke={C.grey} strokeWidth={1.8} strokeLinecap="round" />
     </>
   ),
   star: (
