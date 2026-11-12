@@ -47,16 +47,16 @@ function Road({ list }: { list: RoadEvent[] }) {
     <section className="flex flex-col gap-2 rounded-[24px] glass p-3">
       <h2 className="flex items-center gap-3 text-xl font-extrabold">
         <span className="flex size-10 items-center justify-center rounded-2xl bg-glass-hi"><Icon name="road" size={24} /></span>
-        Väg 56 Eskilstuna–Västerås
+        Bil Eskilstuna–Västerås
         <span className="rounded-full bg-glass-2 px-3 py-0.5 text-base text-dim">{list.filter((r) => !r.suspended).length}</span>
       </h2>
-      {list.length === 0 && <p className="rounded-2xl bg-ok-soft p-3 font-bold text-ok">Inga störningar på sträckan</p>}
+      {list.length === 0 && <p className="rounded-2xl bg-ok-soft p-3 font-bold text-ok">Inga störningar på väg 56 eller E18</p>}
       <ul className="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
         {list.map((r) => (
           <li key={r.id} className={`flex items-start gap-3 rounded-2xl px-3 py-2 ${r.incident && !r.suspended ? 'bg-danger-strong text-white' : 'bg-glass-2'} ${r.suspended ? 'opacity-60' : ''}`}>
             <span className="flex min-w-0 grow flex-col leading-tight">
               <span className="font-extrabold">
-                {r.type}{r.severityText ? <span className="font-bold opacity-80"> · {r.severityText.toLowerCase()}</span> : null}
+                <span className="mr-1.5 rounded-md bg-black/20 px-1.5 text-[13px]">{r.road}</span>{r.type}{r.severityText ? <span className="font-bold opacity-80"> · {r.severityText.toLowerCase()}</span> : null}
                 {r.suspended && <span className="font-bold opacity-80"> · pausat</span>}
               </span>
               {r.place && <span className="text-[14px] font-bold opacity-85">{r.place}</span>}

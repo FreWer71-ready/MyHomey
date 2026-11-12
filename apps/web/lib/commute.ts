@@ -1,4 +1,4 @@
-// Pendling: tåg Eskilstuna C <-> Stockholm C och händelser på väg 56 Eskilstuna–Västerås.
+// Pendling: tåg Eskilstuna C <-> Stockholm C och händelser på bilvägen Eskilstuna–Västerås (väg 56 + E18).
 // Rådata från edge-funktionen trafik (Trafikverket); här är bara ren logik.
 
 type Loc = { LocationName: string };
@@ -10,7 +10,7 @@ export type RawTrain = {
 export type RawArrival = { AdvertisedTrainIdent: string; LocationSignature: string; AdvertisedTimeAtLocation: string; EstimatedTimeAtLocation?: string };
 export type RawDeviation = {
   Id?: string; Message?: string; MessageType?: string; MessageTypeValue?: string; LocationDescriptor?: string;
-  SeverityCode?: number; SeverityText?: string; StartTime?: string; EndTime?: string; Suspended?: boolean;
+  RoadNumber?: string; RoadNumberNumeric?: number; SeverityCode?: number; SeverityText?: string; StartTime?: string; EndTime?: string; Suspended?: boolean;
   Geometry?: { Point?: { WGS84?: string } };
 };
 export type RawCommute = { out: RawTrain[]; home: RawTrain[]; arrivals: RawArrival[]; situations: { Deviation?: RawDeviation[] }[]; fetched?: string };
@@ -20,7 +20,7 @@ export type Train = {
   dest: string; arr: number | null; notes: string[]; product: string | null;
 };
 export type RoadEvent = {
-  id: string; type: string; code: string; incident: boolean; text: string | null; place: string | null; severity: number;
+  id: string; road: string; type: string; code: string; incident: boolean; text: string | null; place: string | null; severity: number;
   severityText: string | null; end: number | null; suspended: boolean;
 };
 export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; fetched: number };
@@ -33,8 +33,11 @@ export const STATIONS: Record<string, string> = {
 };
 export const station = (sig: string) => STATIONS[sig] ?? sig;
 
-/** Sträckan Eskilstuna–Västerås (väg 56): händelser utanför rutan räknas inte. */
-const BOX = { lat: [59.3, 59.64], lon: [16.1, 16.8] } as const;
+/** Bilvägen Eskilstuna–Västerås: väg 56 till E18, sedan E18 in mot Västerås. Händelser utanför rutorna räknas inte. */
+const BOXES: Record<number, { lat: [number, number]; lon: [number, number] }> = {
+  56: { lat: [59.3, 59.64], lon: [16.1, 16.8] },
+  18: { lat: [59.55, 59.66], lon: [16.3, 16.65] },
+};
 /** Långvariga typer (vägarbete m.m.) som inte larmar på startsidan. */
 const PLANNED = /MaintenanceWorks|RoadOrCarriagewayOrLaneManagement|SpeedManagement|Roadworks|ConstructionWorks/i;
 
@@ -66,10 +69,12 @@ function trains(raw: RawTrain[], arrivals: RawArrival[], to: string, now: number
 }
 
 function inBox(d: RawDeviation) {
+  const box = BOXES[d.RoadNumberNumeric ?? 56];
+  if (!box) return false;
   const m = d.Geometry?.Point?.WGS84?.match(/POINT \(([\d.]+) ([\d.]+)\)/);
-  if (!m) return true;
+  if (!m) return d.RoadNumberNumeric !== 18; // E18 utan position kan ligga var som helst
   const lon = Number(m[1]), lat = Number(m[2]);
-  return lat >= BOX.lat[0] && lat <= BOX.lat[1] && lon >= BOX.lon[0] && lon <= BOX.lon[1];
+  return lat >= box.lat[0] && lat <= box.lat[1] && lon >= box.lon[0] && lon <= box.lon[1];
 }
 
 /** En händelse per situation: den allvarligaste avvikelsen. Pågående incidenter först, pausade sist. */
@@ -81,6 +86,7 @@ function road(raw: RawCommute['situations'], now: number): RoadEvent[] {
     const d = [...devs].sort((a, b) => (b.SeverityCode ?? 0) - (a.SeverityCode ?? 0) || Number(!!b.Message) - Number(!!a.Message))[0];
     out.push({
       id: d.Id ?? `${out.length}`,
+      road: d.RoadNumber ?? (d.RoadNumberNumeric === 18 ? 'E18' : 'Väg 56'),
       type: d.MessageType ?? 'Händelse',
       code: d.MessageTypeValue ?? '',
       incident: !PLANNED.test(d.MessageTypeValue ?? ''),
@@ -121,7 +127,7 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
     label: `Tåg ${fmt(x.dep)} ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'} ${x.canceled ? 'inställt' : `+${x.delay} min`}`,
   }));
   const roads = c.road.filter((r) => r.incident && !r.suspended && (r.severity >= 3 || /Accident|Obstruction|Closure|Restriction/i.test(r.code))).slice(0, 1).map((r) => ({
-    id: `vag-${r.id}`, kind: 'road' as const, label: `Väg 56: ${r.type.toLowerCase()}${r.place ? ` · ${r.place}` : ''}`,
+    id: `vag-${r.id}`, kind: 'road' as const, label: `${r.road}: ${r.type.toLowerCase()}${r.place ? ` · ${r.place}` : ''}`,
   }));
   return [...train, ...roads];
 }

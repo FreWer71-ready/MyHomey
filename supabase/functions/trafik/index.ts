@@ -1,4 +1,4 @@
-// Pendling via Trafikverkets öppna API: tåg Eskilstuna C <-> Stockholm C och händelser på väg 56.
+// Pendling via Trafikverkets öppna API: tåg Eskilstuna C <-> Stockholm C och händelser på bilvägen (väg 56 + E18 till Västerås).
 // Anropas av webben med användarens JWT (eller x-cron-secret vid test). Nyckeln ligger i Vault (trafikverket_api_key).
 // Svarar med Trafikverkets rådata i nedbantad form; tolkningen görs i webben (lib/commute.ts).
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -7,7 +7,7 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
   auth: { persistSession: false },
 });
 const API = "https://api.trafikinfo.trafikverket.se/v2/data.json";
-const A = "Et", B = "Cst", ROAD = 56, COUNTIES = "4,19";
+const A = "Et", B = "Cst", ROADS = "56,18", COUNTIES = "4,19";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
     if (!(await allowed(req))) return json({ error: "unauthorized" }, 401);
     if (cache && Date.now() - cache.at < 60_000) return json(cache.body);
     const [out, home, road] = await query(departures(A, B) + departures(B, A) + `
-<QUERY objecttype="Situation" namespace="road.trafficinfo" schemaversion="1.6" limit="40">
-  <FILTER><AND><EQ name="Deviation.RoadNumberNumeric" value="${ROAD}"/><IN name="Deviation.CountyNo" value="${COUNTIES}"/></AND></FILTER>
+<QUERY objecttype="Situation" namespace="road.trafficinfo" schemaversion="1.6" limit="80">
+  <FILTER><AND><IN name="Deviation.RoadNumberNumeric" value="${ROADS}"/><IN name="Deviation.CountyNo" value="${COUNTIES}"/></AND></FILTER>
   <INCLUDE>Deviation</INCLUDE>
 </QUERY>`);
     const outT = (out.TrainAnnouncement ?? []) as { AdvertisedTrainIdent: string }[];
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 </QUERY>`)
       : [{}];
     const body = {
-      from: A, to: B, road: ROAD,
+      from: A, to: B, roads: ROADS,
       out: outT, home: homeT,
       arrivals: arr.TrainAnnouncement ?? [],
       situations: road.Situation ?? [],

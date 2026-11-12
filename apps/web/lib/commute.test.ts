@@ -18,6 +18,8 @@ const raw: RawCommute = {
     ] },
     { Deviation: [{ Id: 'b', MessageType: 'Olycka', MessageTypeValue: 'Accident', SeverityCode: 4, LocationDescriptor: 'Sverige', Geometry: { Point: { WGS84: 'POINT (16.45 59.40)' } } }] },
     { Deviation: [{ Id: 'c', MessageType: 'Vägarbete', MessageTypeValue: 'MaintenanceWorks', SeverityCode: 5, Geometry: { Point: { WGS84: 'POINT (16.61 59.91)' } } }] },
+    { Deviation: [{ Id: 'e', RoadNumber: 'E18', RoadNumberNumeric: 18, MessageType: 'Olycka', MessageTypeValue: 'Accident', SeverityCode: 4, Geometry: { Point: { WGS84: 'POINT (16.50 59.61)' } } }] },
+    { Deviation: [{ Id: 'f', RoadNumber: 'E18', RoadNumberNumeric: 18, MessageType: 'Olycka', MessageTypeValue: 'Accident', SeverityCode: 4, Geometry: { Point: { WGS84: 'POINT (17.60 59.40)' } } }] },
     { Deviation: [{ Id: 'd', MessageType: 'Vägarbete', MessageTypeValue: 'MaintenanceWorks', SeverityCode: 2, EndTime: '2026-11-01T00:00:00+01:00' }] },
   ],
 };
@@ -33,12 +35,13 @@ test('pendling: avgångna tåg bort, försening, inställt, ankomst och slutstat
   assert.equal(c.home.length, 0); // 15:23 har gått
 });
 
-test('pendling: väg 56 inom sträckan, incidenter först, pausade sist', () => {
+test('pendling: väg 56 och E18 inom sträckan, incidenter först, pausade sist', () => {
   const c = parseCommute(raw, 'Et', 'Cst', now);
-  assert.deepEqual(c.road.map((r) => r.id), ['b', 'a']);
+  assert.deepEqual(c.road.map((r) => r.id), ['b', 'e', 'a']);
+  assert.equal(c.road[1].road, 'E18');
   assert.equal(c.road[0].place, null);
-  assert.equal(c.road[1].text, 'Broarbete');
-  assert.equal(c.road[1].suspended, true);
+  assert.equal(c.road[2].text, 'Broarbete');
+  assert.equal(c.road[2].suspended, true);
 });
 
 test('pendling: riktning och varningar', () => {
