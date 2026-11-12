@@ -1,6 +1,7 @@
 // Varningar som kombinerar flera källor. Ren logik.
 import type { Opening, Room } from './home';
 import type { WeatherSummary } from './weather';
+import type { Net } from './net';
 
 /** Nederbörd inom 3 h och minst ett fönster öppet. */
 export function rainWarning(weather: WeatherSummary | null, openings: Opening[]) {
@@ -23,8 +24,12 @@ export function humidityWarnings(rooms: Room[]) {
 export function alarmKeys(
   h: { lowBatteryList: { id: string }[]; silent: { id: string }[]; openings: Opening[]; rooms: Room[] },
   weather: WeatherSummary | null,
+  net: Net | null = null,
 ): string[] {
   return [
+    ...(net?.state === 'down' ? ['net:down'] : []),
+    ...(net?.offline ?? []).map((d) => `nd:${d.id}`),
+    ...(net?.updates ?? []).map((d) => `fw:${d.id}`),
     ...h.lowBatteryList.map((b) => `b:${b.id}`),
     ...h.silent.map((s) => `s:${s.id}`),
     ...h.openings.filter((o) => o.open && o.kind === 'window').map((o) => `w:${o.id}`),

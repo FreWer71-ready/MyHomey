@@ -5,6 +5,7 @@ import { PRICE_AREA, type Price } from './prices';
 import { startOfDayStockholm } from './time';
 import { parseMet, summarizeWeather, type WeatherSummary } from './weather';
 import { MEDIA_CAPS, nowPlaying, type MediaCap, type NowPlaying } from './media';
+import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
@@ -183,4 +184,27 @@ export async function loadNowPlaying(): Promise<NowPlaying[]> {
   ]);
   if (devices.error || caps.error) return []; // Media får aldrig stoppa sidan.
   return nowPlaying(devices.data, caps.data as MediaCap[]);
+}
+
+/** Internet- och nätverkshälsa (UniFi, senaste 24 h). Null om UniFi-data saknas. */
+export async function loadNet(): Promise<Net | null> {
+  if (DEMO) {
+    const t = Math.floor(Date.now() / 300_000) * 300_000;
+    const isp = Array.from({ length: 288 }, (_, i) => ({
+      ts: new Date(t - (288 - i) * 300_000).toISOString(), latency_ms: 3 + (i % 37 === 0 ? 9 : i % 3), packet_loss: 0,
+      download_kbps: 300000, upload_kbps: 300000, uptime: 100, downtime: 0,
+    }));
+    const dev = (id: string, name: string, model: string, is_console = false) => ({ id, name, model, status: 'online', firmware_status: 'upToDate', is_console });
+    return summarizeNet({ isp: 'Telia', wifi_clients: 16, wired_clients: 3, internet_issues: [], checked_at: new Date().toISOString() }, isp,
+      [dev('ux', 'Wernqvist base', 'Express', true), dev('sw', 'Switch 16 PoE', 'USW 16 PoE'), dev('ap1', 'UAP-AC-Pro Inne', 'AC Pro'), dev('ap2', 'AP AC Mesh Ute', 'AC Mesh')]);
+  }
+  const sb = await createClient();
+  const [status, isp, devices] = await Promise.all([
+    sb.from('net_status').select('isp,wifi_clients,wired_clients,internet_issues,checked_at').maybeSingle(),
+    sb.from('net_isp').select('ts,latency_ms,packet_loss,download_kbps,upload_kbps,uptime,downtime')
+      .gte('ts', new Date(Date.now() - 24 * 3600_000).toISOString()).order('ts'),
+    sb.from('net_devices').select('id,name,model,status,firmware_status,is_console').order('is_console', { ascending: false }).order('name'),
+  ]);
+  if (status.error || isp.error || devices.error) return null; // Nätverket får aldrig stoppa sidan.
+  return summarizeNet(status.data as NetStatusRow | null, (isp.data ?? []) as NetIsp[], (devices.data ?? []) as NetDevice[]);
 }

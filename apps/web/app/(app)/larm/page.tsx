@@ -1,6 +1,8 @@
 import { Icon, type IconName } from '@/components/Icon';
 import { HUMIDITY_LIMIT, humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadOpeningsToday, loadWeather } from '@/lib/data';
+import { loadHome, loadNet, loadOpeningsToday, loadWeather } from '@/lib/data';
+import { NET_LABEL } from '@/lib/net';
+import { HistoryChart } from '@/components/HistoryChart';
 import { STALE_HOURS } from '@/lib/home';
 import { hhmm } from '@/lib/prices';
 import { symbolInfo } from '@/lib/weather';
@@ -33,7 +35,7 @@ function Section({ id, icon, title, count, tone, children }: {
 const Empty = ({ text }: { text: string }) => <p className="rounded-2xl bg-glass-2 p-4 font-bold text-dim">{text}</p>;
 
 export default async function AlarmPage() {
-  const [h, weather, openedToday] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday()]);
+  const [h, weather, openedToday, net] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday(), loadNet()]);
   const warning = rainWarning(weather, h.openings);
   const open = h.openings.filter((o) => o.open);
   const wet = h.rooms.filter((r) => r.humidity != null);
@@ -130,6 +132,56 @@ export default async function AlarmPage() {
           )}
         </Section>
       </div>
+
+      {net && (
+        <Section
+          id="natverk"
+          icon="wifi"
+          title="Internet & nätverk"
+          count={net.offline.length + net.updates.length + (net.state === 'down' ? 1 : 0)}
+          tone={net.state === 'ok' && !net.offline.length && !net.updates.length ? 'ok' : 'warn'}
+        >
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+            {[
+              ['Status', NET_LABEL[net.state].replace('Internet ', ''), net.state === 'ok' ? 'text-ok' : 'text-warn'],
+              ['Operatör', net.isp ?? '–', ''],
+              ['Svarstid nu', net.latency == null ? '–' : `${Math.round(net.latency)} ms`, ''],
+              ['Snitt / förlust 24 h', `${net.avgLatency == null ? '–' : Math.round(net.avgLatency)} ms · ${net.loss == null ? '–' : `${net.loss.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} %`}`, ''],
+              ['Upptid 24 h', net.uptime == null ? '–' : `${net.uptime.toLocaleString('sv-SE', { maximumFractionDigits: 2 })} %`, ''],
+              ['Abonnemang', net.downMbit == null ? '–' : `${net.downMbit}/${net.upMbit} Mbit`, ''],
+            ].map(([k, v, c]) => (
+              <div key={k} className="flex flex-col rounded-2xl bg-glass-2 px-3 py-2">
+                <span className="text-sm font-bold text-dim">{k}</span>
+                <span className={`text-xl font-extrabold ${c}`}>{v}</span>
+              </div>
+            ))}
+          </div>
+          {net.latencySeries.length > 1 && (
+            <div className="mt-3">
+              <HistoryChart series={[{ id: 'lat', label: 'Svarstid', color: '#2BB5C4', points: net.latencySeries }]} unit=" ms" decimals={0} bars={false} longPeriod={false} />
+            </div>
+          )}
+          <ul className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+            {net.devices.map((d) => {
+              const up = d.status === 'online';
+              const fw = d.firmware_status && d.firmware_status !== 'upToDate';
+              return (
+                <li key={d.id} className="flex items-center justify-between gap-3 rounded-2xl bg-glass-2 px-3 py-2">
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate font-extrabold">{d.name}</span>
+                    <span className="text-sm font-bold text-dim">{d.model}{d.is_console ? ' · router' : ''}</span>
+                  </span>
+                  <span className="flex shrink-0 gap-1.5">
+                    {fw && <span className="rounded-full bg-warn-soft px-3 py-1 font-extrabold text-warn">Uppdatering</span>}
+                    <span className={`rounded-full px-3 py-1 font-extrabold ${up ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn'}`}>{up ? 'Online' : 'Offline'}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {net.clients != null && <p className="mt-2 font-bold text-dim">{net.clients} anslutna klienter</p>}
+        </Section>
+      )}
     </>
   );
 }

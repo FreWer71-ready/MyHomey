@@ -4,8 +4,9 @@ import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { MoodButtons } from '@/components/MoodButtons';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadNameDay, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadHome, loadNameDay, loadNet, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
+import { NET_LABEL } from '@/lib/net';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { PRICE_AREA, hhmm, summarize } from '@/lib/prices';
@@ -29,8 +30,8 @@ function Hero({ bg, icon, label, href, children }: { bg: string; icon: IconName;
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, openedToday, nameDay, playing] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(),
+  const [h, prices, weather, openedToday, nameDay, playing, net] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(),
   ]);
   const names = joinNames(nameDay);
   const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
@@ -56,8 +57,14 @@ export default async function HomePage() {
           <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hemma</h1>
         </div>
         {/* Varningar: i rubrikraden på plattan (sparar höjd), egen rad på mobil. */}
-        {(warning || damp.length > 0) && (
+        {(warning || damp.length > 0 || net?.state === 'down') && (
           <div className="order-last flex w-full min-w-0 flex-col gap-1.5 lg:order-none lg:w-auto lg:grow">
+            {net?.state === 'down' && (
+              <Link href="/larm#natverk" role="alert" className="flex items-center gap-2.5 rounded-[16px] bg-danger-strong px-3.5 py-2 text-white">
+                <Icon name="wifi" size={22} />
+                <span className="truncate font-extrabold">Internet nere{net.isp ? ` · ${net.isp}` : ''} – kolla routern</span>
+              </Link>
+            )}
             {warning && (
               <Link href="/larm" role="alert" className="flex items-center gap-2.5 rounded-[16px] bg-info-strong px-3.5 py-2 text-white">
                 <Icon name="rain" size={22} />
@@ -77,6 +84,15 @@ export default async function HomePage() {
           </div>
         )}
         <div className="flex shrink-0 items-center gap-4">
+          {net && net.state !== 'down' && (
+            <Link
+              href="/larm#natverk"
+              className={`hidden items-center gap-2 rounded-full px-3 py-1.5 text-[14px] font-bold lg:flex ${net.state === 'ok' ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn'}`}
+            >
+              <Icon name="wifi" size={18} />
+              {net.state === 'ok' ? `${net.isp ?? 'Internet'} · ${net.latency == null ? '–' : Math.round(net.latency)} ms` : NET_LABEL[net.state]}
+            </Link>
+          )}
           <span className="hidden items-center gap-2 rounded-full bg-ok-soft px-3 py-1.5 text-[14px] font-bold text-ok xl:flex">
             <span className="size-2.5 rounded-full bg-ok" />
             Live · {h.online} enheter

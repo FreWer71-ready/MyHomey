@@ -1,12 +1,12 @@
 import { Nav } from '@/components/Nav';
 import { LiveRefresh } from '@/components/LiveRefresh';
 import { alarmKeys } from '@/lib/alerts';
-import { loadHome, loadWeather } from '@/lib/data';
+import { loadHome, loadNet, loadWeather } from '@/lib/data';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Larmnycklar till menyn (klockan markeras när något nytt dykt upp). Får aldrig stoppa sidan.
-  const alarms = await Promise.all([loadHome(), loadWeather()])
-    .then(([h, w]) => alarmKeys(h, w))
+  const alarms = await Promise.all([loadHome(), loadWeather(), loadNet()])
+    .then(([h, w, n]) => alarmKeys(h, w, n))
     .catch(() => []);
   return (
     <div className="flex min-h-dvh">
