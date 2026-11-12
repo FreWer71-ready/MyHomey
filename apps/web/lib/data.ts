@@ -354,14 +354,16 @@ export async function loadWarnings(weather: WeatherSummary | null): Promise<Warn
 }
 
 /**
- * Pendling (Trafikverket via edge-funktionen trafik). Null om avstängt (COMMUTE=off, t.ex. Ulrikas)
+ * Pendling (Trafikverket via edge-funktionen trafik). COMMUTE=off stänger av, COMMUTE=road ger bara vägen (t.ex. Ulrikas).
+ * Null om avstängt
  * eller om källan inte svarar.
  */
 export async function loadCommute(): Promise<Commute | null> {
   if (process.env.COMMUTE === 'off') return null;
+  const roadOnly = (c: Commute): Commute => (process.env.COMMUTE === 'road' ? { ...c, out: [], home: [], trains: false } : c);
   if (DEMO) {
     const at = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
-    return parseCommute({
+    return roadOnly(parseCommute({
       out: [
         { AdvertisedTrainIdent: '954', AdvertisedTimeAtLocation: at(12), EstimatedTimeAtLocation: at(19), LocationSignature: 'Et', ToLocation: [{ LocationName: 'U' }], TrackAtLocation: '1', Deviation: [{ Description: 'Försenad' }] },
         { AdvertisedTrainIdent: '10922', AdvertisedTimeAtLocation: at(44), LocationSignature: 'Et', ToLocation: [{ LocationName: 'Cst' }], TrackAtLocation: '1' },
@@ -370,10 +372,10 @@ export async function loadCommute(): Promise<Commute | null> {
       home: [{ AdvertisedTrainIdent: '10921', AdvertisedTimeAtLocation: at(25), LocationSignature: 'Cst', ToLocation: [{ LocationName: 'Et' }], TrackAtLocation: '16a' }],
       arrivals: [{ AdvertisedTrainIdent: '954', LocationSignature: 'Cst', AdvertisedTimeAtLocation: at(75) }],
       situations: [{ Deviation: [{ Id: 'k', MessageType: 'Vägarbete', MessageTypeValue: 'MaintenanceWorks', SeverityCode: 4, Message: 'Ett avstängt körfält. Risk för köbildning.', LocationDescriptor: 'Väg 56 från Stora Ekeby till Kvicksund S', EndTime: '2027-09-30T16:00:00+02:00' }] }],
-    });
+    }));
   }
   const sb = await createClient();
   const { data, error } = await sb.functions.invoke('trafik', { body: {} });
   if (error || !data || data.error) return null;
-  return parseCommute(data as RawCommute);
+  return roadOnly(parseCommute(data as RawCommute));
 }

@@ -52,7 +52,10 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
       <div className="mx-auto mb-2 hidden size-12 items-center justify-center rounded-[18px] bg-sun text-ink md:flex">
         <Icon name="logo" size={30} />
       </div>
-      {ITEMS.filter((it) => it.href !== '/pendling' || process.env.NEXT_PUBLIC_COMMUTE !== 'off').map((it) =>
+      {ITEMS.filter((it) => it.href !== '/pendling' || process.env.NEXT_PUBLIC_COMMUTE !== 'off')
+        // Bara väg (utan tåg): sidan heter Trafik.
+        .map((it) => (it.href === '/pendling' && process.env.NEXT_PUBLIC_COMMUTE === 'road' ? { ...it, label: 'Trafik', icon: 'road' as IconName } : it))
+        .map((it) =>
         it.ready ? (
           <Link
             key={it.href}

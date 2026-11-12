@@ -23,7 +23,8 @@ export type RoadEvent = {
   id: string; road: string; type: string; code: string; incident: boolean; text: string | null; place: string | null; severity: number;
   severityText: string | null; start: number | null; end: number | null;
 };
-export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; fetched: number };
+/** trains=false: bara väg (COMMUTE=road), t.ex. hushåll som inte pendlar med tåg. */
+export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; fetched: number; trains: boolean };
 
 /** Signaturer som syns som slutstation på sträckan. Okända visas som de är. */
 export const STATIONS: Record<string, string> = {
@@ -110,6 +111,7 @@ export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Dat
     home: trains(raw.home ?? [], raw.arrivals ?? [], from, now, max),
     road: road(raw.situations, now),
     fetched: t(raw.fetched) ?? now,
+    trains: true,
   };
 }
 

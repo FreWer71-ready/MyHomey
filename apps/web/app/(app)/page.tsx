@@ -9,7 +9,7 @@ import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadCommute, loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
-import { TONE_COLOR, commuteAlerts, direction, groupRoad, trainStatus, trainTone } from '@/lib/commute';
+import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
 import { seenAgo } from '@/lib/time';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -159,7 +159,7 @@ export default async function HomePage() {
           <span className="size-2.5 shrink-0 rounded-full bg-ok shadow-[0_0_0_4px_rgb(52_194_122/0.18)]" />
           <span className="font-extrabold text-ok">Allt lugnt</span>
           <span className="truncate font-bold">
-            · inga varningar (SMHI, VMA){commute ? ' · pendling utan störningar: tåg Eskilstuna–Stockholm, väg 56/E18 till Västerås' : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
+            · inga varningar (SMHI, VMA){commute ? (commute.trains ? ' · pendling utan störningar: tåg Eskilstuna–Stockholm, väg 56/E18 till Västerås' : ' · väg 56/E18 Eskilstuna–Västerås utan störningar') : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
           </span>
         </Link>
       )}
@@ -226,7 +226,7 @@ export default async function HomePage() {
               )}
             </Hero>
           ) }] : []),
-          ...(commute ? [{ id: 'pendling', span: BIG, node: (
+          ...(commute?.trains ? [{ id: 'pendling', span: BIG, node: (
             <Hero href="/pendling" bg={tint('#4FA3FF', 0.4)} icon="train" label={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`}>
               {trains.length === 0 && <span className="text-xl font-extrabold">Inga tåg de närmaste timmarna</span>}
               <span className="flex flex-col gap-1">
@@ -245,6 +245,27 @@ export default async function HomePage() {
                   {roads.length === 0 ? 'Väg 56/E18: fritt' : roads.length === 1 ? `${roads[0].road}: ${roads[0].type.toLowerCase()}` : `Väg 56/E18: ${roads.length} ärenden`}
                 </span>
               </span>
+            </Hero>
+          ) }] : []),
+          // Bara väg (COMMUTE=road): stort kort med störningarna på väg 56/E18 i stället för tågen.
+          ...(commute && !commute.trains ? [{ id: 'trafik', span: BIG, node: (
+            <Hero href="/pendling" bg={tint('#4FA3FF', 0.4)} icon="road" label="Väg 56/E18 · Eskilstuna–Västerås">
+              {roads.length === 0 ? (
+                <span className="mt-auto flex items-center gap-2 rounded-xl px-2.5 py-2 text-lg font-extrabold" style={{ background: tint(TONE_COLOR.ok, 0.5) }}>
+                  Fritt – inga störningar
+                </span>
+              ) : (
+                <span className="flex flex-col gap-1">
+                  {roads.slice(0, 3).map((g) => (
+                    <span key={g.id} className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1" style={{ background: tint(TONE_COLOR[g.tone], 0.5) }}>
+                      <span className="shrink-0 rounded-md bg-black/25 px-1.5 text-[12px] font-extrabold">{g.road}</span>
+                      <span className="shrink-0 text-[15px] font-extrabold">{g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
+                      <span className="min-w-0 truncate text-[13px] font-bold opacity-90">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
+                    </span>
+                  ))}
+                  {roads.length > 3 && <span className="text-[13px] font-bold opacity-85">+ {roads.length - 3} till</span>}
+                </span>
+              )}
             </Hero>
           ) }] : []),
           ...(h.lightsTotal > 0 ? [{ id: 'lampor', node: (

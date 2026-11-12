@@ -94,17 +94,19 @@ export default async function CommutePage() {
   return (
     <>
       <h1 className="flex items-baseline justify-between gap-3 text-2xl font-extrabold">
-        Pendling
+        {c && !c.trains ? 'Trafik' : 'Pendling'}
         {c && <span className="text-[13px] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
       </h1>
       {!c ? (
         <p className="rounded-2xl glass p-4 font-bold text-dim">Trafikinformationen är inte tillgänglig just nu.</p>
       ) : (
         <>
-          <div className={`grid grid-cols-1 gap-3 lg:grid-cols-2 ${dir === 'home' ? '[&>*:first-child]:order-2' : ''}`}>
-            <Trains title="Eskilstuna → Stockholm" icon="train" list={c.out} active={dir === 'out'} />
-            <Trains title="Stockholm → Eskilstuna" icon="train" list={c.home} active={dir === 'home'} />
-          </div>
+          {c.trains && (
+            <div className={`grid grid-cols-1 gap-3 lg:grid-cols-2 ${dir === 'home' ? '[&>*:first-child]:order-2' : ''}`}>
+              <Trains title="Eskilstuna → Stockholm" icon="train" list={c.out} active={dir === 'out'} />
+              <Trains title="Stockholm → Eskilstuna" icon="train" list={c.home} active={dir === 'home'} />
+            </div>
+          )}
           <Road list={c.road} />
         </>
       )}
