@@ -38,7 +38,7 @@ export function MoodButtons({ moods, large = false }: { moods: { id: string; nam
               type="button"
               onClick={() => run(m.id)}
               disabled={state?.status === 'busy'}
-              className={`flex items-center gap-2.5 rounded-[20px] bg-violet-soft text-lg font-extrabold text-fg transition-shadow ${large ? 'min-h-20 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
+              className={`flex items-center gap-2.5 rounded-[20px] bg-violet-btn text-lg font-extrabold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18),0_2px_10px_rgb(0_0_0/0.3)] transition-shadow ${large ? 'min-h-20 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
             >
               <Icon name="moon" size={24} />
               {m.room ? (

@@ -20,6 +20,8 @@
   --color-sun-soft: rgb(255 194 26 / 0.22);
   --color-violet: #C4B5FD;
   --color-violet-soft: rgb(139 92 246 / 0.26);
+  /* Knappar för moods: tätare och skarpare än ytorna. */
+  --color-violet-btn: rgb(118 72 228 / 0.72);
   --color-ok: #7CE0A6;
   --color-ok-soft: rgb(18 183 106 / 0.22);
   --color-warn: #FFB27A;
