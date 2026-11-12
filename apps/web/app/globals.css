@@ -70,6 +70,7 @@ body {
 .backdrop-in {
   animation: backdrop-pan 50s ease-in-out infinite alternate, backdrop-fade 2.5s ease-out both;
 }
+.backdrop-fadein { animation: backdrop-fade 2.5s ease-out both; }
 .backdrop-veil {
   position: absolute;
   inset: 0;
@@ -118,7 +119,7 @@ body {
 @keyframes wx-twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .backdrop-img, .backdrop-in, .wx-spin, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle, .wx-swing, .wx-pop, .wx-grow, .wx-glint, .wx-shake, .wx-blink, .wx-rise, .wx-bob, .wx-ripple { animation: none; }
+  .backdrop-img, .backdrop-in, .backdrop-fadein, .wx-spin, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle, .wx-swing, .wx-pop, .wx-grow, .wx-glint, .wx-shake, .wx-blink, .wx-rise, .wx-bob, .wx-ripple { animation: none; }
 }
 
 svg.ico {

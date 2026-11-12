@@ -1,7 +1,11 @@
 // Väderprognos från SMHI (snow1g) med MET Norway som reserv. Symboler i MET:s format. Ren logik.
 import type { IconName } from '@/components/Icon';
 
-export type WeatherHour = { time: number; symbol: string; precip: number; temp: number };
+export type WeatherHour = {
+  time: number; symbol: string; precip: number; temp: number;
+  /** Vind m/s och riktning den kommer ifrån (grader), molnighet 0–1, åskrisk 0–1. Valfria. */
+  wind?: number; windFrom?: number; clouds?: number; thunder?: number;
+};
 export type WeatherSummary = {
   current: WeatherHour;
   /** Första timmen med nederbörd inom 6 h. */
@@ -21,7 +25,7 @@ type MetJson = {
     timeseries?: {
       time: string;
       data: {
-        instant: { details: { air_temperature?: number } };
+        instant: { details: { air_temperature?: number; wind_speed?: number; wind_from_direction?: number; cloud_area_fraction?: number } };
         next_1_hours?: { summary: { symbol_code: string }; details: { precipitation_amount?: number } };
       };
     }[];
@@ -36,6 +40,9 @@ export function parseMet(json: MetJson): WeatherHour[] {
       symbol: t.data.next_1_hours!.summary.symbol_code,
       precip: t.data.next_1_hours!.details.precipitation_amount ?? 0,
       temp: t.data.instant.details.air_temperature ?? NaN,
+      wind: t.data.instant.details.wind_speed,
+      windFrom: t.data.instant.details.wind_from_direction,
+      clouds: t.data.instant.details.cloud_area_fraction == null ? undefined : t.data.instant.details.cloud_area_fraction / 100,
     }));
 }
 
@@ -108,7 +115,7 @@ type SmhiJson = {
 export function parseSmhi(json: SmhiJson, isDay: (ms: number) => boolean): WeatherHour[] {
   return (json.timeSeries ?? [])
     .filter((t) => t.data.symbol_code != null)
-    .map((t) => {
+    .map((t): WeatherHour | null => {
       const end = Date.parse(t.time);
       const start = t.intervalParametersStartTime ? Date.parse(t.intervalParametersStartTime) : end - 3600_000;
       // Bara timvärden (längre fram blir intervallen längre).
@@ -117,6 +124,10 @@ export function parseSmhi(json: SmhiJson, isDay: (ms: number) => boolean): Weath
         symbol: smhiSymbol(t.data.symbol_code!, isDay(start + 1800_000)),
         precip: t.data.precipitation_amount_mean_deterministic ?? t.data.precipitation_amount_mean ?? 0,
         temp: t.data.air_temperature ?? NaN,
+        wind: t.data.wind_speed,
+        windFrom: t.data.wind_from_direction,
+        clouds: t.data.cloud_area_fraction == null ? undefined : t.data.cloud_area_fraction / 8, // oktas
+        thunder: t.data.thunderstorm_probability == null ? undefined : t.data.thunderstorm_probability / 100,
       };
     })
     .filter((h): h is WeatherHour => h !== null);

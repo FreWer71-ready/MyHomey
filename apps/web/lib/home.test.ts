@@ -223,3 +223,14 @@ test('närvarotidslinje: tid hemma, bara personer med ändring eller hemma nu', 
   assert.equal(g.name, 'Närvaro');
   assert.deepEqual(g.lamps.map((l) => [l.name, l.onMinutes, l.onNow]), [['A', 360, false], ['C', 720, true]]);
 });
+
+test('bakgrund: mjuk övertoning mellan dag, skymning och natt', async () => {
+  const { phaseWeights, skyState } = await import('./sky.ts');
+  assert.deepEqual(phaseWeights(20), { day: 1, night: 0, dusk: 0 });
+  assert.deepEqual(phaseWeights(0), { day: 0, night: 0, dusk: 1 });
+  assert.deepEqual(phaseWeights(-20), { day: 0, night: 1, dusk: 0 });
+  const w = phaseWeights(6);
+  assert.equal(Math.round((w.day + w.dusk + w.night) * 100), 100);
+  assert.equal(skyState({ symbol: 'rainandthunder', precip: 2 }).thunder, 0.5);
+  assert.equal(skyState(null).condition, 'clear');
+});

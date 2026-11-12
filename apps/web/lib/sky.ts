@@ -37,3 +37,42 @@ export function phaseOf(ms: number, lat: number, lon: number): Phase {
 /** Bildnamn utan ändelse; Backdrop väljer liggande (platta) eller stående (-p, mobil). */
 export const backgroundSrc = (symbol: string | null | undefined, ms: number, lat: number, lon: number) =>
   `/mydashboard/bg/${conditionOf(symbol)}-${phaseOf(ms, lat, lon)}`;
+
+/** Vikter för dag-, skymnings- och nattbild efter solhöjd, så att bilderna tonar mjukt (summa 1). */
+export function phaseWeights(el: number): Record<Phase, number> {
+  const ramp = (x: number, a: number, b: number) => Math.min(1, Math.max(0, (x - a) / (b - a)));
+  const day = ramp(el, 2, 10); // dusk → day mellan +2° och +10°
+  const night = 1 - ramp(el, -10, -2); // night → dusk mellan −10° och −2°
+  return { day, night, dusk: Math.max(0, 1 - day - night) };
+}
+
+/** Färgton över bilden efter tid på dygnet: gyllene timme, blå timme, svag natt. */
+export function skyTint(el: number): string {
+  if (el > 12) return 'rgb(255 244 220 / 0.04)';
+  if (el > 0) return `rgb(255 150 80 / ${(0.04 + ((12 - el) / 12) * 0.14).toFixed(3)})`;
+  if (el > -8) return `rgb(70 100 210 / ${(0.1 + (-el / 8) * 0.08).toFixed(3)})`;
+  return 'rgb(20 30 80 / 0.16)';
+}
+
+/** Vad bakgrundens rörliga lager ska visa. Värden 0–1 utom vind (m/s) och nederbörd (mm/h). */
+export type SkyState = {
+  condition: Condition;
+  precip: number;
+  wind: number;
+  windFrom: number;
+  clouds: number;
+  thunder: number;
+};
+
+export function skyState(h: { symbol: string; precip: number; wind?: number; windFrom?: number; clouds?: number; thunder?: number } | null | undefined): SkyState {
+  const condition = conditionOf(h?.symbol);
+  const fallbackClouds = { clear: 0.15, cloudy: 0.7, rain: 0.9, snow: 0.85, fog: 0.6, storm: 1 }[condition];
+  return {
+    condition,
+    precip: h?.precip ?? 0,
+    wind: h?.wind ?? 3,
+    windFrom: h?.windFrom ?? 240,
+    clouds: h?.clouds ?? fallbackClouds,
+    thunder: condition === 'storm' ? Math.max(0.5, h?.thunder ?? 0) : (h?.thunder ?? 0),
+  };
+}

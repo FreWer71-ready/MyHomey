@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Backdrop } from '@/components/Backdrop';
 import { PLACE, loadWeather } from '@/lib/data';
-import { backgroundSrc } from '@/lib/sky';
+import { conditionOf, skyState, solarElevation } from '@/lib/sky';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ export const viewport: Viewport = { themeColor: '#070A14', colorScheme: 'dark' }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const weather = await loadWeather();
-  const bg = backgroundSrc(weather?.current.symbol, Date.now(), PLACE.lat, PLACE.lon);
+  const sky = skyState(weather?.current);
   return (
     <html lang="sv">
       <head>
@@ -28,7 +28,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="font-sans antialiased">
-        <Backdrop src={bg} />
+        <Backdrop
+          condition={conditionOf(weather?.current.symbol)} sky={sky}
+          el0={solarElevation(Date.now(), PLACE.lat, PLACE.lon)} lat={PLACE.lat} lon={PLACE.lon}
+        />
         {children}
       </body>
     </html>
