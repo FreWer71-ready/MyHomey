@@ -162,6 +162,21 @@ export default async function HomePage() {
           </span>
         </Hero>
         )}
+        {h.openings.length > 0 && (
+        <Hero
+          href="/larm#oppet"
+          bg={open.length ? tint('#FF8A3D', 0.5) : tint('#12B76A', 0.42)}
+          icon={open.length ? 'shieldAlert' : 'shield'}
+          label="Dörrar & fönster"
+        >
+          <span className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl">
+            {open.length ? (open.length === 1 ? 'Öppen' : `${open.length} öppna`) : 'Stängt'}
+          </span>
+          <span className="truncate text-[15px] font-bold">
+            {open.length === 1 ? open[0].name : entrance ? `Entré ${openedToday[entrance.id] ?? 0}× i dag` : `${h.openings.length} sensorer`}
+          </span>
+        </Hero>
+        )}
         {h.powerMeters + h.powerEstimated > 0 && (
         <Hero bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu">
           <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtWatt(h.powerW)}</span>
@@ -178,21 +193,6 @@ export default async function HomePage() {
           </span>
           <span className="text-[15px] font-bold">
             {price.cheapest1h && `Billigast ${hhmm(price.cheapest1h.start)}–${hhmm(price.cheapest1h.end)}`}
-          </span>
-        </Hero>
-        )}
-        {h.openings.length > 0 && (
-        <Hero
-          href="/larm#oppet"
-          bg={open.length ? tint('#FF8A3D', 0.5) : tint('#12B76A', 0.42)}
-          icon={open.length ? 'shieldAlert' : 'shield'}
-          label="Dörrar & fönster"
-        >
-          <span className="text-3xl leading-none font-extrabold tracking-tight md:text-4xl">
-            {open.length ? (open.length === 1 ? 'Öppen' : `${open.length} öppna`) : 'Stängt'}
-          </span>
-          <span className="truncate text-[15px] font-bold">
-            {open.length === 1 ? open[0].name : entrance ? `Entré ${openedToday[entrance.id] ?? 0}× i dag` : `${h.openings.length} sensorer`}
           </span>
         </Hero>
         )}
