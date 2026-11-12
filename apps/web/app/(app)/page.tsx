@@ -41,6 +41,9 @@ export default async function HomePage() {
     loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(),
   ]);
   const names = joinNames(nameDay);
+  // Utan egen väderstation (t.ex. Hue-hushåll) visas SMHI:s temperatur.
+  const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
+  const outTemp = h.outdoorTemp ?? smhiTemp;
   const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
   const price = summarize(prices, Date.now());
   const open = h.openings.filter((o) => o.open);
@@ -122,15 +125,15 @@ export default async function HomePage() {
         className="grid grid-cols-2 gap-3 lg:flex"
         items={[
           ...((h.outdoorTemp != null || h.outdoorStale || weather) ? [{ id: 'ute', wide: true, node: (
-            <Hero popover={weather ? 'prognos' : undefined} bg={heatTint(h.outdoorTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
+            <Hero popover={weather ? 'prognos' : undefined} bg={heatTint(outTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
               {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
               {sky && weather && (
                 <span className="pointer-events-none absolute top-1 right-3 opacity-85">
                   <WeatherIcon kind={weatherKind(weather.current.symbol)} size={100} label={sky.label} />
                 </span>
               )}
-              {h.outdoorTemp != null ? (
-                <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(h.outdoorTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
+              {outTemp != null ? (
+                <span className="relative text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
               ) : h.outdoorStale && (
                 <span className="relative flex flex-col pr-24">
                   <span className="text-2xl leading-tight font-extrabold">Ej tillgänglig</span>
