@@ -82,7 +82,9 @@ async function UseView({ period, powerW, meters, href, kwhChart }: { period: Per
   const [power, energy] = await Promise.all([loadHistory('power', period), loadHistory('energy', period)]);
   const total = power.length ? sumSeries(power, 'Effekt totalt', '#8B5CF6') : null;
   const used = energy.length ? sumSeries(energy, 'Förbrukning', '#2BB5C4') : null;
-  const top = [...power].filter((x) => (x.latest ?? 0) > 0.5).sort((a, b) => (b.latest ?? 0) - (a.latest ?? 0)).slice(0, 6);
+  // Alla mätare, störst först. Andel av total effekt visas som stapel.
+  const top = [...power].sort((a, b) => (b.latest ?? 0) - (a.latest ?? 0));
+  const sumNow = top.reduce((a, x) => a + Math.max(0, x.latest ?? 0), 0);
   const avgW = total?.points.length ? total.points.reduce((a, p) => a + p[1], 0) / total.points.length : null;
   const longPeriod = period === '7d';
 
@@ -120,14 +122,29 @@ async function UseView({ period, powerW, meters, href, kwhChart }: { period: Per
             : total ? <HistoryChart series={[total]} unit=" W" decimals={0} bars={false} longPeriod={longPeriod} fit={480} />
               : <p className="p-10 text-center text-lg font-bold text-dim">Ingen effektdata för perioden.</p>}
         </div>
-        <div className="flex flex-col gap-1.5 rounded-[24px] glass p-3">
-          <h2 className="text-xl font-extrabold">Drar mest nu</h2>
-          {top.length ? top.map((x) => (
-            <div key={x.id} className="flex items-center justify-between gap-3 rounded-[14px] bg-glass-hi px-3 py-1.5">
-              <span className="truncate font-bold">{x.label}</span>
-              <span className="shrink-0 text-lg font-extrabold">{fmtValue('power', x.latest)}</span>
-            </div>
-          )) : <p className="font-bold text-dim">Inget drar ström just nu.</p>}
+        {/* Panelen tar grafens höjd på plattan (absolut inuti) och listan scrollar om den är längre. */}
+        <div className="relative min-h-60 lg:min-h-0">
+          <div className="flex flex-col gap-1.5 rounded-[24px] glass p-3 lg:absolute lg:inset-0">
+            <h2 className="flex items-baseline justify-between gap-2 text-xl font-extrabold">
+              Drar mest nu <span className="text-sm font-bold text-dim">{top.length} mätare</span>
+            </h2>
+            {top.length ? (
+              <ul className="-mr-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
+                {top.map((x) => {
+                  const w = Math.max(0, x.latest ?? 0);
+                  return (
+                    <li key={x.id} className={`relative shrink-0 overflow-hidden rounded-[12px] bg-glass-hi px-3 py-1 ${w < 0.5 ? 'opacity-55' : ''}`}>
+                      <span className="absolute inset-y-0 left-0 bg-violet/25" style={{ width: `${sumNow ? (w / sumNow) * 100 : 0}%` }} />
+                      <span className="relative flex items-center justify-between gap-3">
+                        <span className="truncate font-bold">{x.label}</span>
+                        <span className="shrink-0 font-extrabold">{fmtValue('power', x.latest)}</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <p className="font-bold text-dim">Inga effektmätare.</p>}
+          </div>
         </div>
       </section>
     </>
