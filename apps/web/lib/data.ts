@@ -207,12 +207,12 @@ export async function loadNameDay(): Promise<string[]> {
 export async function loadNowPlaying(): Promise<NowPlaying[]> {
   if (DEMO) return [
     { id: 'tv', device: 'Google TV vardagsrum', kind: 'tv', playing: true, title: 'Netflix', subtitle: 'Stranger Things' },
-    { id: 'hub', device: 'Nest hub', kind: 'music', playing: false, title: 'Feels Like I’m Falling in Love', subtitle: 'Coldplay · Spotify' },
+    { id: 'hub', device: 'Nest hub', kind: 'music', playing: true, title: 'Feels Like I’m Falling in Love', subtitle: 'Coldplay · Spotify' },
   ];
   const sb = await createClient();
   const [devices, caps] = await Promise.all([
     sb.from('devices').select('id,name').eq('class', 'speaker').eq('available', true).like('driver_id', '%chromecast%'),
-    sb.from('capability_state').select('device_id,capability_id,value_bool,value_text').in('capability_id', MEDIA_CAPS),
+    sb.from('capability_state').select('device_id,capability_id,value_bool,value_text,last_updated').in('capability_id', MEDIA_CAPS),
   ]);
   if (devices.error || caps.error) return []; // Media får aldrig stoppa sidan.
   return nowPlaying(devices.data, caps.data as MediaCap[]);

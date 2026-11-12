@@ -146,3 +146,17 @@ svg.ico {
 .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: #fff; box-shadow: 0 1px 6px rgb(0 0 0 / 0.45); }
 .slider::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 1px 6px rgb(0 0 0 / 0.45); }
 .slider:focus-visible { box-shadow: 0 0 0 3px var(--color-sun); }
+
+/* Spelas nu: färgskiftande kort, pulserande ikon och equalizer. */
+.np-card { background-size: 240% 240%; animation: np-shift 14s ease-in-out infinite alternate; }
+.np-music { background-image: linear-gradient(120deg, rgb(110 60 210 / 0.85), rgb(200 50 120 / 0.8), rgb(225 110 40 / 0.8)); }
+.np-tv { background-image: linear-gradient(120deg, rgb(30 80 190 / 0.85), rgb(20 130 150 / 0.8), rgb(90 60 200 / 0.8)); }
+@keyframes np-shift { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+.np-pulse { box-shadow: 0 0 0 0 rgb(255 255 255 / 0.5); animation: np-pulse 2.2s ease-out infinite; }
+@keyframes np-pulse { to { box-shadow: 0 0 0 10px rgb(255 255 255 / 0); } }
+.eq span { width: 4px; height: 100%; border-radius: 2px; background: #fff; transform-origin: bottom; animation: eq 1s ease-in-out infinite alternate; }
+.eq span:nth-child(2) { animation-duration: 0.7s; animation-delay: -0.3s; }
+.eq span:nth-child(3) { animation-duration: 1.2s; animation-delay: -0.6s; }
+.eq span:nth-child(4) { animation-duration: 0.85s; animation-delay: -0.2s; }
+@keyframes eq { from { transform: scaleY(0.2); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .np-card, .np-pulse, .eq span { animation: none; } }

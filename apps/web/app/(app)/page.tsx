@@ -4,6 +4,7 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { SortableCards } from '@/components/SortableCards';
+import { NowPlayingCard } from '@/components/NowPlayingCard';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadNameDay, loadNet, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
@@ -298,24 +299,10 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* Media: Google TV och det som castas (t.ex. Spotify på Nest hub). Pausat visas nedtonat. */}
+      {/* Media: bara det som spelas just nu (Google TV, det som castas till t.ex. Nest hub). */}
       {playing.length > 0 && (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {playing.map((p) => (
-            <div key={p.id} className={`glass flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 py-1.5 ${p.playing ? '' : 'opacity-70'}`}>
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-glass-hi">
-                <Icon name={p.kind === 'tv' ? 'tv' : 'music'} size={22} />
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-[13px] font-bold text-dim">
-                  {p.kind === 'tv' ? 'På TV:n' : 'Spelas upp'} · {p.playing ? p.device : `pausad på ${p.device}`}
-                </span>
-                <span className="truncate text-[17px] leading-tight font-extrabold">
-                  {p.title}{p.subtitle && <span className="font-bold text-dim"> · {p.subtitle}</span>}
-                </span>
-              </span>
-            </div>
-          ))}
+          {playing.map((p) => <NowPlayingCard key={p.id} p={p} />)}
         </section>
       )}
     </>
