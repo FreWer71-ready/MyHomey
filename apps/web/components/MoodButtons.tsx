@@ -7,7 +7,7 @@ import { Icon } from './Icon';
 type State = { id: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null;
 
 /** Knappar som aktiverar Homey-moods. */
-export function MoodButtons({ moods, row = false }: { moods: { id: string; name: string; room?: string | null }[]; row?: boolean }) {
+export function MoodButtons({ moods, large = false }: { moods: { id: string; name: string; room?: string | null }[]; large?: boolean }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [state, setState] = useState<State>(null);
@@ -31,14 +31,14 @@ export function MoodButtons({ moods, row = false }: { moods: { id: string; name:
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className={`flex gap-2.5 ${row ? 'flex-wrap lg:flex-nowrap lg:overflow-x-auto lg:pb-1' : 'flex-wrap'}`}>
+      <ul className={large ? 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4' : 'flex flex-wrap gap-2.5'}>
         {moods.map((m) => (
-          <li key={m.id} className="shrink-0">
+          <li key={m.id} className={large ? '' : 'shrink-0'}>
             <button
               type="button"
               onClick={() => run(m.id)}
               disabled={state?.status === 'busy'}
-              className={`flex min-h-14 items-center gap-2.5 rounded-[20px] bg-violet-soft px-5 text-lg font-extrabold text-fg transition-shadow ${ring(m.id)}`}
+              className={`flex items-center gap-2.5 rounded-[20px] bg-violet-soft text-lg font-extrabold text-fg transition-shadow ${large ? 'min-h-20 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
             >
               <Icon name="moon" size={24} />
               {m.room ? (

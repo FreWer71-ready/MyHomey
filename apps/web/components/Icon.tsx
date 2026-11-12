@@ -39,6 +39,12 @@ const FLAT = {
       <rect x={11} y={2} width={2} height={2.5} rx={1} fill={C.ray} />
     </g>
   ),
+  star: (
+    <>
+      <path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill={C.sun} stroke={C.ray} strokeWidth={1} strokeLinejoin="round" />
+      <path className="wx-twinkle" d="M20 2.5v3M18.5 4h3" stroke={C.cloud} strokeWidth={1.4} strokeLinecap="round" />
+    </>
+  ),
   // Larm med nytt att se: röd klocka som skakar ivrigt, ljudvågor blinkar.
   bellAlert: (
     <>

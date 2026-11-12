@@ -3,7 +3,6 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
-import { MoodButtons } from '@/components/MoodButtons';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadNameDay, loadNet, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
@@ -228,18 +227,11 @@ export default async function HomePage() {
           ))}
       </section>
 
-      {/* Favoriter och media på en rad på plattan; favoriterna scrollar i sidled om de inte får plats. */}
-      {(h.favoriteMoods.length > 0 || playing.length > 0) && (
-        <section className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          {h.favoriteMoods.length > 0 && (
-            <div className="flex min-w-0 flex-col gap-2 lg:flex-1">
-              <h2 className="text-xl font-extrabold lg:sr-only">Favoriter</h2>
-              <MoodButtons moods={h.favoriteMoods} row />
-            </div>
-          )}
-          {/* Media: Google TV och det som castas (t.ex. Spotify på Nest hub). Pausat visas nedtonat. */}
+      {/* Media: Google TV och det som castas (t.ex. Spotify på Nest hub). Pausat visas nedtonat. */}
+      {playing.length > 0 && (
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {playing.map((p) => (
-            <div key={p.id} className={`glass flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 py-1.5 lg:w-[290px] lg:shrink-0 ${p.playing ? '' : 'opacity-70'}`}>
+            <div key={p.id} className={`glass flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 py-1.5 ${p.playing ? '' : 'opacity-70'}`}>
               <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-glass-hi">
                 <Icon name={p.kind === 'tv' ? 'tv' : 'music'} size={22} />
               </span>
