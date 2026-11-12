@@ -68,7 +68,7 @@ const payload = {
     id: d.id,
     name: d.name,
     zone: d.zone || null,
-    class: d.class || null,
+    class: d.virtualClass || d.class || null, // "Vad är anslutet?" i Homey (t.ex. uttag med lampa) går före
     driver: d.driverId || d.driverUri || null,
     available: d.available !== false,
     caps: [
