@@ -289,3 +289,13 @@ export async function loadHueScenes(): Promise<{ connected: boolean; scenes: Hue
   if (error || !data) return { connected: false, scenes: [] };
   return { connected: !!data.connected, scenes: (data.scenes ?? []) as HueScene[] };
 }
+
+export type WineCellar = { total: number; by_color: Record<string, number>; latest: { name?: string; producer?: string; year?: number } | null; updated_at: string };
+
+/** Vinkällaren (från Trandvine via wine-ingest). Null om hushållet inte har någon källare kopplad. */
+export async function loadWine(): Promise<WineCellar | null> {
+  if (DEMO) return { total: 27, by_color: { red: 21, white: 4, sparkling: 2 }, latest: { name: 'Amarone della Valpolicella Classico', producer: 'Zenato', year: 2020 }, updated_at: new Date().toISOString() };
+  const sb = await createClient();
+  const { data } = await sb.from('wine_cellar').select('total,by_color,latest,updated_at').maybeSingle();
+  return (data as WineCellar | null) ?? null;
+}

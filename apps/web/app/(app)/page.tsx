@@ -5,7 +5,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { SortableCards } from '@/components/SortableCards';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadNameDay, loadNet, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadHome, loadNameDay, loadNet, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { seenAgo } from '@/lib/time';
 import { symbolInfo, weatherKind } from '@/lib/weather';
@@ -14,6 +14,9 @@ import { PRICE_AREA, hhmm, summarize } from '@/lib/prices';
 import { fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
+
+/** Vinfärger från Trandvine på svenska. */
+const WINE_COLOR: Record<string, string> = { red: 'röda', white: 'vita', rose: 'rosé', 'rosé': 'rosé', sparkling: 'mousserande', orange: 'orange', dessert: 'dessert', fortified: 'starkvin' };
 
 const fmtNum = (v: number) => v.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
 
@@ -37,8 +40,8 @@ function Hero({ bg, icon, label, href, popover, children }: {
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, openedToday, nameDay, playing, net] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(),
+  const [h, prices, weather, openedToday, nameDay, playing, net, wine] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(),
   ]);
   const names = joinNames(nameDay);
   // Utan egen väderstation (t.ex. Hue-hushåll) visas SMHI:s temperatur.
@@ -271,8 +274,8 @@ export default async function HomePage() {
       </section>
 
       {/* Media: Google TV och det som castas (t.ex. Spotify på Nest hub). Pausat visas nedtonat. */}
-      {playing.length > 0 && (
-        <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {(playing.length > 0 || wine) && (
+        <section className={`grid grid-cols-1 gap-3 ${playing.length + (wine ? 1 : 0) >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
           {playing.map((p) => (
             <div key={p.id} className={`glass flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 py-1.5 ${p.playing ? '' : 'opacity-70'}`}>
               <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-glass-hi">
@@ -288,6 +291,23 @@ export default async function HomePage() {
               </span>
             </div>
           ))}
+          {/* Vinkällaren från Trandvine. */}
+          {wine && (
+            <div className="glass flex min-h-14 items-center gap-2.5 rounded-[20px] px-3 py-1.5">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-glass-hi">
+                <Icon name="wine" size={22} />
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-[13px] font-bold text-dim">
+                  Vinkällaren · {Object.entries(wine.by_color).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${n} ${WINE_COLOR[c] ?? c}`).join(', ')}
+                </span>
+                <span className="truncate text-[17px] leading-tight font-extrabold">
+                  {wine.total} flaskor
+                  {wine.latest?.name && <span className="font-bold text-dim"> · senast {[wine.latest.producer, wine.latest.name, wine.latest.year].filter(Boolean).join(' ')}</span>}
+                </span>
+              </span>
+            </div>
+          )}
         </section>
       )}
     </>

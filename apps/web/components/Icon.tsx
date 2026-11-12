@@ -45,6 +45,13 @@ const FLAT = {
       <path className="wx-twinkle" d="M10 7.8v8.4l6.5-4.2z" fill={C.teal} />
     </>
   ),
+  wine: (
+    <>
+      <path d="M7 3h10l-.6 5.2a4.4 4.4 0 0 1-8.8 0z" fill={C.cloud} opacity={0.35} />
+      <path className="wx-bob" d="M7.4 6.5h9.2l-.2 1.7a4.4 4.4 0 0 1-8.8 0z" fill={C.red} />
+      <path d="M12 12.6V19M8.5 20.5h7" fill="none" stroke={C.grey} strokeWidth={1.8} strokeLinecap="round" />
+    </>
+  ),
   star: (
     <>
       <path className="wx-glint" d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill={C.sun} stroke={C.ray} strokeWidth={1} strokeLinejoin="round" />
