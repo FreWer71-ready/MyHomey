@@ -153,7 +153,7 @@ export default async function HomePage() {
         </Hero>
         )}
         {h.lightsTotal > 0 && (
-        <Hero bg={tint('#FFC21A', 0.28)} icon="bulb" label="Lampor tända">
+        <Hero bg={tint('#FFC21A', 0.5)} icon="bulb" label="Lampor tända">
           <span className="flex items-center justify-between gap-2">
             <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{h.lightsOn}</span>
             <span className="text-[15px] font-bold">av {h.lightsTotal}</span>
@@ -161,7 +161,7 @@ export default async function HomePage() {
         </Hero>
         )}
         {h.powerMeters > 0 && (
-        <Hero bg={tint('#8B5CF6', 0.28)} icon="bolt" label="Effekt nu">
+        <Hero bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu">
           <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtWatt(h.powerW)}</span>
           <span className="text-[15px] font-bold">{h.powerMeters} mätare</span>
         </Hero>
@@ -180,7 +180,7 @@ export default async function HomePage() {
         {h.openings.length > 0 && (
         <Hero
           href="/larm#oppet"
-          bg={open.length ? tint('#FF8A3D', 0.4) : tint('#12B76A', 0.28)}
+          bg={open.length ? tint('#FF8A3D', 0.5) : tint('#12B76A', 0.42)}
           icon={open.length ? 'shieldAlert' : 'shield'}
           label="Dörrar & fönster"
         >

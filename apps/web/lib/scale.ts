@@ -11,11 +11,14 @@ export const HEAT = [
 
 export const NO_TEMP = '#9AA1B5';
 
-/** Färgton ovanpå glaskortets mörka grund (bra kontrast, ingen ljus yta som kan bränna in). */
-export function tint(hex: string, alpha = 0.3): string {
+/**
+ * Färgton ovanpå en nästan täckande mörk grund: mättad färg utan att bakgrundsbilden lyser igenom.
+ * Vit text klarar minst 5,3:1 för alla skalfärger vid 0,42 (mättade färger tål 0,5).
+ */
+export function tint(hex: string, alpha = 0.42): string {
   const n = parseInt(hex.slice(1), 16);
   const rgb = `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
-  return `linear-gradient(rgb(${rgb} / ${alpha}), rgb(${rgb} / ${alpha})), var(--color-glass)`;
+  return `linear-gradient(rgb(${rgb} / ${alpha}), rgb(${rgb} / ${alpha})), rgb(14 18 32 / 0.88)`;
 }
 
 export function heatColor(t: number | null): string {
@@ -24,7 +27,7 @@ export function heatColor(t: number | null): string {
 }
 
 /** Temperaturfärg som ton för kort. */
-export const heatTint = (t: number | null) => tint(heatColor(t), t == null ? 0.12 : 0.3);
+export const heatTint = (t: number | null) => tint(heatColor(t), t == null ? 0.12 : 0.42);
 
 const num = (n: number, decimals: number) =>
   n.toLocaleString('sv-SE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });

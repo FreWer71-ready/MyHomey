@@ -61,7 +61,7 @@ export function LightControl({ light }: { light: Light }) {
 
   const canColor = light.can.temp || light.can.color;
   const glow = !on ? undefined : light.can.color && light.hue != null && light.sat != null && light.sat > 0.3
-    ? `linear-gradient(${hsl(light.hue, light.sat, 0.3)}, ${hsl(light.hue, light.sat, 0.3)}), var(--color-glass)` : tint('#FFC21A', 0.24);
+    ? `linear-gradient(${hsl(light.hue, light.sat, 0.42)}, ${hsl(light.hue, light.sat, 0.42)}), rgb(14 18 32 / 0.88)` : tint('#FFC21A', 0.42);
 
   return (
     <li className="glass flex flex-col gap-2.5 rounded-3xl p-3" style={glow ? { background: glow } : undefined}>

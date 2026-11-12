@@ -55,7 +55,7 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
         </div>
         {/* Den andra vyns nyckeltal, tydligt och klickbart. */}
         {view === 'pris' ? (
-          <Link href={href('forbrukning')} className="glass flex items-center gap-3 rounded-[20px] py-2 pr-5 pl-2" style={{ background: tint('#8B5CF6', 0.32) }}>
+          <Link href={href('forbrukning')} className="glass flex items-center gap-3 rounded-[20px] py-2 pr-5 pl-2" style={{ background: tint('#8B5CF6', 0.5) }}>
             <span className="flex size-11 items-center justify-center rounded-[14px] bg-glass-hi"><Icon name="bolt" size={24} /></span>
             <span className="flex flex-col leading-tight">
               <span className="text-[13px] font-bold tracking-wider uppercase">Effekt nu</span>
@@ -98,8 +98,8 @@ async function UseView({ period, powerW, meters, href, kwhChart }: { period: Per
       </nav>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card bg={tint('#8B5CF6', 0.32)} icon="bolt" label="Effekt nu" value={fmtWatt(powerW)} sub={`${meters} mätare`} />
-        <Card bg={tint('#2BB5C4', 0.3)} icon="chart" label={`Förbrukat ${PERIODS[period].label}`} value={kwh(used?.total ?? null)} sub="summa alla mätare" />
+        <Card bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu" value={fmtWatt(powerW)} sub={`${meters} mätare`} />
+        <Card bg={tint('#2BB5C4', 0.5)} icon="chart" label={`Förbrukat ${PERIODS[period].label}`} value={kwh(used?.total ?? null)} sub="summa alla mätare" />
         <Card bg="var(--color-glass)" icon="power" label="Snitteffekt" value={avgW == null ? '–' : fmtWatt(Math.round(avgW))} sub={PERIODS[period].label} />
         <Card bg={tint('#F0503C')} icon="bolt" label="Högsta effekt" value={total?.max == null ? '–' : fmtWatt(Math.round(total.max))} sub={PERIODS[period].label} />
       </section>
