@@ -1,4 +1,4 @@
-// Väderprognos från MET Norway (locationforecast compact). Ren logik.
+// Väderprognos från SMHI (snow1g) med MET Norway som reserv. Symboler i MET:s format. Ren logik.
 import type { IconName } from '@/components/Icon';
 
 export type WeatherHour = { time: number; symbol: string; precip: number; temp: number };
@@ -8,6 +8,8 @@ export type WeatherSummary = {
   nextPrecip: WeatherHour | null;
   /** Nederbörd väntas inom 3 h (för fönstervarning). */
   rainSoon: boolean;
+  /** Källa som gav prognosen. */
+  source?: 'SMHI' | 'Yr';
 };
 
 type MetJson = {
@@ -76,4 +78,41 @@ export function weatherKind(code: string): WeatherKind {
   if (base === 'cloudy') return 'cloud';
   if (base === 'partlycloudy' || base === 'fair') return night ? 'partly-night' : 'partly-day';
   return night ? 'moon' : 'sun';
+}
+
+// SMHI Wsymb2 (1–27) → MET-symbol. isDay avgör dag/natt (solhöjd, se sky.ts).
+const WSYMB: Record<number, [string, boolean]> = {
+  1: ['clearsky', true], 2: ['fair', true], 3: ['partlycloudy', true], 4: ['partlycloudy', true], 5: ['cloudy', false], 6: ['cloudy', false],
+  7: ['fog', false], 8: ['lightrainshowers', true], 9: ['rainshowers', true], 10: ['heavyrainshowers', true], 11: ['rainshowersandthunder', true],
+  12: ['lightsleetshowers', true], 13: ['sleetshowers', true], 14: ['heavysleetshowers', true], 15: ['lightsnowshowers', true],
+  16: ['snowshowers', true], 17: ['heavysnowshowers', true], 18: ['lightrain', false], 19: ['rain', false], 20: ['heavyrain', false],
+  21: ['rainandthunder', false], 22: ['lightsleet', false], 23: ['sleet', false], 24: ['heavysleet', false], 25: ['lightsnow', false],
+  26: ['snow', false], 27: ['heavysnow', false],
+};
+
+export function smhiSymbol(code: number, day: boolean): string {
+  const [name, daynight] = WSYMB[Math.round(code)] ?? ['cloudy', false];
+  return daynight ? `${name}_${day ? 'day' : 'night'}` : name;
+}
+
+type SmhiJson = {
+  timeSeries?: { time: string; intervalParametersStartTime?: string; data: Record<string, number | undefined> }[];
+};
+
+/** SMHI snow1g: nederbörd gäller timmen fram till "time", så timmen räknas från intervallets start. */
+export function parseSmhi(json: SmhiJson, isDay: (ms: number) => boolean): WeatherHour[] {
+  return (json.timeSeries ?? [])
+    .filter((t) => t.data.symbol_code != null)
+    .map((t) => {
+      const end = Date.parse(t.time);
+      const start = t.intervalParametersStartTime ? Date.parse(t.intervalParametersStartTime) : end - 3600_000;
+      // Bara timvärden (längre fram blir intervallen längre).
+      return end - start > 3600_000 ? null : {
+        time: start,
+        symbol: smhiSymbol(t.data.symbol_code!, isDay(start + 1800_000)),
+        precip: t.data.precipitation_amount_mean_deterministic ?? t.data.precipitation_amount_mean ?? 0,
+        temp: t.data.air_temperature ?? NaN,
+      };
+    })
+    .filter((h): h is WeatherHour => h !== null);
 }

@@ -405,6 +405,30 @@
    "capability_id": "measure_battery",
    "value_num": 88,
    "value_bool": null
+  },
+  {
+   "device_id": "wx",
+   "capability_id": "measure_wind_strength",
+   "value_num": 1,
+   "value_bool": null
+  },
+  {
+   "device_id": "wx",
+   "capability_id": "measure_gust_strength",
+   "value_num": 2.2,
+   "value_bool": null
+  },
+  {
+   "device_id": "wx",
+   "capability_id": "measure_wind_angle",
+   "value_num": 157,
+   "value_bool": null
+  },
+  {
+   "device_id": "wx",
+   "capability_id": "measure_temperature.surface",
+   "value_num": 4.2,
+   "value_bool": null
   }
  ],
  "moods": [

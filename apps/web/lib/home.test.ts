@@ -133,3 +133,26 @@ test('temperaturer äldre än 5 dagar räknas inte, rummet blir ej nåbart', () 
   assert.deepEqual([b.temp, b.tempStale], [21, false]);
   assert.equal(fmtTemp(a.temp, a.tempStale), 'Ej nåbar');
 });
+
+test('SMHI: timmen räknas från intervallets start, symbol i MET-format med dag/natt', async () => {
+  const { parseSmhi, summarizeWeather } = await import('./weather.ts');
+  const json = { timeSeries: [
+    { time: '2026-11-12T12:00:00Z', intervalParametersStartTime: '2026-11-12T11:00:00Z', data: { symbol_code: 3, air_temperature: 5, precipitation_amount_mean_deterministic: 0 } },
+    { time: '2026-11-12T13:00:00Z', intervalParametersStartTime: '2026-11-12T12:00:00Z', data: { symbol_code: 18, air_temperature: 5, precipitation_amount_mean_deterministic: 0.4 } },
+    { time: '2026-11-12T23:00:00Z', intervalParametersStartTime: '2026-11-12T22:00:00Z', data: { symbol_code: 1, air_temperature: 1 } },
+    { time: '2026-11-14T00:00:00Z', intervalParametersStartTime: '2026-11-13T12:00:00Z', data: { symbol_code: 5 } },
+  ] };
+  const h = parseSmhi(json, (ms) => new Date(ms).getUTCHours() < 15);
+  assert.deepEqual(h.map((x) => [new Date(x.time).toISOString().slice(11, 16), x.symbol]), [['11:00', 'partlycloudy_day'], ['12:00', 'lightrain'], ['22:00', 'clearsky_night']]);
+  const w = summarizeWeather(h, Date.parse('2026-11-12T11:20:00Z'))!;
+  assert.equal(w.nextPrecip!.time, Date.parse('2026-11-12T12:00:00Z'));
+  assert.equal(w.rainSoon, true);
+});
+
+test('väderstation: vind, by, riktning och vägyta', async () => {
+  const { compass } = await import('./home.ts');
+  const h = buildHome(zones, devices, [...caps, c('wx', 'measure_wind_strength', 1), c('wx', 'measure_gust_strength', 2.2), c('wx', 'measure_wind_angle', 157), c('wx', 'measure_temperature.surface', 4.2)]);
+  assert.deepEqual(h.station, { wind: 1, gust: 2.2, dir: 'SSO', road: 4.2 });
+  assert.equal(buildHome(zones, devices, caps).station, null);
+  assert.deepEqual([compass(0), compass(350), compass(270)], ['N', 'N', 'V']);
+});

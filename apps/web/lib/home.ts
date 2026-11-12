@@ -31,8 +31,12 @@ export type BatteryItem = { id: string; name: string; room: string; level: numbe
 export type Opening = { id: string; name: string; room: string; open: boolean; kind: 'door' | 'window' };
 export type Silent = { id: string; name: string; room: string; lastSeen: string | null; reason: 'offline' | 'stale' };
 
+/** Väderstation (Trafikverket): vind i m/s, riktning som kompasstext, vägytans temperatur. */
+export type Station = { wind: number | null; gust: number | null; dir: string | null; road: number | null };
+
 export type Home = {
   outdoorTemp: number | null;
+  station: Station | null;
   lightsOn: number;
   lightsTotal: number;
   powerW: number;
@@ -58,7 +62,12 @@ export type Home = {
 export const CAPS = [
   'measure_temperature', 'measure_humidity', 'onoff', 'dim', 'measure_power',
   'alarm_contact', 'alarm_motion', 'measure_battery', 'alarm_battery', 'alarm_connectivity',
+  'measure_wind_strength', 'measure_gust_strength', 'measure_wind_angle', 'measure_temperature.surface',
 ];
+
+const COMPASS = ['N', 'NNO', 'NO', 'ONO', 'O', 'OSO', 'SO', 'SSO', 'S', 'SSV', 'SV', 'VSV', 'V', 'VNV', 'NV', 'NNV'];
+/** Vindriktning i grader (varifrån det blåser) → kompasstext. */
+export const compass = (deg: number) => COMPASS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
 
 /** Luftfuktighet visas bara i våtrum. */
 const HUMIDITY_ROOMS = /bad|toa|wc|dusch|tvätt/i;
@@ -168,9 +177,15 @@ export function buildHome(zones: Zone[], devices: Device[], caps: Cap[], moods: 
     .map((m) => ({ id: m.id, name: m.name.trim(), room: m.zone_id && m.zone_id !== root?.id ? (zoneName.get(m.zone_id) ?? null) : null }))
     .sort((a, b) => (a.room ?? '').localeCompare(b.room ?? '', 'sv') || a.name.localeCompare(b.name, 'sv'));
 
+  // Väderstationer (t.ex. Trafikverket) har klassen service.
+  const stations = active.filter((d) => d.class === 'service');
+  const sNum = (id: string) => avg(stations.map((d) => cap(d, id)?.value_num).filter((v): v is number => typeof v === 'number'));
+  const angle = sNum('measure_wind_angle');
+  const station: Station = { wind: sNum('measure_wind_strength'), gust: sNum('measure_gust_strength'), dir: angle == null ? null : compass(angle), road: sNum('measure_temperature.surface') };
+
   return {
-    // Väderstationer (t.ex. Trafikverket) har klassen service.
-    outdoorTemp: avg(temps(active.filter((d) => d.class === 'service'))),
+    outdoorTemp: avg(temps(stations)),
+    station: Object.values(station).some((v) => v != null) ? station : null,
     lightsOn: allLights.filter((l) => l.on).length,
     lightsTotal: allLights.length,
     powerW: Math.round(power.reduce((a, b) => a + b, 0) * 10) / 10,

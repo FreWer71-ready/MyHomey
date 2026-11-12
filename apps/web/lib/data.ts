@@ -3,7 +3,8 @@ import { createClient } from './supabase/server';
 import { TEMP_MAX_DAYS, buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
 import { PRICE_AREA, type Price } from './prices';
 import { startOfDayStockholm } from './time';
-import { parseMet, summarizeWeather, type WeatherSummary } from './weather';
+import { solarElevation } from './sky';
+import { parseMet, parseSmhi, summarizeWeather, type WeatherSummary } from './weather';
 import { MEDIA_CAPS, nowPlaying, type MediaCap, type NowPlaying } from './media';
 import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
@@ -126,24 +127,28 @@ export async function loadPrices(): Promise<Price[]> {
 /** Plats för väder och bakgrund (WEATHER_LAT/WEATHER_LON i Vercel, annars Eskilstuna). */
 export const PLACE = { lat: Number(process.env.WEATHER_LAT ?? 59.3712), lon: Number(process.env.WEATHER_LON ?? 16.5098) };
 
-/** Väderprognos (MET Norway), cachas 30 min. Plats via WEATHER_LAT/WEATHER_LON, annars Eskilstuna. */
+/** Väderprognos från SMHI (Yr som reserv), cachas 30 min. Plats via WEATHER_LAT/WEATHER_LON. */
 export async function loadWeather(): Promise<WeatherSummary | null> {
   const now = Date.now();
   if (DEMO) {
     const hours = [0, 1, 2, 3].map((h) => ({ time: Math.floor(now / 3600_000) * 3600_000 + h * 3600_000, symbol: h < 2 ? 'partlycloudy_night' : 'lightrain', precip: h < 2 ? 0 : 0.5, temp: 3 }));
-    return summarizeWeather(hours, now);
+    return { ...summarizeWeather(hours, now)!, source: 'SMHI' };
   }
   const { lat, lon } = PLACE;
-  try {
-    const res = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`, {
-      headers: { 'User-Agent': 'MyHomey-dashboard/1.0' },
-      next: { revalidate: 1800 },
-    });
-    if (!res.ok) return null;
-    return summarizeWeather(parseMet(await res.json()), now);
-  } catch {
-    return null; // Vädret får aldrig stoppa sidan.
-  }
+  const get = async (url: string, headers?: Record<string, string>) => {
+    try {
+      const res = await fetch(url, { headers, next: { revalidate: 1800 }, signal: AbortSignal.timeout(6000) });
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null; // Vädret får aldrig stoppa sidan.
+    }
+  };
+  const smhi = await get(`https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/${lon.toFixed(4)}/lat/${lat.toFixed(4)}/data.json`);
+  const fromSmhi = smhi && summarizeWeather(parseSmhi(smhi, (ms) => solarElevation(ms, lat, lon) > -0.833), now);
+  if (fromSmhi) return { ...fromSmhi, source: 'SMHI' };
+  const met = await get(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`, { 'User-Agent': 'MyHomey-dashboard/1.0' });
+  const fromMet = met && summarizeWeather(parseMet(met), now);
+  return fromMet ? { ...fromMet, source: 'Yr' } : null;
 }
 
 /** Antal öppningar per dörr/fönster (alarm_contact → öppen) sedan midnatt. */

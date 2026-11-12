@@ -14,10 +14,12 @@ import { fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
-function Hero({ bg, icon, label, href, children }: { bg: string; icon: IconName; label: string; href?: string; children: React.ReactNode }) {
+const fmtNum = (v: number) => v.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
+
+function Hero({ bg, icon, label, href, wide, children }: { bg: string; icon: IconName; label: string; href?: string; wide?: boolean; children: React.ReactNode }) {
   const Box = href ? Link : 'div';
   return (
-    <Box href={href!} className="glass relative flex flex-col gap-1 overflow-hidden rounded-[24px] p-4" style={{ background: bg }}>
+    <Box href={href!} className={`glass relative flex flex-col gap-1 overflow-hidden rounded-[24px] p-4 lg:min-w-0 ${wide ? 'col-span-2 lg:flex-[1.55]' : 'lg:flex-1'}`} style={{ background: bg }}>
       <span className="relative flex items-center gap-2.5">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
           <Icon name={icon} size={22} />
@@ -101,12 +103,12 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 lg:auto-cols-fr lg:grid-flow-col">
+      <section className="grid grid-cols-2 gap-3 lg:flex">
         {(h.outdoorTemp != null || weather) && (
-        <Hero bg={heatTint(h.outdoorTemp)} icon="thermo" label="Ute">
+        <Hero wide bg={heatTint(h.outdoorTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
           {/* Stor vädersymbol, ca 1/4 av kortet, lätt genomskinlig mot tonen. */}
           {sky && weather && (
-            <span className="pointer-events-none absolute top-1 -right-1 opacity-85">
+            <span className="pointer-events-none absolute top-1 right-3 opacity-85">
               <WeatherIcon kind={weatherKind(weather.current.symbol)} size={120} label={sky.label} />
             </span>
           )}
@@ -122,6 +124,20 @@ export default async function HomePage() {
                       ? `${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} från ${hhmm(weather.nextPrecip.time)}`
                       : 'uppehåll 6 tim'
                   }`}
+            </span>
+          )}
+          {h.station && (
+            <span className="relative flex flex-wrap items-center gap-x-2 text-[15px] font-bold">
+              {h.station.wind != null && (
+                <span>
+                  Vind {fmtNum(h.station.wind)}{h.station.gust != null && h.station.gust > h.station.wind ? `–${fmtNum(h.station.gust)}` : ''} m/s{h.station.dir ? ` ${h.station.dir}` : ''}
+                </span>
+              )}
+              {h.station.road != null && (
+                <span className={h.station.road <= 0.5 ? 'rounded-full bg-danger-strong px-2 text-white' : ''}>
+                  · Väg {fmtTemp(h.station.road)}{h.station.road <= 0.5 ? ' halka' : ''}
+                </span>
+              )}
             </span>
           )}
         </Hero>
