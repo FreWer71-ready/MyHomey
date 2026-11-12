@@ -209,3 +209,17 @@ test('närvaro äldre än 4 veckor visas inte', () => {
   const h = buildHome(zones, ds, [p('a', false, '2026-11-12T06:19:00Z'), p('b', false, '2026-07-25T07:45:00Z')], [], now);
   assert.deepEqual(h.people.map((x) => x.name), ['Fredrik']);
 });
+
+test('närvarotidslinje: tid hemma, bara personer med ändring eller hemma nu', async () => {
+  const { buildPresence } = await import('./timeline.ts');
+  const since = Date.parse('2026-11-12T00:00:00Z'), now = Date.parse('2026-11-12T12:00:00Z');
+  const ds: Device[] = ['a', 'b', 'c'].map((id) => ({ id, name: id.toUpperCase(), zone_id: 'root', class: 'sensor', available: true }));
+  const rows = [
+    { device_id: 'a', ts: '2026-11-12T00:00:00.000Z', value: 1 }, { device_id: 'a', ts: '2026-11-12T06:00:00Z', value: 0 },
+    { device_id: 'b', ts: '2026-11-12T00:00:00.000Z', value: 0 },
+    { device_id: 'c', ts: '2026-11-12T00:00:00.000Z', value: 1 },
+  ];
+  const [g] = buildPresence(rows, ds, since, now);
+  assert.equal(g.name, 'Närvaro');
+  assert.deepEqual(g.lamps.map((l) => [l.name, l.onMinutes, l.onNow]), [['A', 360, false], ['C', 720, true]]);
+});

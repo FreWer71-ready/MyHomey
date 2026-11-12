@@ -20,10 +20,11 @@ function ticks(since: number, now: number) {
   return out;
 }
 
-export function LightTimeline({ rooms, since, now }: { rooms: RoomLines[]; since: number; now: number }) {
+export function LightTimeline({ rooms, since, now, kind = 'light' }: { rooms: RoomLines[]; since: number; now: number; kind?: 'light' | 'presence' }) {
+  const presence = kind === 'presence';
   const marks = ticks(since, now);
   if (!rooms.length) {
-    return <p className="rounded-[28px] glass p-10 text-center text-lg font-bold text-dim">Inga lampor med historik än.</p>;
+    return <p className="rounded-[28px] glass p-10 text-center text-lg font-bold text-dim">{presence ? 'Ingen närvarohistorik för perioden än.' : 'Inga lampor med historik än.'}</p>;
   }
   return (
     <div className="flex flex-col gap-4">
@@ -41,13 +42,13 @@ export function LightTimeline({ rooms, since, now }: { rooms: RoomLines[]; since
             {room.lamps.map((l) => (
               <div key={l.id} className="contents">
                 <span className="flex items-center gap-2 truncate font-bold">
-                  <span className={`size-3 shrink-0 rounded-full ${l.onNow ? 'bg-sun' : 'bg-line'}`} />
+                  <span className={`size-3 shrink-0 rounded-full ${l.onNow ? (presence ? 'bg-ok' : 'bg-sun') : 'bg-line'}`} />
                   <span className="truncate">{l.name}</span>
                 </span>
                 <div
                   className="relative h-8 overflow-hidden rounded-xl bg-glass-2"
                   role="img"
-                  aria-label={`${l.name}: tänd ${fmtDuration(l.onMinutes)}`}
+                  aria-label={`${l.name}: ${presence ? 'hemma' : 'tänd'} ${fmtDuration(l.onMinutes)}`}
                 >
                   {marks.map((m) => (
                     <span key={m.left} className="absolute inset-y-0 w-px bg-line" style={{ left: `${m.left}%` }} />
@@ -55,7 +56,7 @@ export function LightTimeline({ rooms, since, now }: { rooms: RoomLines[]; since
                   {l.segments.map((s, i) => (
                     <span
                       key={i}
-                      className="absolute inset-y-1 rounded-md bg-sun/80"
+                      className={`absolute inset-y-1 rounded-md ${presence ? 'bg-ok/80' : 'bg-sun/80'}`}
                       style={{ left: `${s.left}%`, width: `max(${s.width}%, 3px)` }}
                     />
                   ))}

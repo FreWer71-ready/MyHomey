@@ -7,7 +7,7 @@ import { solarElevation } from './sky';
 import { parseMet, parseSmhi, smhiDays, summarizeWeather, type WeatherSummary } from './weather';
 import { MEDIA_CAPS, nowPlaying, type MediaCap, type NowPlaying } from './media';
 import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
-import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
+import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
@@ -243,4 +243,26 @@ export async function loadFlows(): Promise<Flow[]> {
   const sb = await createClient();
   const { data, error } = await sb.from('flows').select('id,name,advanced').order('name');
   return error ? [] : (data as Flow[]);
+}
+
+/** Närvarohistorik (Smart Presence) som tidslinje per person. */
+export async function loadPresenceTimeline(period: PeriodKey): Promise<{ rooms: RoomLines[]; since: number; now: number }> {
+  const now = Date.now();
+  const since = now - PERIODS[period].hours * 3600_000;
+  if (DEMO) {
+    const { readFile } = await import('node:fs/promises');
+    const d = JSON.parse(await readFile(DEMO, 'utf8'));
+    const ids = (d.caps as Cap[]).filter((c) => c.capability_id === 'presence').map((c) => c.device_id);
+    const rows: OnOffRow[] = ids.flatMap((id, i) => [0, 1, 2, 3, 4, 5].map((k) => ({
+      device_id: id, ts: new Date(since + ((k * 4 + i) / 24) * (now - since)).toISOString(), value: (k + i) % 2 === 0 ? 1 : 0,
+    })));
+    return { rooms: buildPresence(rows, d.devices, since, now), since, now };
+  }
+  const sb = await createClient();
+  const [devices, rows] = await Promise.all([
+    sb.from('devices').select('id,name,zone_id,class,available'),
+    sb.rpc('bool_timeline', { cap: 'presence', since: new Date(since).toISOString() }),
+  ]);
+  if (devices.error || rows.error) throw new Error(`Kunde inte läsa närvaro: ${(devices.error ?? rows.error)!.message}`);
+  return { rooms: buildPresence(rows.data as OnOffRow[], devices.data as Device[], since, now), since, now };
 }

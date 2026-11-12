@@ -2,20 +2,21 @@ import Link from 'next/link';
 import { HistoryChart } from '@/components/HistoryChart';
 import { Icon, type IconName } from '@/components/Icon';
 import { LightTimeline } from '@/components/LightTimeline';
-import { loadHistory, loadLightTimeline } from '@/lib/data';
+import { loadHistory, loadLightTimeline, loadPresenceTimeline } from '@/lib/data';
 import {
   METRICS, PERIODS, fmtValue, isMetric, isPeriod, sumSeries, type MetricKey, type PeriodKey,
 } from '@/lib/history';
 
 export const dynamic = 'force-dynamic';
 
-type View = MetricKey | 'lights';
+type View = MetricKey | 'lights' | 'presence';
 const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'temp', label: METRICS.temp.label, icon: 'thermo' },
   { key: 'hum', label: METRICS.hum.label, icon: 'drop' },
   { key: 'power', label: METRICS.power.label, icon: 'bolt' },
   { key: 'energy', label: METRICS.energy.label, icon: 'chart' },
   { key: 'lights', label: 'Lampor', icon: 'bulb' },
+  { key: 'presence', label: 'Närvaro', icon: 'home' },
 ];
 const SHORT: PeriodKey[] = ['4h', '12h', '24h'];
 
@@ -26,12 +27,12 @@ export default async function HistoryPage({
   searchParams,
 }: { searchParams: Promise<{ m?: string; p?: string; s?: string }> }) {
   const { m, p, s: sel } = await searchParams;
-  const view: View = m === 'lights' ? 'lights' : isMetric(m) ? m : 'temp';
-  const metric: MetricKey = view === 'lights' ? 'temp' : view;
+  const view: View = m === 'lights' || m === 'presence' ? m : isMetric(m) ? m : 'temp';
+  const metric: MetricKey = view === 'lights' || view === 'presence' ? 'temp' : view;
   const period: PeriodKey = isPeriod(p) ? p : '24h';
   const cfg = METRICS[metric];
-  const [series, timeline] = view === 'lights'
-    ? [[], await loadLightTimeline(period)]
+  const [series, timeline] = view === 'lights' || view === 'presence'
+    ? [[], await (view === 'presence' ? loadPresenceTimeline(period) : loadLightTimeline(period))]
     : [await loadHistory(metric, period), null];
 
   // Valt rum/serie (?s=) filtrerar grafen; samma tryck igen visar alla.
@@ -56,7 +57,7 @@ export default async function HistoryPage({
         </nav>
       </header>
 
-      <nav aria-label="Mått" className="grid grid-cols-3 gap-2.5 lg:grid-cols-5">
+      <nav aria-label="Mått" className="grid grid-cols-3 gap-2.5 lg:grid-cols-6">
         {VIEWS.map((v) => (
           <Link
             key={v.key}
@@ -76,15 +77,15 @@ export default async function HistoryPage({
 
       {timeline && (
         <>
-          <nav aria-label="Rum" className="flex flex-wrap gap-1.5">
+          {view !== 'presence' && <nav aria-label="Rum" className="flex flex-wrap gap-1.5">
             <Link href={href(view, period)} aria-current={!sel ? 'page' : undefined} className={chip(!sel)}>Alla rum</Link>
             {timeline.rooms.map((r) => (
               <Link key={r.name} href={href(view, period, r.name)} aria-current={sel === r.name ? 'page' : undefined} className={chip(sel === r.name)}>
                 {r.name}
               </Link>
             ))}
-          </nav>
-          <LightTimeline rooms={rooms ?? []} since={timeline.since} now={timeline.now} />
+          </nav>}
+          <LightTimeline rooms={rooms ?? []} since={timeline.since} now={timeline.now} kind={view === 'presence' ? 'presence' : 'light'} />
         </>
       )}
 

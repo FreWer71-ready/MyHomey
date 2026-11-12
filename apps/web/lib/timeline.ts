@@ -6,7 +6,15 @@ export type Segment = { left: number; width: number }; // procent av perioden
 export type LampLine = { id: string; name: string; segments: Segment[]; onMinutes: number; onNow: boolean };
 export type RoomLines = { name: string; lamps: LampLine[] };
 
-export function buildTimeline(rows: OnOffRow[], devices: Device[], zones: Zone[], since: number, now: number): RoomLines[] {
+/**
+ * Tidslinjer för av/på-värden. Standard: lampor grupperade per rum.
+ * opts.include väljer enheter, opts.group sätter gruppnamn (t.ex. "Närvaro").
+ */
+export function buildTimeline(
+  rows: OnOffRow[], devices: Device[], zones: Zone[], since: number, now: number,
+  opts: { include?: (d: Device) => boolean; group?: string } = {},
+): RoomLines[] {
+  const include = opts.include ?? ((d: Device) => d.class === 'light' && d.available);
   const span = now - since;
   const zoneName = new Map(zones.map((z) => [z.id, z.name.trim()]));
   const byDevice = new Map<string, OnOffRow[]>();
@@ -17,7 +25,7 @@ export function buildTimeline(rows: OnOffRow[], devices: Device[], zones: Zone[]
 
   const rooms = new Map<string, LampLine[]>();
   for (const d of devices) {
-    if (d.class !== 'light' || !d.available) continue;
+    if (!include(d)) continue;
     const rs = (byDevice.get(d.id) ?? []).sort((a, b) => a.ts.localeCompare(b.ts));
     const segments: Segment[] = [];
     let onMs = 0;
@@ -39,7 +47,7 @@ export function buildTimeline(rows: OnOffRow[], devices: Device[], zones: Zone[]
     }
     const onNow = onFrom != null;
     close(now);
-    const room = zoneName.get(d.zone_id ?? '') ?? 'Övrigt';
+    const room = opts.group ?? zoneName.get(d.zone_id ?? '') ?? 'Övrigt';
     if (!rooms.has(room)) rooms.set(room, []);
     rooms.get(room)!.push({ id: d.id, name: d.name.trim(), segments, onMinutes: Math.round(onMs / 60000), onNow });
   }
@@ -51,3 +59,11 @@ export function buildTimeline(rows: OnOffRow[], devices: Device[], zones: Zone[]
 
 export const fmtDuration = (min: number) =>
   min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}`;
+
+/** Närvaro: personer med ändring under perioden eller som är hemma nu. */
+export function buildPresence(rows: OnOffRow[], devices: Device[], since: number, now: number): RoomLines[] {
+  const sinceIso = new Date(since).toISOString();
+  const changed = new Set(rows.filter((r) => r.ts > sinceIso).map((r) => r.device_id));
+  const lines = buildTimeline(rows, devices, [], since, now, { include: (d) => rows.some((r) => r.device_id === d.id), group: 'Närvaro' });
+  return lines.map((g) => ({ ...g, lamps: g.lamps.filter((l) => l.onNow || changed.has(l.id)) })).filter((g) => g.lamps.length);
+}
