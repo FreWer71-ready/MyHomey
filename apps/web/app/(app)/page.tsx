@@ -197,7 +197,7 @@ export default async function HomePage() {
       {weather && (
         <div id="prognos" popover="auto" className="m-auto w-[min(94vw,880px)] rounded-[24px] border border-line bg-ground/95 p-4 text-fg shadow-2xl backdrop:bg-black/50">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-extrabold">Prognos 24 tim · {weather.source ?? 'SMHI'}</h2>
+            <h2 className="text-xl font-extrabold">Prognos · {weather.source ?? 'SMHI'}</h2>
             <button type="button" popoverTarget="prognos" popoverTargetAction="hide" className="rounded-full bg-glass-hi px-4 py-2 font-extrabold">Stäng</button>
           </div>
           <ol className="flex gap-2 overflow-x-auto pb-2">
@@ -215,6 +215,30 @@ export default async function HomePage() {
               );
             })}
           </ol>
+          {weather.days && weather.days.length > 0 && (
+            <>
+              <h3 className="mt-2 mb-2 text-lg font-extrabold">Kommande dagar</h3>
+              <ol className="grid grid-cols-5 gap-2">
+                {weather.days.map((d) => {
+                  const info = symbolInfo(d.symbol);
+                  const day = new Intl.DateTimeFormat('sv-SE', { weekday: 'short', timeZone: 'Europe/Stockholm' }).format(Date.parse(`${d.date}T12:00:00Z`));
+                  return (
+                    <li key={d.date} className="flex flex-col items-center gap-1 rounded-2xl bg-glass-2 px-1 py-2">
+                      <span className="text-[13px] font-bold text-dim capitalize">{day.replace('.', '')}</span>
+                      <WeatherIcon kind={weatherKind(d.symbol)} size={40} label={info.label} />
+                      <span className="flex flex-col items-center leading-tight sm:flex-row sm:gap-1.5">
+                        <span className="text-lg font-extrabold">{Math.round(d.max)}°</span>
+                        <span className="text-[15px] font-bold text-dim">{Math.round(d.min)}°</span>
+                      </span>
+                      <span className={`text-[13px] font-bold ${d.precip >= 0.5 ? 'text-info' : 'text-mute'}`}>
+                        {d.precip >= 0.5 ? `${d.precip.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} mm` : '–'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </>
+          )}
         </div>
       )}
 

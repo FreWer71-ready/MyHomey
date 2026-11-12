@@ -4,7 +4,7 @@ import { TEMP_MAX_DAYS, buildHome, CAPS, type Cap, type Device, type Home, type 
 import { PRICE_AREA, type Price } from './prices';
 import { startOfDayStockholm } from './time';
 import { solarElevation } from './sky';
-import { parseMet, parseSmhi, summarizeWeather, type WeatherSummary } from './weather';
+import { parseMet, parseSmhi, smhiDays, summarizeWeather, type WeatherSummary } from './weather';
 import { MEDIA_CAPS, nowPlaying, type MediaCap, type NowPlaying } from './media';
 import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
 import { buildTimeline, type OnOffRow, type RoomLines } from './timeline';
@@ -149,7 +149,11 @@ export async function loadWeather(): Promise<WeatherSummary | null> {
   if (DEMO) {
     const sym = ['partlycloudy_night', 'partlycloudy_night', 'lightrain', 'rain', 'cloudy', 'partlycloudy_day', 'clearsky_day', 'fair_day'];
     const hours = Array.from({ length: 24 }, (_, h) => ({ time: Math.floor(now / 3600_000) * 3600_000 + h * 3600_000, symbol: sym[Math.floor(h / 3) % 8], precip: [2, 3].includes(Math.floor(h / 3) % 8) ? 0.4 + (h % 3) * 0.3 : 0, temp: 2 + 3 * Math.sin(h / 4) }));
-    return { ...summarizeWeather(hours, now)!, source: 'SMHI' };
+    const days = Array.from({ length: 5 }, (_, i) => ({
+      date: new Date(now + (i + 1) * 86400_000).toISOString().slice(0, 10), min: -2 + i, max: 3 + (i % 3),
+      precip: [0, 2.4, 0.3, 0, 5.1][i], symbol: ['partlycloudy_day', 'rain', 'lightrainshowers_day', 'clearsky_day', 'heavyrain'][i],
+    }));
+    return { ...summarizeWeather(hours, now)!, source: 'SMHI', days };
   }
   const { lat, lon } = PLACE;
   const get = async (url: string, headers?: Record<string, string>) => {
@@ -162,7 +166,7 @@ export async function loadWeather(): Promise<WeatherSummary | null> {
   };
   const smhi = await get(`https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/${lon.toFixed(4)}/lat/${lat.toFixed(4)}/data.json`);
   const fromSmhi = smhi && summarizeWeather(parseSmhi(smhi, (ms) => solarElevation(ms, lat, lon) > -0.833), now);
-  if (fromSmhi) return { ...fromSmhi, source: 'SMHI' };
+  if (fromSmhi) return { ...fromSmhi, source: 'SMHI', days: smhiDays(smhi, now) };
   const met = await get(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`, { 'User-Agent': 'MyHomey-dashboard/1.0' });
   const fromMet = met && summarizeWeather(parseMet(met), now);
   return fromMet ? { ...fromMet, source: 'Yr' } : null;

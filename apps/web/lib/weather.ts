@@ -8,6 +8,8 @@ export type WeatherSummary = {
   nextPrecip: WeatherHour | null;
   /** Nederbörd väntas inom 3 h (för fönstervarning). */
   rainSoon: boolean;
+  /** Kommande dygn (från i morgon) för prognosvyn. Tom om källan inte ger det. */
+  days?: WeatherDay[];
   /** Kommande timmar (upp till 24) för prognosvyn. */
   hours: WeatherHour[];
   /** Källa som gav prognosen. */
@@ -118,4 +120,39 @@ export function parseSmhi(json: SmhiJson, isDay: (ms: number) => boolean): Weath
       };
     })
     .filter((h): h is WeatherHour => h !== null);
+}
+
+export type WeatherDay = { date: string; min: number; max: number; precip: number; symbol: string };
+
+const dayKeySthlm = (ms: number) =>
+  new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
+const hourSthlm = (ms: number) => Number(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', hourCycle: 'h23' }).format(ms));
+
+/**
+ * SMHI: dygnsprognos ur hela tidsserien (timmar nära, sedan 3/6/12-timmarsintervall).
+ * Min/max ur temperaturerna, nederbörd summerad per intervall, symbolen närmast kl 13.
+ */
+export function smhiDays(json: SmhiJson, now: number, count = 5): WeatherDay[] {
+  const today = dayKeySthlm(now);
+  const byDay = new Map<string, { temps: number[]; precip: number; best: { d: number; code: number } | null }>();
+  for (const t of json.timeSeries ?? []) {
+    const ms = Date.parse(t.time);
+    const key = dayKeySthlm(ms);
+    if (key <= today) continue;
+    const g = byDay.get(key) ?? { temps: [], precip: 0, best: null };
+    if (t.data.air_temperature != null) g.temps.push(t.data.air_temperature);
+    g.precip += t.data.precipitation_amount_mean_deterministic ?? t.data.precipitation_amount_mean ?? 0;
+    if (t.data.symbol_code != null) {
+      const d = Math.abs(hourSthlm(ms) - 13);
+      if (!g.best || d < g.best.d) g.best = { d, code: t.data.symbol_code };
+    }
+    byDay.set(key, g);
+  }
+  return [...byDay.entries()]
+    .filter(([, g]) => g.temps.length && g.best)
+    .slice(0, count)
+    .map(([date, g]) => ({
+      date, min: Math.min(...g.temps), max: Math.max(...g.temps),
+      precip: Math.round(g.precip * 10) / 10, symbol: smhiSymbol(g.best!.code, true),
+    }));
 }

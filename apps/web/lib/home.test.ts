@@ -173,3 +173,17 @@ test('temperaturtrend: upp/ned över gränsen, annars ingen', () => {
   assert.equal(h.outdoorTrend, 'down');
   assert.equal(buildHome(zones, devices, caps).outdoorTrend, null);
 });
+
+test('SMHI dygn: från i morgon, min/max, summerad nederbörd, symbol nära kl 13', async () => {
+  const { smhiDays } = await import('./weather.ts');
+  const p = (time: string, temp: number, code: number, precip = 0) => ({ time, data: { air_temperature: temp, symbol_code: code, precipitation_amount_mean_deterministic: precip } });
+  const json = { timeSeries: [
+    p('2026-11-12T12:00:00Z', 5, 1),
+    p('2026-11-13T06:00:00Z', 1, 5, 0.5), p('2026-11-13T12:00:00Z', 6, 19, 2), p('2026-11-13T18:00:00Z', 3, 6, 0.4),
+    p('2026-11-14T12:00:00Z', 2, 2),
+  ] };
+  const d = smhiDays(json, Date.parse('2026-11-12T09:00:00Z'));
+  assert.deepEqual(d.map((x) => [x.date, x.min, x.max, x.precip, x.symbol]), [
+    ['2026-11-13', 1, 6, 2.9, 'rain'], ['2026-11-14', 2, 2, 0, 'fair_day'],
+  ]);
+});
