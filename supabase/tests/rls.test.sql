@@ -97,3 +97,20 @@ do $$ begin
 end $$;
 reset role;
 \echo Startvärde-test OK
+
+-- Flera hushåll: Ulrika ser bara sitt, Fredrik bara sitt.
+reset role;
+insert into public.app_users (email, household_id) values ('u@example.com', 'ulrika') on conflict (email) do update set household_id = 'ulrika';
+select public.ingest_homey('{"household":"ulrika","zones":[{"id":"uz","name":"Hall"}],"devices":[{"id":"ud","name":"Lampa U","zone":"uz","class":"light","caps":[{"id":"onoff","v":true,"t":"2026-11-12T10:00:00Z"}]}]}'::jsonb);
+-- Fredriks ingest får inte markera Ulrikas enheter som saknade.
+select public.ingest_homey('{"zones":[],"devices":[]}'::jsonb);
+do $$ begin if not (select available from public.devices where id = 'ud') then raise exception 'annat hushålls enhet markerades saknad'; end if; end $$;
+set role authenticated;
+set request.jwt.claims = '{"email":"u@example.com"}';
+do $$ begin
+  if (select count(*) from public.devices) <> 1 then raise exception 'ulrika ser fel antal enheter'; end if;
+  if (select count(*) from public.readings where device_id <> 'ud') <> 0 then raise exception 'ulrika ser andras historik'; end if;
+end $$;
+set request.jwt.claims = '{"email":"ok@example.com"}';
+do $$ begin if exists (select 1 from public.devices where id = 'ud') then raise exception 'fredrik ser ulrikas enhet'; end if; end $$;
+reset role;
