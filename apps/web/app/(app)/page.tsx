@@ -64,22 +64,28 @@ export default async function HomePage() {
             )}
           </div>
         </div>
-        {/* Närvaro (Smart Presence): grönt = hemma, dov röd = borta med senast sedd. */}
-        {h.people.length > 0 && (
-          <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-1.5">
-            {[...h.people].sort((x, y) => Number(y.present) - Number(x.present) || (y.since ?? '').localeCompare(x.since ?? '')).map((p) => (
-              <li
-                key={p.id}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[15px] font-extrabold ${p.present ? 'bg-ok-soft text-ok' : 'bg-[rgb(240_80_60/0.2)] text-danger'}`}
-                title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}
-              >
-                <span className={`size-2 rounded-full ${p.present ? 'bg-ok' : 'bg-danger'}`} />
-                {p.name}
-                {!p.present && p.since && <span className="font-bold opacity-80">· {seenAgo(p.since)}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* Höger: diskret versionsnotering ovanför närvaron. */}
+        <div className="flex flex-col items-end gap-1">
+          <span className="text-[11px] font-bold text-mute" title="Byggdatum och version">
+            v{process.env.NEXT_PUBLIC_BUILT} · {process.env.NEXT_PUBLIC_COMMIT}
+          </span>
+          {/* Närvaro (Smart Presence): grönt = hemma, dov röd = borta med senast sedd. */}
+          {h.people.length > 0 && (
+            <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-1.5">
+              {[...h.people].sort((x, y) => Number(y.present) - Number(x.present) || (y.since ?? '').localeCompare(x.since ?? '')).map((p) => (
+                <li
+                  key={p.id}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[15px] font-extrabold ${p.present ? 'bg-ok-soft text-ok' : 'bg-[rgb(240_80_60/0.2)] text-danger'}`}
+                  title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}
+                >
+                  <span className={`size-2 rounded-full ${p.present ? 'bg-ok' : 'bg-danger'}`} />
+                  {p.name}
+                  {!p.present && p.since && <span className="font-bold opacity-80">· {seenAgo(p.since)}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </header>
 
       {/* Varningar: egen rad i full bredd, bara när något kräver åtgärd. Sida vid sida på plattan. */}
