@@ -9,7 +9,7 @@ import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadCommute, loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
-import { commuteAlerts, direction, trainStatus } from '@/lib/commute';
+import { TONE_COLOR, commuteAlerts, direction, trainStatus, trainTone } from '@/lib/commute';
 import { seenAgo } from '@/lib/time';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -222,7 +222,7 @@ export default async function HomePage() {
             </Hero>
           ) }] : []),
           ...(commute ? [{ id: 'pendling', node: (
-            <Hero href="/pendling" bg={tint('#4FA3FF', 0.45)} icon="train" label={dir === 'out' ? 'Mot Stockholm' : 'Mot Eskilstuna'}>
+            <Hero href="/pendling" bg={next ? tint(TONE_COLOR[trainTone(next)], 0.5) : tint('#4FA3FF', 0.45)} icon="train" label={dir === 'out' ? 'Mot Stockholm' : 'Mot Eskilstuna'}>
               {next ? (
                 <>
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1">

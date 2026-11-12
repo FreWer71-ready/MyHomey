@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { commuteAlerts, direction, parseCommute, type RawCommute } from './commute.ts';
+import { commuteAlerts, direction, parseCommute, roadTone, trainTone, type RawCommute } from './commute.ts';
 
 const now = Date.parse('2026-11-12T15:30:00+01:00');
 const raw: RawCommute = {
@@ -52,4 +52,17 @@ test('pendling: riktning och varningar', () => {
   assert.deepEqual(commuteAlerts(shifted, morning, fmt).map((a) => a.label), [
     'Tåg 11:02 mot Stockholm +12 min', 'Tåg 11:34 mot Stockholm inställt', 'Väg 56: olycka',
   ]);
+});
+
+test('pendling: färgläge för tåg och väg', () => {
+  const c = parseCommute(raw, 'Et', 'Cst', now);
+  assert.equal(trainTone(c.out[0]), 'bad'); // +12 min
+  assert.equal(trainTone({ ...c.out[0], delay: 5 }), 'warn');
+  assert.equal(trainTone({ ...c.out[0], delay: 0 }), 'ok');
+  assert.equal(trainTone(c.out[1]), 'bad'); // inställt
+  const r = { id: 'x', road: 'Väg 56', type: 'Vägarbete', code: 'MaintenanceWorks', incident: false, text: null, place: null, severity: 4, severityText: null, start: now - 1, end: null };
+  assert.equal(roadTone(r, now), 'bad');
+  assert.equal(roadTone({ ...r, start: now + 3600_000 }, now), 'warn'); // stor men inte startad
+  assert.equal(roadTone({ ...r, severity: 2 }, now), 'warn');
+  assert.equal(roadTone({ ...r, severity: 1 }, now), 'ok');
 });

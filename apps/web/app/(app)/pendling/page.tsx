@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute } from '@/lib/data';
-import { direction, trainStatus, type RoadEvent, type Train } from '@/lib/commute';
+import { TONE_COLOR, direction, roadTone, trainStatus, trainTone, type RoadEvent, type Train } from '@/lib/commute';
+import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
 
 export const dynamic = 'force-dynamic';
@@ -20,16 +21,16 @@ function Trains({ title, icon, list, active }: { title: string; icon: IconName; 
         {list.map((t) => {
           const s = trainStatus(t);
           return (
-            <li key={t.id} className={`flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2 ${t.canceled ? 'opacity-80' : ''}`}>
+            <li key={t.id} className="flex items-center gap-3 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[trainTone(t)], 0.4) }}>
               <span className="flex w-[64px] shrink-0 flex-col leading-tight">
                 <span className={`text-xl font-extrabold tabular-nums ${t.canceled || t.delay >= 3 ? 'line-through decoration-2 opacity-70' : ''}`}>{hhmm(t.dep)}</span>
-                {!t.canceled && t.delay >= 3 && t.est && <span className="text-lg font-extrabold text-[#FF8A3D] tabular-nums">{hhmm(t.est)}</span>}
+                {!t.canceled && t.delay >= 3 && t.est && <span className="text-lg font-extrabold tabular-nums">{hhmm(t.est)}</span>}
               </span>
               <span className="flex min-w-0 grow flex-col leading-tight">
                 <span className="truncate font-extrabold">
-                  {t.dest}{t.arr && !t.canceled ? <span className="font-bold text-dim"> · framme {hhmm(t.arr)}</span> : null}
+                  {t.dest}{t.arr && !t.canceled ? <span className="font-bold opacity-85"> · framme {hhmm(t.arr)}</span> : null}
                 </span>
-                <span className="truncate text-[14px] font-bold text-dim">
+                <span className="truncate text-[14px] font-bold opacity-85">
                   {[t.product, `tåg ${t.ident}`, t.track && `spår ${t.track}`, ...t.notes].filter(Boolean).join(' · ')}
                 </span>
               </span>
@@ -53,14 +54,16 @@ function Road({ list }: { list: RoadEvent[] }) {
       {list.length === 0 && <p className="rounded-2xl bg-ok-soft p-3 font-bold text-ok">Inga störningar på väg 56 eller E18</p>}
       <ul className="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
         {list.map((r) => (
-          <li key={r.id} className={`flex items-start gap-3 rounded-2xl px-3 py-2 ${r.incident ? 'bg-danger-strong text-white' : 'bg-glass-2'}`}>
+          <li key={r.id} className="flex items-start gap-3 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[roadTone(r)], 0.4) }}>
             <span className="flex min-w-0 grow flex-col leading-tight">
               <span className="font-extrabold">
                 <span className="mr-1.5 rounded-md bg-black/20 px-1.5 text-[13px]">{r.road}</span>{r.type}{r.severityText ? <span className="font-bold opacity-80"> · {r.severityText.toLowerCase()}</span> : null}
               </span>
               {r.place && <span className="text-[14px] font-bold opacity-85">{r.place}</span>}
               {r.text && <span className="text-[14px] font-bold opacity-85">{r.text}</span>}
-              {r.end && <span className="text-[13px] font-bold opacity-70">Pågår till {fmtDate(r.end)}</span>}
+              {r.start && r.start > Date.now()
+                ? <span className="text-[13px] font-bold opacity-80">Startar {fmtDate(r.start)}</span>
+                : r.end && <span className="text-[13px] font-bold opacity-80">Pågår till {fmtDate(r.end)}</span>}
             </span>
           </li>
         ))}

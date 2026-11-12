@@ -21,7 +21,7 @@ export type Train = {
 };
 export type RoadEvent = {
   id: string; road: string; type: string; code: string; incident: boolean; text: string | null; place: string | null; severity: number;
-  severityText: string | null; end: number | null;
+  severityText: string | null; start: number | null; end: number | null;
 };
 export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; fetched: number };
 
@@ -94,10 +94,12 @@ function road(raw: RawCommute['situations'], now: number): RoadEvent[] {
       place: d.LocationDescriptor && d.LocationDescriptor !== 'Sverige' ? d.LocationDescriptor : null,
       severity: Math.max(...devs.map((x) => x.SeverityCode ?? 0)),
       severityText: d.SeverityText ?? null,
+      start: t(d.StartTime),
       end: t(d.EndTime),
     });
   }
-  return out.sort((a, b) => Number(b.incident) - Number(a.incident) || b.severity - a.severity);
+  const rank = { bad: 0, warn: 1, ok: 2 } as const;
+  return out.sort((a, b) => rank[roadTone(a, now)] - rank[roadTone(b, now)] || Number(b.incident) - Number(a.incident) || b.severity - a.severity);
 }
 
 export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Date.now(), max = 6): Commute {
@@ -131,9 +133,24 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
   return [...train, ...roads];
 }
 
-/** Status i klartext med färgklasser: inställt (röd), försenat (orange), i tid (grön). */
+/** Färgläge: grönt = i tid/ingen påverkan, gult = liten försening/påverkan, rött = stor. */
+export type Tone = 'ok' | 'warn' | 'bad';
+export const TONE_COLOR: Record<Tone, string> = { ok: '#12B76A', warn: '#E8B400', bad: '#F0503C' };
+
+/** Tåg: inställt eller ≥10 min sent = rött, 3–9 min = gult, annars grönt. */
+export function trainTone(t: Train): Tone {
+  if (t.canceled || t.delay >= 10) return 'bad';
+  return t.delay >= 3 ? 'warn' : 'ok';
+}
+
+/** Väg: incident eller pågående med stor påverkan (4–5) = rött; övrig påverkan eller kommande = gult; ingen påverkan = grönt. */
+export function roadTone(r: RoadEvent, now = Date.now()): Tone {
+  const active = (r.start ?? 0) <= now;
+  if (active && (r.incident || r.severity >= 4)) return 'bad';
+  return r.severity >= 2 || r.incident ? 'warn' : 'ok';
+}
+
+/** Statustext för tåg (färgen kommer från trainTone). */
 export function trainStatus(t: Train) {
-  if (t.canceled) return { text: 'Inställt', cls: 'bg-danger-strong text-white' };
-  if (t.delay >= 3) return { text: `+${t.delay} min`, cls: 'bg-[#FF8A3D] text-[#1A1205]' };
-  return { text: 'I tid', cls: 'bg-ok-soft text-ok' };
+  return { text: t.canceled ? 'Inställt' : t.delay >= 3 ? `+${t.delay} min` : 'I tid', cls: 'bg-black/25 text-white' };
 }
