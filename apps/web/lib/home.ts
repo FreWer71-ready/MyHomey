@@ -44,7 +44,7 @@ export type Silent = { id: string; name: string; room: string; lastSeen: string 
 /** Väderstation (Trafikverket): vind i m/s, riktning som kompasstext, vägytans temperatur. */
 export type Trend = 'up' | 'down' | null;
 /** Ändring per timme som räknas som trend (inne reagerar långsammare än ute). */
-export const TREND_INDOOR = 0.3;
+export const TREND_INDOOR = 0.2;
 export const TREND_OUTDOOR = 0.5;
 
 export type Station = { wind: number | null; gust: number | null; dir: string | null; road: number | null };
