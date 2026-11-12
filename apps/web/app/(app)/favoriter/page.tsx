@@ -32,25 +32,34 @@ export default async function FavoritesPage() {
         <Icon name="star" size={32} /> Favoriter
       </h1>
 
-      {favorites.length ? (
-        favorites.map((g) => (
-          <section key={g.name} className="flex flex-col gap-2">
-            <h2 className="text-xl font-extrabold">{g.name}</h2>
-            <MoodButtons moods={g.moods} large />
-          </section>
-        ))
-      ) : (
-        <p className="rounded-[20px] glass p-4 text-lg font-bold text-dim">
-          Inga favoritmoods än. Markera moods och flows som favoriter i Homey-appen så dyker de upp här.
-        </p>
-      )}
-
-      {flows.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-xl font-extrabold">Flows</h2>
-          <MoodButtons moods={flows} kind="flow" large />
-        </section>
-      )}
+      {/* Moods och flows i varsin kolumn på plattan så att båda syns utan scroll. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="flex flex-col gap-3">
+          <h2 className="text-[13px] font-bold tracking-wider text-dim uppercase">Moods</h2>
+          {favorites.length ? (
+            favorites.map((g) => (
+              <section key={g.name} className="flex flex-col gap-1.5">
+                <h3 className="text-lg font-extrabold">{g.name}</h3>
+                <MoodButtons moods={g.moods} large />
+              </section>
+            ))
+          ) : (
+            <p className="rounded-[20px] glass p-4 text-lg font-bold text-dim">
+              Inga favoritmoods än. Markera moods som favoriter i Homey-appen så dyker de upp här.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col gap-3">
+          <h2 className="text-[13px] font-bold tracking-wider text-dim uppercase">Flows</h2>
+          {flows.length ? (
+            <MoodButtons moods={flows} kind="flow" large />
+          ) : (
+            <p className="rounded-[20px] glass p-4 text-lg font-bold text-dim">
+              Inga favoritflows än. Markera flows som favoriter i Homey-appen så dyker de upp här.
+            </p>
+          )}
+        </div>
+      </div>
 
       {all.length > 0 && (
         <details className="group rounded-[24px] glass">

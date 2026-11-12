@@ -2,7 +2,6 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { runFlow, runMood } from '@/app/actions/scene';
-import { Icon } from './Icon';
 
 type State = { id: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null;
 
@@ -34,16 +33,15 @@ export function MoodButtons({ moods, large = false, kind = 'mood' }: { moods: It
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className={large ? 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4' : 'flex flex-wrap gap-2.5'}>
+      <ul className={large ? 'grid grid-cols-2 gap-2.5 xl:grid-cols-3' : 'flex flex-wrap gap-2.5'}>
         {moods.map((m) => (
           <li key={m.id} className={large ? '' : 'shrink-0'}>
             <button
               type="button"
               onClick={() => run(m.id)}
               disabled={state?.status === 'busy'}
-              className={`flex items-center gap-2.5 rounded-[20px] ${kind === 'flow' ? 'bg-teal-btn' : 'bg-violet-btn'} text-lg font-extrabold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18),0_2px_10px_rgb(0_0_0/0.3)] transition-shadow ${large ? 'min-h-20 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
+              className={`flex items-center gap-2.5 rounded-[20px] ${kind === 'flow' ? 'bg-teal-btn' : 'bg-violet-btn'} text-lg font-extrabold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18),0_2px_10px_rgb(0_0_0/0.3)] transition-shadow ${large ? 'min-h-16 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
             >
-              <Icon name={kind === 'flow' ? 'play' : 'moon'} size={24} />
               {m.room ? (
                 <span className="flex flex-col items-start leading-tight">
                   {m.name}
