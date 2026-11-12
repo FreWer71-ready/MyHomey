@@ -4,6 +4,7 @@ import { signIn } from './actions';
 const MESSAGES: Record<string, string> = {
   sent: 'Om adressen är godkänd har en inloggningslänk skickats. Öppna den på den här enheten.',
   error: 'Något gick fel. Försök igen.',
+  konto: 'Det här kontot hör till en annan dashboard. Logga in med rätt konto.',
   badlogin: 'Fel e-post eller lösenord.',
   ratelimit: 'För många inloggningsmejl just nu. Vänta en timme och försök igen.',
 };
