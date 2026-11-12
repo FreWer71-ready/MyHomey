@@ -164,7 +164,7 @@ function PriceView({ prices, s, now }: { prices: Price[]; s: ReturnType<typeof s
           <span className="font-bold text-dim">{s.hasTomorrow ? 'I dag och i morgon' : 'I dag · morgondagens priser kommer ca 13'} · spotpris SE3 exkl. moms och nät</span>
         </div>
         {series.length ? (
-          <HistoryChart series={series} unit=" öre" decimals={0} bars longPeriod={false} fit={500} />
+          <HistoryChart series={series} unit=" öre" decimals={0} bars longPeriod={false} fit={500} mark={Math.floor(now / 3600_000) * 3600} />
         ) : (
           <p className="p-10 text-center text-lg font-bold text-dim">Inga priser hämtade än.</p>
         )}
