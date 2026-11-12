@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { commuteAlerts, direction, parseCommute, roadTone, trainTone, type RawCommute } from './commute.ts';
+import { commuteAlerts, direction, groupRoad, parseCommute, roadTone, trainTone, type RawCommute } from './commute.ts';
 
 const now = Date.parse('2026-11-12T15:30:00+01:00');
 const raw: RawCommute = {
@@ -66,4 +66,17 @@ test('pendling: färgläge för tåg och väg', () => {
   assert.equal(roadTone({ ...r, start: now + 3600_000 }, now), 'warn'); // stor men inte startad
   assert.equal(roadTone({ ...r, severity: 2 }, now), 'warn');
   assert.equal(roadTone({ ...r, severity: 1 }, now), 'ok');
+});
+
+test('pendling: liknande vägärenden slås ihop', () => {
+  const base = { road: 'Väg 56', type: 'Vägarbete', code: 'MaintenanceWorks', incident: false, severity: 4, severityText: 'Stor påverkan', start: now - 10, end: now + 100 };
+  const g = groupRoad([
+    { ...base, id: '1', place: 'Kvicksund', text: 'Broarbete' },
+    { ...base, id: '2', place: 'Kvicksund', text: 'Underhållsarbete', end: now + 500 },
+    { ...base, id: '3', place: 'Stora Ekeby', text: 'Broarbete' },
+    { ...base, id: '4', place: null, text: null, severity: 2 },
+  ], now);
+  assert.equal(g.length, 2);
+  assert.deepEqual([g[0].count, g[0].places, g[0].texts, g[0].end], [3, ['Kvicksund', 'Stora Ekeby'], ['Broarbete', 'Underhållsarbete'], now + 500]);
+  assert.equal(g[1].tone, 'warn');
 });

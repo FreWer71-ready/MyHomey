@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute } from '@/lib/data';
-import { TONE_COLOR, direction, roadTone, trainStatus, trainTone, type RoadEvent, type Train } from '@/lib/commute';
+import { TONE_COLOR, direction, groupRoad, trainStatus, trainTone, type RoadEvent, type Train } from '@/lib/commute';
 import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
 
@@ -44,6 +44,8 @@ function Trains({ title, icon, list, active }: { title: string; icon: IconName; 
 }
 
 function Road({ list }: { list: RoadEvent[] }) {
+  // Liknande ärenden (samma väg, typ och läge) visas som ett kort.
+  const groups = groupRoad(list);
   return (
     <section className="flex flex-col gap-2 rounded-[24px] glass p-3">
       <h2 className="flex items-center gap-3 text-xl font-extrabold">
@@ -51,20 +53,20 @@ function Road({ list }: { list: RoadEvent[] }) {
         Bil Eskilstuna–Västerås
         <span className="rounded-full bg-glass-2 px-3 py-0.5 text-base text-dim">{list.length}</span>
       </h2>
-      {list.length === 0 && <p className="rounded-2xl bg-ok-soft p-3 font-bold text-ok">Inga störningar på väg 56 eller E18</p>}
+      {groups.length === 0 && <p className="rounded-2xl bg-ok-soft p-3 font-bold text-ok">Inga störningar på väg 56 eller E18</p>}
       <ul className="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
-        {list.map((r) => (
-          <li key={r.id} className="flex items-start gap-3 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[roadTone(r)], 0.4) }}>
-            <span className="flex min-w-0 grow flex-col leading-tight">
-              <span className="font-extrabold">
-                <span className="mr-1.5 rounded-md bg-black/20 px-1.5 text-[13px]">{r.road}</span>{r.type}{r.severityText ? <span className="font-bold opacity-80"> · {r.severityText.toLowerCase()}</span> : null}
-              </span>
-              {r.place && <span className="text-[14px] font-bold opacity-85">{r.place}</span>}
-              {r.text && <span className="text-[14px] font-bold opacity-85">{r.text}</span>}
-              {r.start && r.start > Date.now()
-                ? <span className="text-[13px] font-bold opacity-80">Startar {fmtDate(r.start)}</span>
-                : r.end && <span className="text-[13px] font-bold opacity-80">Pågår till {fmtDate(r.end)}</span>}
+        {groups.map((g) => (
+          <li key={g.id} className="flex flex-col rounded-2xl px-3 py-2 leading-tight" style={{ background: tint(TONE_COLOR[g.tone], 0.4) }}>
+            <span className="font-extrabold">
+              <span className="mr-1.5 rounded-md bg-black/20 px-1.5 text-[13px]">{g.road}</span>
+              {g.type}{g.count > 1 ? ` · ${g.count} st` : ''}
+              {g.severityText ? <span className="font-bold opacity-80"> · {g.severityText.toLowerCase()}</span> : null}
             </span>
+            {g.places.length > 0 && <span className="line-clamp-2 text-[14px] font-bold opacity-85">{g.places.slice(0, 2).join(' · ')}{g.places.length > 2 ? ` + ${g.places.length - 2} till` : ''}</span>}
+            {g.texts.length > 0 && <span className="truncate text-[14px] font-bold opacity-85">{g.texts.slice(0, 3).join(' · ')}</span>}
+            {g.start && g.start > Date.now()
+              ? <span className="text-[13px] font-bold opacity-80">Startar {fmtDate(g.start)}</span>
+              : g.end && <span className="text-[13px] font-bold opacity-80">Pågår till {fmtDate(g.end)}</span>}
           </li>
         ))}
       </ul>

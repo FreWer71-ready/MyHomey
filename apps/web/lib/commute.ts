@@ -168,3 +168,25 @@ export function roadTone(r: RoadEvent, now = Date.now()): Tone {
 export function trainStatus(t: Train) {
   return { text: t.canceled ? 'Inställt' : t.delay >= 3 ? `+${t.delay} min` : 'I tid', cls: 'bg-black/25 text-white' };
 }
+
+export type RoadGroup = { id: string; road: string; type: string; tone: Tone; count: number; severityText: string | null; places: string[]; texts: string[]; start: number | null; end: number | null };
+
+/**
+ * Slår ihop liknande vägärenden (samma väg, typ och färgläge) till ett kort för Pendling-sidan.
+ * Platser och texter listas en gång var; perioden blir tidigaste start till senaste slut.
+ */
+export function groupRoad(list: RoadEvent[], now = Date.now()): RoadGroup[] {
+  const map = new Map<string, RoadGroup>();
+  for (const r of list) {
+    const tone = roadTone(r, now);
+    const key = `${r.road}|${r.type}|${tone}`;
+    const g = map.get(key) ?? { id: r.id, road: r.road, type: r.type, tone, count: 0, severityText: r.severityText, places: [], texts: [], start: r.start, end: r.end };
+    g.count++;
+    if (r.place && !g.places.includes(r.place)) g.places.push(r.place);
+    if (r.text && !g.texts.includes(r.text)) g.texts.push(r.text);
+    if (r.start != null && (g.start == null || r.start < g.start)) g.start = r.start;
+    if (r.end != null && (g.end == null || r.end > g.end)) g.end = r.end;
+    map.set(key, g);
+  }
+  return [...map.values()];
+}
