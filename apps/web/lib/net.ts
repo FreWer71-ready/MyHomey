@@ -22,9 +22,13 @@ export type Net = {
   latencySeries: [number, number][];
 };
 
-/** Synken körs var 5:e minut; mätvärdena i molnet släpar ca 10–15 min. */
+/**
+ * Synken körs var 5:e minut. Molnets mätvärden kommer i omgångar och kan släpa över en timme,
+ * så gamla mätvärden betyder inte avbrott – bara att status är okänd om de är riktigt gamla.
+ * Avbrott avgörs av routern (konsolen) offline, rapporterad nertid eller internetproblem.
+ */
 const SYNC_STALE_MIN = 20;
-const METRIC_STALE_MIN = 45;
+const METRIC_STALE_MIN = 180;
 const SLOW_MS = 50;
 const SLOW_LOSS = 2;
 
@@ -43,7 +47,8 @@ export function summarizeNet(status: NetStatusRow | null, isp: NetIsp[], devices
   const issues = (status.internet_issues ?? []).length > 0;
 
   const state: Net['state'] = syncStale ? 'unknown'
-    : consoleDown || metricStale || lastDown || issues ? 'down'
+    : consoleDown || lastDown || issues ? 'down'
+      : metricStale ? 'unknown'
       : (last?.latency_ms ?? 0) > SLOW_MS || (last?.packet_loss ?? 0) > SLOW_LOSS ? 'slow' : 'ok';
 
   const mbit = (k: number | null | undefined) => (k == null ? null : Math.round(k / 1000));
