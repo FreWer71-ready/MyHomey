@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { commuteAlerts, direction, groupRoad, parseCommute, phrases, shortPlace, roadTone, trainTone, type RawCommute } from './commute.ts';
+import { commuteAlerts, direction, groupRoad, parseCommute, parseStation, phrases, shortPlace, roadTone, trainTone, type RawCommute } from './commute.ts';
 
 const now = Date.parse('2026-11-12T15:30:00+01:00');
 const raw: RawCommute = {
@@ -86,4 +86,11 @@ test('pendling: korta platser och fraser', () => {
   assert.equal(shortPlace('Väg 56 från Stora Ekeby till Kvicksund S båda riktningarna i Västmanlands län (U)'), 'Stora Ekeby – Kvicksund S');
   assert.equal(shortPlace('Väg 56 vid Kvicksundsbron, i båda riktningar.'), 'Kvicksundsbron');
   assert.deepEqual(phrases(['Drift/underhåll\nEtt avstängt körfält. Risk för köbildning', 'Risk för köbildning']), ['Drift/underhåll', 'Ett avstängt körfält', 'Risk för köbildning']);
+});
+
+test('pendling: vägväderstation, gamla mätningar ignoreras', () => {
+  const raw = { Name: 'Eskilstuna Ö', Observation: { Sample: '2026-11-12T15:20:00+01:00', Air: { Temperature: { Value: -1.1 } }, Surface: { Temperature: { Value: 0.4 } }, Wind: [{ Speed: { Value: 0.3 }, Direction: { Value: 234 } }], Aggregated10minutes: { Wind: { SpeedMax: { Value: 0.8 } } } } };
+  assert.deepEqual(parseStation(raw, now), { name: 'Eskilstuna Ö', air: -1.1, road: 0.4, wind: 0.3, gust: 0.8, deg: 234, at: Date.parse('2026-11-12T15:20:00+01:00') });
+  assert.equal(parseStation(raw, now + 5 * 3600_000), null);
+  assert.equal(parseStation(null, now), null);
 });

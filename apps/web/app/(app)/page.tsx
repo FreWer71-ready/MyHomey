@@ -9,6 +9,7 @@ import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadCommute, loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
+import { compass } from '@/lib/home';
 import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
 import { seenAgo } from '@/lib/time';
 import { symbolInfo, weatherKind } from '@/lib/weather';
@@ -72,7 +73,10 @@ export default async function HomePage() {
   const names = joinNames(nameDay);
   // Utan egen väderstation (t.ex. Hue-hushåll) visas SMHI:s temperatur.
   const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
-  const outTemp = h.outdoorTemp ?? smhiTemp;
+  // Utan väderstation i Homey (t.ex. Ulrika): Trafikverkets station Eskilstuna Ö direkt från API:t.
+  const tvs = commute?.station ?? null;
+  const station = h.station ?? (tvs ? { wind: tvs.wind, gust: tvs.gust, dir: tvs.deg != null ? compass(tvs.deg) : null, road: tvs.road } : null);
+  const outTemp = h.outdoorTemp ?? tvs?.air ?? smhiTemp;
   const entrance = h.openings.find((o) => o.kind === 'door' && /entr|ytterdörr|front/i.test(o.name));
   const price = summarize(prices, Date.now());
   const open = h.openings.filter((o) => o.open);
@@ -198,16 +202,16 @@ export default async function HomePage() {
                       }`}
                 </span>
               )}
-              {h.station && (
+              {station && (
                 <span className="relative flex flex-wrap items-center gap-x-2 text-[15px] font-bold">
-                  {h.station.wind != null && (
+                  {station.wind != null && (
                     <span>
-                      Vind {fmtNum(h.station.wind)}{h.station.gust != null && h.station.gust > h.station.wind ? `–${fmtNum(h.station.gust)}` : ''} m/s{h.station.dir ? ` ${h.station.dir}` : ''}
+                      Vind {fmtNum(station.wind)}{station.gust != null && station.gust > station.wind ? `–${fmtNum(station.gust)}` : ''} m/s{station.dir ? ` ${station.dir}` : ''}
                     </span>
                   )}
-                  {h.station.road != null && (
-                    <span className={h.station.road <= 0.5 ? 'rounded-full bg-danger-strong px-2 text-white' : ''}>
-                      · Väg {fmtTemp(h.station.road)}{h.station.road <= 0.5 ? ' halka' : ''}
+                  {station.road != null && (
+                    <span className={station.road <= 0.5 ? 'rounded-full bg-danger-strong px-2 text-white' : ''}>
+                      · Väg {fmtTemp(station.road)}{station.road <= 0.5 ? ' halka' : ''}
                     </span>
                   )}
                 </span>

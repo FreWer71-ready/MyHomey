@@ -13,7 +13,26 @@ export type RawDeviation = {
   RoadNumber?: string; RoadNumberNumeric?: number; SeverityCode?: number; SeverityText?: string; StartTime?: string; EndTime?: string; Suspended?: boolean;
   Geometry?: { Point?: { WGS84?: string } };
 };
-export type RawCommute = { out: RawTrain[]; home: RawTrain[]; arrivals: RawArrival[]; situations: { Deviation?: RawDeviation[] }[]; fetched?: string };
+type V = { Value?: number };
+export type RawStation = {
+  Name?: string;
+  Observation?: { Sample?: string; Air?: { Temperature?: V }; Surface?: { Temperature?: V }; Wind?: { Speed?: V; Direction?: V }[]; Aggregated10minutes?: { Wind?: { SpeedMax?: V } } };
+};
+export type RawCommute = { out: RawTrain[]; home: RawTrain[]; arrivals: RawArrival[]; situations: { Deviation?: RawDeviation[] }[]; station?: RawStation | null; fetched?: string };
+
+/** Vägväderstation (Trafikverket VViS) direkt från API:t: samma värden som Homey-appens station. */
+export type RoadStation = { name: string; air: number | null; road: number | null; wind: number | null; gust: number | null; deg: number | null; at: number };
+/** Äldre än så här räknas stationen som ej tillgänglig (samma gräns som Homey-stationen). */
+const STATION_MAX_H = 4;
+
+export function parseStation(s: RawStation | null | undefined, now = Date.now()): RoadStation | null {
+  const o = s?.Observation;
+  const at = o?.Sample ? Date.parse(o.Sample) : NaN;
+  if (!o || !Number.isFinite(at) || now - at > STATION_MAX_H * 3600_000) return null;
+  const n = (v?: V) => (typeof v?.Value === 'number' ? v.Value : null);
+  const w = o.Wind?.[0];
+  return { name: s?.Name ?? 'Väderstation', air: n(o.Air?.Temperature), road: n(o.Surface?.Temperature), wind: n(w?.Speed), gust: n(o.Aggregated10minutes?.Wind?.SpeedMax), deg: n(w?.Direction), at };
+}
 
 export type Train = {
   id: string; ident: string; dep: number; est: number | null; delay: number; canceled: boolean; track: string | null;
@@ -24,7 +43,7 @@ export type RoadEvent = {
   severityText: string | null; start: number | null; end: number | null;
 };
 /** trains=false: bara väg (COMMUTE=road), t.ex. hushåll som inte pendlar med tåg. */
-export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; fetched: number; trains: boolean };
+export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; station: RoadStation | null; fetched: number; trains: boolean };
 
 /** Signaturer som syns som slutstation på sträckan. Okända visas som de är. */
 export const STATIONS: Record<string, string> = {
@@ -110,6 +129,7 @@ export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Dat
     out: trains(raw.out ?? [], raw.arrivals ?? [], to, now, max),
     home: trains(raw.home ?? [], raw.arrivals ?? [], from, now, max),
     road: road(raw.situations, now),
+    station: parseStation(raw.station, now),
     fetched: t(raw.fetched) ?? now,
     trains: true,
   };

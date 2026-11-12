@@ -1,4 +1,5 @@
-// Pendling via Trafikverkets öppna API: tåg Eskilstuna C <-> Stockholm C och händelser på bilvägen (väg 56 + E18 till Västerås).
+// Pendling via Trafikverkets öppna API: tåg Eskilstuna C <-> Stockholm C, händelser på bilvägen (väg 56 + E18 till Västerås)
+// och vägväderstationen Eskilstuna Ö.
 // Anropas av webben med användarens JWT (eller x-cron-secret vid test). Nyckeln ligger i Vault (trafikverket_api_key).
 // Svarar med Trafikverkets rådata i nedbantad form; tolkningen görs i webben (lib/commute.ts).
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -8,6 +9,8 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 });
 const API = "https://api.trafikinfo.trafikverket.se/v2/data.json";
 const A = "Et", B = "Cst", ROADS = "56,18", COUNTIES = "4,19";
+// Väderstation (VViS) för Ute-kortet när hushållet saknar egen station i Homey: 429 = Eskilstuna Ö.
+const STATION = "429";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -50,11 +53,20 @@ async function allowed(req: Request) {
 Deno.serve(async (req) => {
   try {
     if (!(await allowed(req))) return json({ error: "unauthorized" }, 401);
+    // Felsökning (bara med x-cron-secret): skicka en egen QUERY rakt till Trafikverket.
+    const p = await req.json().catch(() => ({}));
+    if (p.query && req.headers.get("x-cron-secret")) return json(await query(p.query));
     if (cache && Date.now() - cache.at < 60_000) return json(cache.body);
-    const [out, home, road] = await query(departures(A, B) + departures(B, A) + `
+    const [out, home, road, ws] = await query(departures(A, B) + departures(B, A) + `
 <QUERY objecttype="Situation" namespace="road.trafficinfo" schemaversion="1.6" limit="80">
   <FILTER><AND><IN name="Deviation.RoadNumberNumeric" value="${ROADS}"/><IN name="Deviation.CountyNo" value="${COUNTIES}"/></AND></FILTER>
   <INCLUDE>Deviation</INCLUDE>
+</QUERY>
+<QUERY objecttype="WeatherMeasurepoint" namespace="Road.WeatherInfo" schemaversion="2.1" limit="1">
+  <FILTER><EQ name="Id" value="${STATION}"/></FILTER>
+  <INCLUDE>Name</INCLUDE><INCLUDE>Observation.Sample</INCLUDE><INCLUDE>Observation.Air.Temperature.Value</INCLUDE>
+  <INCLUDE>Observation.Surface.Temperature.Value</INCLUDE><INCLUDE>Observation.Wind</INCLUDE>
+  <INCLUDE>Observation.Aggregated10minutes.Wind.SpeedMax.Value</INCLUDE>
 </QUERY>`);
     const outT = (out.TrainAnnouncement ?? []) as { AdvertisedTrainIdent: string }[];
     const homeT = (home.TrainAnnouncement ?? []) as { AdvertisedTrainIdent: string }[];
@@ -75,6 +87,7 @@ Deno.serve(async (req) => {
       out: outT, home: homeT,
       arrivals: arr.TrainAnnouncement ?? [],
       situations: road.Situation ?? [],
+      station: ws?.WeatherMeasurepoint?.[0] ?? null,
       fetched: new Date().toISOString(),
     };
     cache = { at: Date.now(), body };
