@@ -107,8 +107,9 @@ export default async function HomePage() {
       </header>
 
       {/* Varningar: egen rad i full bredd, bara när något kräver åtgärd. Sida vid sida på plattan. */}
-      {(warning || damp.length > 0 || net?.state === 'down' || banners.length > 0 || trafficAlerts.length > 0) && (
-        <div className="flex flex-col gap-2 lg:flex-row">
+      {/* Fast plats för varningar: när inget händer visas en lugn statusrad i stället (ingen tom lucka, inget som hoppar). */}
+      {(warning || damp.length > 0 || net?.state === 'down' || banners.length > 0 || trafficAlerts.length > 0) ? (
+        <div className="flex flex-col gap-2 lg:min-h-[36px] lg:flex-row">
           {banners}
           {trafficAlerts.slice(0, Math.max(1, 3 - banners.length)).map((a) => (
             <Link key={a.id} href="/pendling" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-[#FF8A3D] px-3.5 py-1.5 text-[#1A1205]">
@@ -139,6 +140,14 @@ export default async function HomePage() {
             </Link>
           )}
         </div>
+      ) : (
+        <Link href="/larm" className="flex min-h-[36px] min-w-0 items-center gap-2.5 rounded-[16px] bg-glass-2 px-3.5 py-1.5 text-dim">
+          <span className="size-2.5 shrink-0 rounded-full bg-ok shadow-[0_0_0_4px_rgb(52_194_122/0.18)]" />
+          <span className="font-extrabold text-ok">Allt lugnt</span>
+          <span className="truncate font-bold">
+            · inga varningar från SMHI eller VMA{commute ? ' · tåg och väg utan störningar' : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
+          </span>
+        </Link>
       )}
 
       {/* Korten går att ordna: håll inne ett kort, dra, tryck Klar (sparas per enhet). */}
@@ -341,9 +350,28 @@ export default async function HomePage() {
       </section>
 
       {/* Media: bara det som spelas just nu (Google TV, det som castas till t.ex. Nest hub). */}
-      {playing.length > 0 && (
+      {/* Fast plats längst ner: det som spelas, annars (eller bredvid) en kort prognos för kommande dagar. */}
+      {(playing.length > 0 || (weather?.days?.length ?? 0) > 0) && (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {playing.map((p) => <NowPlayingCard key={p.id} p={p} />)}
+          {playing.slice(0, 2).map((p) => <NowPlayingCard key={p.id} p={p} />)}
+          {playing.length < 2 && weather?.days && weather.days.length > 0 && (
+            <button
+              type="button" popoverTarget="prognos" aria-label="Visa prognos"
+              className={`glass flex min-h-16 items-center justify-around gap-2 rounded-[20px] border border-line px-3 py-1.5 ${playing.length === 0 ? 'md:col-span-2' : ''}`}
+            >
+              {weather.days.slice(0, playing.length === 0 ? 5 : 3).map((d) => {
+                const day = new Intl.DateTimeFormat('sv-SE', { weekday: 'short', timeZone: 'Europe/Stockholm' }).format(Date.parse(`${d.date}T12:00:00Z`));
+                return (
+                  <span key={d.date} className="flex items-center gap-1.5">
+                    <span className="text-[14px] font-bold text-dim capitalize">{day.replace('.', '')}</span>
+                    <WeatherIcon kind={weatherKind(d.symbol)} size={34} label={symbolInfo(d.symbol).label} />
+                    <span className="text-lg font-extrabold">{Math.round(d.max)}°</span>
+                    <span className="font-bold text-dim">{Math.round(d.min)}°</span>
+                  </span>
+                );
+              })}
+            </button>
+          )}
         </section>
       )}
     </>
