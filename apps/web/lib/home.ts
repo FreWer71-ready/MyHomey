@@ -62,6 +62,8 @@ export type Home = {
   lightsTotal: number;
   powerW: number;
   powerMeters: number;
+  /** Enheter där effekten är Homeys uppskattning (ingen egen mätare). */
+  powerEstimated: number;
   doorsOpen: number;
   doorsTotal: number;
   motion: number;
@@ -86,6 +88,8 @@ export const CAPS = [
   'measure_wind_strength', 'measure_gust_strength', 'measure_wind_angle', 'measure_temperature.surface',
   'light_temperature', 'light_hue', 'light_saturation',
   'presence',
+  // Homey Energys uppskattning för enheter utan egen mätare (skickas av Dashboard-skriptet).
+  'measure_power.homey',
 ];
 
 const COMPASS = ['N', 'NNO', 'NO', 'ONO', 'O', 'OSO', 'SO', 'SSO', 'S', 'SSV', 'SV', 'VSV', 'V', 'VNV', 'NV', 'NNV'];
@@ -187,7 +191,13 @@ export function buildHome(
     .sort((a, b) => b.deviceCount - a.deviceCount || a.name.localeCompare(b.name, 'sv'));
 
   const contacts = active.map((d) => cap(d, 'alarm_contact')).filter(Boolean) as Cap[];
-  const power = nums(active, 'measure_power');
+  // Uppmätt effekt i första hand, annars Homeys uppskattning.
+  const measured = nums(active, 'measure_power');
+  const estimated = active
+    .filter((d) => cap(d, 'measure_power')?.value_num == null)
+    .map((d) => cap(d, 'measure_power.homey')?.value_num)
+    .filter((v): v is number => typeof v === 'number');
+  const power = [...measured, ...estimated];
 
   const zoneName = new Map(zones.map((z) => [z.id, z.name.trim()]));
   const roomOf = (d: Device) => zoneName.get(d.zone_id ?? '') ?? '';
@@ -247,7 +257,8 @@ export function buildHome(
     lightsOn: allLights.filter((l) => l.on).length,
     lightsTotal: allLights.length,
     powerW: Math.round(power.reduce((a, b) => a + b, 0) * 10) / 10,
-    powerMeters: power.length,
+    powerMeters: measured.length,
+    powerEstimated: estimated.length,
     doorsOpen: contacts.filter((c) => c.value_bool === true).length,
     doorsTotal: contacts.length,
     motion: active.filter((d) => cap(d, 'alarm_motion')?.value_bool === true).length,

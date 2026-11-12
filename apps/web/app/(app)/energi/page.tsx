@@ -73,12 +73,12 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
         )}
       </header>
 
-      {view === 'pris' ? <PriceView prices={prices} s={s} now={now} /> : <UseView period={period} powerW={h.powerW} meters={h.powerMeters} href={href} kwhChart={kwhChart} />}
+      {view === 'pris' ? <PriceView prices={prices} s={s} now={now} /> : <UseView period={period} powerW={h.powerW} meters={h.powerMeters} estimated={h.powerEstimated} href={href} kwhChart={kwhChart} />}
     </>
   );
 }
 
-async function UseView({ period, powerW, meters, href, kwhChart }: { period: PeriodKey; powerW: number; meters: number; href: (v: View, p?: PeriodKey, g?: boolean) => string; kwhChart: boolean }) {
+async function UseView({ period, powerW, meters, estimated, href, kwhChart }: { period: PeriodKey; powerW: number; meters: number; estimated: number; href: (v: View, p?: PeriodKey, g?: boolean) => string; kwhChart: boolean }) {
   const [power, energy] = await Promise.all([loadHistory('power', period), loadHistory('energy', period)]);
   const total = power.length ? sumSeries(power, 'Effekt totalt', '#8B5CF6') : null;
   const used = energy.length ? sumSeries(energy, 'Förbrukning', '#2BB5C4') : null;
@@ -100,8 +100,8 @@ async function UseView({ period, powerW, meters, href, kwhChart }: { period: Per
       </nav>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu" value={fmtWatt(powerW)} sub={`${meters} mätare`} />
-        <Card bg={tint('#2BB5C4', 0.5)} icon="chart" label={`Förbrukat ${PERIODS[period].label}`} value={kwh(used?.total ?? null)} sub="summa alla mätare" />
+        <Card bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu" value={fmtWatt(powerW)} sub={[meters && `${meters} mätare`, estimated && `${estimated} uppskattade`].filter(Boolean).join(' · ')} />
+        <Card bg={tint('#2BB5C4', 0.5)} icon="chart" label={`Förbrukat ${PERIODS[period].label}`} value={kwh(used?.total ?? null)} sub="uppmätt, utan uppskattningar" />
         <Card bg="var(--color-glass)" icon="power" label="Snitteffekt" value={avgW == null ? '–' : fmtWatt(Math.round(avgW))} sub={PERIODS[period].label} />
         <Card bg={tint('#F0503C')} icon="bolt" label="Högsta effekt" value={total?.max == null ? '–' : fmtWatt(Math.round(total.max))} sub={PERIODS[period].label} />
       </section>
@@ -126,7 +126,7 @@ async function UseView({ period, powerW, meters, href, kwhChart }: { period: Per
         <div className="relative min-h-60 lg:min-h-0">
           <div className="flex flex-col gap-1.5 rounded-[24px] glass p-3 lg:absolute lg:inset-0">
             <h2 className="flex items-baseline justify-between gap-2 text-xl font-extrabold">
-              Drar mest nu <span className="text-sm font-bold text-dim">{top.length} mätare</span>
+              Drar mest nu <span className="text-sm font-bold text-dim">{top.length} enheter</span>
             </h2>
             {top.length ? (
               <ul className="-mr-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
@@ -137,13 +137,13 @@ async function UseView({ period, powerW, meters, href, kwhChart }: { period: Per
                       <span className="absolute inset-y-0 left-0 bg-violet/25" style={{ width: `${sumNow ? (w / sumNow) * 100 : 0}%` }} />
                       <span className="relative flex items-center justify-between gap-3">
                         <span className="truncate font-bold">{x.label}</span>
-                        <span className="shrink-0 font-extrabold">{fmtValue('power', x.latest)}</span>
+                        <span className="shrink-0 font-extrabold" title={x.estimated ? 'Homeys uppskattning' : 'Uppmätt'}>{x.estimated ? '≈ ' : ''}{fmtValue('power', x.latest)}</span>
                       </span>
                     </li>
                   );
                 })}
               </ul>
-            ) : <p className="font-bold text-dim">Inga effektmätare.</p>}
+            ) : <p className="font-bold text-dim">Ingen effektdata.</p>}
           </div>
         </div>
       </section>

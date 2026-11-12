@@ -39,6 +39,8 @@ export type Series = {
   min: number | null;
   max: number | null;
   total: number | null;
+  /** Värdet är Homeys uppskattning, inte uppmätt. */
+  estimated?: boolean;
 };
 
 export const isMetric = (m: string | undefined): m is MetricKey => !!m && m in METRICS;

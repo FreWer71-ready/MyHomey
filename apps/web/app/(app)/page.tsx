@@ -162,10 +162,12 @@ export default async function HomePage() {
           </span>
         </Hero>
         )}
-        {h.powerMeters > 0 && (
+        {h.powerMeters + h.powerEstimated > 0 && (
         <Hero bg={tint('#8B5CF6', 0.5)} icon="bolt" label="Effekt nu">
           <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtWatt(h.powerW)}</span>
-          <span className="text-[15px] font-bold">{h.powerMeters} mätare</span>
+          <span className="text-[15px] font-bold">
+            {h.powerMeters ? `${h.powerMeters} mätare` : ''}{h.powerMeters && h.powerEstimated ? ' · ' : ''}{h.powerEstimated ? `${h.powerEstimated} uppskattade` : ''}
+          </span>
         </Hero>
         )}
         {price.now && (

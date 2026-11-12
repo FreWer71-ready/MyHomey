@@ -26,6 +26,29 @@ for (const id of me?.properties?.favoriteFlows ?? []) {
   if (f) flows.push({ id, name: f.name, advanced: !basic });
 }
 
+// Homey Energy: uppskattad effekt (W) per enhet, även för lampor utan mätare.
+// Skickas som capability measure_power.homey för enheter som saknar egen measure_power.
+const live = Homey.energy && Homey.energy.getLiveReport ? await Homey.energy.getLiveReport().catch(() => null) : null;
+const est = {};
+const items = Array.isArray(live?.items) ? live.items : Object.values(live?.items ?? {});
+for (const it of items) {
+  const id = it.id || it.deviceId;
+  const w = it.values?.W ?? it.W ?? it.value;
+  if (id && typeof w === 'number' && (it.type === undefined || it.type === 'device')) est[id] = w;
+}
+// Ny tidsstämpel bara när värdet ändrats, så historiken inte fylls av upprepningar.
+const now = new Date().toISOString();
+const prev = (typeof global !== 'undefined' && global.get && global.get('estPower')) || {};
+const estT = {};
+for (const [id, w] of Object.entries(est)) {
+  const r = Math.round(w * 10) / 10;
+  estT[id] = prev[id] && prev[id].w === r ? prev[id].t : now;
+  est[id] = r;
+}
+if (typeof global !== 'undefined' && global.set) {
+  global.set('estPower', Object.fromEntries(Object.entries(est).map(([id, w]) => [id, { w, t: estT[id] }])));
+}
+
 const payload = {
   v: 1,
   source: 'homeyscript',
@@ -42,13 +65,18 @@ const payload = {
     class: d.class || null,
     driver: d.driverId || d.driverUri || null,
     available: d.available !== false,
-    caps: Object.values(d.capabilitiesObj || {}).map((c) => ({
-      id: c.id,
-      v: c.value === undefined ? null : c.value,
-      u: c.units || null,
-      s: !!c.setable,
-      t: iso(c.lastUpdated),
-    })),
+    caps: [
+      ...Object.values(d.capabilitiesObj || {}).map((c) => ({
+        id: c.id,
+        v: c.value === undefined ? null : c.value,
+        u: c.units || null,
+        s: !!c.setable,
+        t: iso(c.lastUpdated),
+      })),
+      ...(est[d.id] !== undefined && !(d.capabilitiesObj || {}).measure_power
+        ? [{ id: 'measure_power.homey', v: est[d.id], u: 'W', s: false, t: estT[d.id] }]
+        : []),
+    ],
   })),
 };
 
@@ -60,5 +88,6 @@ const res = await fetch(URL, {
 const text = await res.text();
 if (!res.ok) throw new Error(`Ingest ${res.status}: ${text}`);
 
+log(`Energi: ${live ? `${Object.keys(est).length} enheter med uppskattning (nycklar: ${Object.keys(live).join(',')})` : 'ingen energirapport'}`);
 log(`${payload.devices.length} enheter, ${moods ? Object.keys(moods).length : 'inga'} moods (${favorites.size} favoriter), ${flows.length} favoritflows → ${text}`);
 return true;

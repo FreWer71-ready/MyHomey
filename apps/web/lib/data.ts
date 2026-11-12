@@ -48,11 +48,13 @@ export async function loadHistory(metric: MetricKey, period: PeriodKey): Promise
   }
 
   const sb = await createClient();
-  const [zones, devices, rows, latest] = await Promise.all([
+  const [zones, devices, rows, latest, est] = await Promise.all([
     sb.from('zones').select('id,name,parent_id'),
     sb.from('devices').select('id,name,zone_id,class,available'),
     sb.rpc('history', { cap: cfg.cap, since, bucket }),
     sb.from('capability_state').select('device_id,last_updated').eq('capability_id', cfg.cap),
+    // Effekt: Homeys uppskattning för enheter utan egen mätare.
+    metric === 'power' ? sb.rpc('history', { cap: 'measure_power.homey', since, bucket }) : Promise.resolve({ data: [], error: null }),
   ]);
   const error = zones.error ?? devices.error ?? rows.error ?? latest.error;
   if (error) throw new Error(`Kunde inte läsa historik: ${error.message}`);
@@ -62,7 +64,11 @@ export async function loadHistory(metric: MetricKey, period: PeriodKey): Promise
       ? (latest.data ?? []).filter((c) => Date.now() - Date.parse(c.last_updated) > TEMP_MAX_DAYS * 86400_000).map((c) => c.device_id)
       : [],
   );
-  return buildSeries(metric, rows.data as Row[], devices.data as Device[], zones.data as Zone[], Math.floor(Date.now() / 1000), stale);
+  const measured = new Set((rows.data as Row[]).map((r) => r.device_id));
+  const estRows = ((est.data ?? []) as Row[]).filter((r) => !measured.has(r.device_id));
+  const estIds = new Set(estRows.map((r) => r.device_id));
+  return buildSeries(metric, [...(rows.data as Row[]), ...estRows], devices.data as Device[], zones.data as Zone[], Math.floor(Date.now() / 1000), stale)
+    .map((x) => (estIds.has(x.id) ? { ...x, estimated: true } : x));
 }
 
 /** Ändring senaste timmen per enhet: nuvärde minus första värdet i perioden. Trenden får aldrig stoppa sidan. */

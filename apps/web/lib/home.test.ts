@@ -234,3 +234,9 @@ test('bakgrund: mjuk övertoning mellan dag, skymning och natt', async () => {
   assert.equal(skyState({ symbol: 'rainandthunder', precip: 2 }).thunder, 0.5);
   assert.equal(skyState(null).condition, 'clear');
 });
+
+test('effekt: uppmätt i första hand, annars Homeys uppskattning', () => {
+  const h = buildHome(zones, devices, [...caps, c('l1', 'measure_power.homey', 8), c('p1', 'measure_power.homey', 99)]);
+  assert.equal(h.powerW, 21.1); // 13,06 uppmätt (p1) + 8 uppskattat (l1); p1:s uppskattning ignoreras
+  assert.deepEqual([h.powerMeters, h.powerEstimated], [1, 1]);
+});
