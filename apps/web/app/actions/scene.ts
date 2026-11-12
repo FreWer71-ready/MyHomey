@@ -4,7 +4,21 @@ import { createClient } from '@/lib/supabase/server';
 const SCENES = ['ljust', 'mys', 'slack'];
 type Result = { ok: boolean; error?: string };
 
-/** Anropar Homeys webhook "scen" (flödet kör DB Scen) och loggar kommandot. */
+/**
+ * Hushåll med Hue som källa (CONTROL=hue): samma kommandon går direkt till Hue via edge-funktionen hue.
+ * Ljust/Mys/Släck → rum, mood → Hue-scen, lampa → lampa.
+ */
+function hueBody(tag: Record<string, string>): Record<string, unknown> | null {
+  if (tag.zone && tag.scene) return { action: 'room', zone: tag.zone, scene: tag.scene };
+  if (tag.mood) return { action: 'activate', id: tag.mood };
+  if (tag.device) {
+    const num = (k: string) => (tag[k] === undefined ? undefined : Number(tag[k]));
+    return { action: 'light', id: tag.device, on: tag.on === undefined ? undefined : tag.on === 'true', dim: num('dim'), temp: num('temp'), hue: num('hue'), sat: num('sat') };
+  }
+  return null;
+}
+
+/** Anropar Homeys webhook "scen" (flödet kör DB Scen), eller Hue i Hue-hushåll, och loggar kommandot. */
 async function command(tag: Record<string, string>, log: Record<string, unknown>): Promise<Result> {
   if (process.env.NODE_ENV === 'development' && process.env.DEMO_DATA) return { ok: true };
 
@@ -17,7 +31,16 @@ async function command(tag: Record<string, string>, log: Record<string, unknown>
   let ok = false;
   let error: string | undefined;
   const homeyId = process.env.HOMEY_ID;
-  if (!homeyId) {
+  if (process.env.CONTROL === 'hue') {
+    const body = hueBody(tag);
+    if (!body) {
+      error = 'Stöds inte med Hue';
+    } else {
+      const { data, error: e } = await sb.functions.invoke('hue', { body });
+      ok = !e && data?.ok === true;
+      if (!ok) error = 'Hue svarar inte';
+    }
+  } else if (!homeyId) {
     error = 'HOMEY_ID saknas';
   } else {
     try {

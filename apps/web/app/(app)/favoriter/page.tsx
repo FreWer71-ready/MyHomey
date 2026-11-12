@@ -1,3 +1,4 @@
+import { BASE_PATH } from '@/lib/paths';
 import { Icon } from '@/components/Icon';
 import { MoodButtons } from '@/components/MoodButtons';
 import { loadFlows, loadHome, loadHueScenes } from '@/lib/data';
@@ -23,7 +24,10 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
   const { hue: hueResult } = await searchParams;
   const [h, flows, hue] = await Promise.all([loadHome(), loadFlows(), loadHueScenes()]);
   const hueRooms = [...new Set(hue.scenes.map((s) => s.room ?? 'Övrigt'))].sort((a, b) => a.localeCompare(b, 'sv'));
-  const favorites = groupByRoom(h.favoriteMoods);
+  const hueMode = process.env.CONTROL === 'hue';
+  const favorites = groupByRoom(hueMode
+    ? [...h.homeMoods.map((m) => ({ ...m, room: null })), ...h.rooms.flatMap((r) => r.moods.map((m) => ({ ...m, room: r.name })))]
+    : h.favoriteMoods);
   const all = groupByRoom([
     ...h.homeMoods.map((m) => ({ ...m, room: null })),
     ...h.rooms.flatMap((r) => r.moods.map((m) => ({ ...m, room: r.name }))),
@@ -36,9 +40,9 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
       </h1>
 
       {/* Moods och flows i varsin kolumn på plattan så att båda syns utan scroll. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+      <div className={`grid grid-cols-1 gap-4 lg:items-start ${hueMode ? '' : 'lg:grid-cols-2'}`}>
         <div className="flex flex-col gap-3">
-          <h2 className="text-[13px] font-bold tracking-wider text-dim uppercase">Moods</h2>
+          <h2 className="text-[13px] font-bold tracking-wider text-dim uppercase">{hueMode ? 'Scener' : 'Moods'}</h2>
           {favorites.length ? (
             favorites.map((g) => (
               <section key={g.name} className="flex flex-col gap-1.5">
@@ -48,11 +52,11 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
             ))
           ) : (
             <p className="rounded-[20px] glass p-4 text-lg font-bold text-dim">
-              Inga favoritmoods än. Markera moods som favoriter i Homey-appen så dyker de upp här.
+              {hueMode ? 'Inga scener än. Anslut Philips Hue nedan.' : 'Inga favoritmoods än. Markera moods som favoriter i Homey-appen så dyker de upp här.'}
             </p>
           )}
         </div>
-        <div className="flex flex-col gap-3">
+        {!hueMode && <div className="flex flex-col gap-3">
           <h2 className="text-[13px] font-bold tracking-wider text-dim uppercase">Flows</h2>
           {flows.length ? (
             <MoodButtons moods={flows} kind="flow" large />
@@ -61,14 +65,14 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
               Inga favoritflows än. Markera flows som favoriter i Homey-appen så dyker de upp här.
             </p>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Philips Hue: anslut en gång, sedan alla Hue-scener per rum. */}
       {hueResult === 'ok' && <p role="status" className="rounded-[16px] bg-ok-soft px-4 py-2 font-extrabold text-ok">Hue är anslutet.</p>}
       {hueResult === 'fel' && <p role="alert" className="rounded-[16px] bg-[rgb(240_80_60/0.2)] px-4 py-2 font-extrabold text-danger">Det gick inte att ansluta Hue. Försök igen.</p>}
       {hue.connected ? (
-        hue.scenes.length > 0 && (
+        !hueMode && hue.scenes.length > 0 && (
           <details className="group rounded-[24px] glass">
             <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 text-lg font-extrabold">
               Hue-scener ({hue.scenes.length})
@@ -85,13 +89,13 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
           </details>
         )
       ) : (
-        <a href="/mydashboard/api/hue/login" className="flex min-h-14 items-center justify-between gap-3 rounded-[24px] glass px-4 text-lg font-extrabold">
+        <a href={`${BASE_PATH}/api/hue/login`} className="flex min-h-14 items-center justify-between gap-3 rounded-[24px] glass px-4 text-lg font-extrabold">
           Anslut Philips Hue för att använda Hue-scener
           <span className="rounded-full bg-sun px-4 py-1.5 text-ink">Anslut</span>
         </a>
       )}
 
-      {all.length > 0 && (
+      {!hueMode && all.length > 0 && (
         <details className="group rounded-[24px] glass">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 text-lg font-extrabold">
             Alla moods ({all.reduce((n, g) => n + g.moods.length, 0)})

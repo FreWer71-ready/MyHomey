@@ -34,10 +34,6 @@ export function phaseOf(ms: number, lat: number, lon: number): Phase {
   return el > 6 ? 'day' : el > -6 ? 'dusk' : 'night';
 }
 
-/** Bildnamn utan ändelse; Backdrop väljer liggande (platta) eller stående (-p, mobil). */
-export const backgroundSrc = (symbol: string | null | undefined, ms: number, lat: number, lon: number) =>
-  `/mydashboard/bg/${conditionOf(symbol)}-${phaseOf(ms, lat, lon)}`;
-
 /** Vikter för dag-, skymnings- och nattbild efter solhöjd, så att bilderna tonar mjukt (summa 1). */
 export function phaseWeights(el: number): Record<Phase, number> {
   const ramp = (x: number, a: number, b: number) => Math.min(1, Math.max(0, (x - a) / (b - a)));

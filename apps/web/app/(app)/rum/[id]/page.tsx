@@ -98,7 +98,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
         <>
           <SceneButtons zoneId={room.id} room={room.name} size="large" />
           {/* Hue-scener för rummet (Hue-rum med samma namn som Homey-zonen). */}
-          {(() => {
+          {process.env.CONTROL !== 'hue' && (() => {
             const own = hue.scenes.filter((s) => s.room?.trim().toLowerCase() === room.name.trim().toLowerCase());
             return own.length > 0 && (
               <details className="group rounded-[24px] border border-line bg-card">

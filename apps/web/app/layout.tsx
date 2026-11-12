@@ -2,13 +2,14 @@ import type { Metadata, Viewport } from 'next';
 import { Backdrop } from '@/components/Backdrop';
 import { PLACE, loadWeather } from '@/lib/data';
 import { conditionOf, skyState, solarElevation } from '@/lib/sky';
+import { BASE_PATH } from '@/lib/paths';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'MyHomey',
   description: 'Dashboard för hemmet',
-  icons: { icon: '/mydashboard/icon.svg', apple: '/mydashboard/icon.svg' },
-  manifest: '/mydashboard/manifest.webmanifest',
+  icons: { icon: `${BASE_PATH}/icon.svg`, apple: `${BASE_PATH}/icon.svg` },
+  manifest: `${BASE_PATH}/manifest.webmanifest`,
   appleWebApp: { capable: true, title: 'MyHomey', statusBarStyle: 'black-translucent' },
 };
 

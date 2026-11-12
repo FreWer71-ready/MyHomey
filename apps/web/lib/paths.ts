@@ -1,5 +1,5 @@
 /** Måste matcha basePath i next.config.ts. */
-export const BASE_PATH = '/mydashboard';
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/mydashboard';
 
 /**
  * Publik adress till en sida i appen. I produktion nås appen via trand.se

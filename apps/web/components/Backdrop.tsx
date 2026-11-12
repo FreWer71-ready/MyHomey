@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { phaseWeights, skyTint, solarElevation, type Condition, type Phase, type SkyState } from '@/lib/sky';
 import { SkyCanvas } from './SkyCanvas';
+import { BASE_PATH } from '@/lib/paths';
 
 const ORDER: Phase[] = ['night', 'dusk', 'day'];
 
@@ -64,9 +65,9 @@ export function Backdrop({ condition, sky, el0, lat, lon }: { condition: Conditi
         <div key={l.key} className={i > 0 ? 'backdrop-fadein absolute inset-0' : 'absolute inset-0'}>
           {shown.map((s) => (
             <picture key={s.phase}>
-              <source media="(orientation: portrait)" srcSet={`/mydashboard/bg/${l.condition}-${s.phase}-p.jpg`} />
+              <source media="(orientation: portrait)" srcSet={`${BASE_PATH}/bg/${l.condition}-${s.phase}-p.jpg`} />
               <img
-                src={`/mydashboard/bg/${l.condition}-${s.phase}.jpg`}
+                src={`${BASE_PATH}/bg/${l.condition}-${s.phase}.jpg`}
                 alt="" decoding="async" className="backdrop-img"
                 style={{ opacity: s.opacity, transition: 'opacity 60s linear' }}
               />
