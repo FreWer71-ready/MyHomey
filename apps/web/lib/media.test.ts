@@ -29,3 +29,21 @@ test('spelas nu: inaktiv status och gamla värden döljs', () => {
   ];
   assert.deepEqual(nowPlaying(devices, caps, now), []);
 });
+
+import { tvRemote } from './media.ts';
+
+test('tv-fjärr: TV, Google TV och soundbar i samma rum', () => {
+  const devices = [
+    { id: 'tv', name: 'Samsung The Frame 75', class: 'tv', zone_id: 'v', driver_id: 'homey:app:com.smartthings:tv' },
+    { id: 'gtv', name: 'Google TV vardagsrum ', class: 'speaker', zone_id: 'v', driver_id: 'homey:app:com.google.chromecast:cast' },
+    { id: 'bar', name: 'Citation Bar', class: 'speaker', zone_id: 'v', driver_id: 'homey:app:com.google.chromecast:cast' },
+    { id: 'hub', name: 'Nest hub', class: 'speaker', zone_id: 'k', driver_id: 'homey:app:com.google.chromecast:cast' },
+  ];
+  const c = (device_id: string, capability_id: string, value_bool: boolean | null, value_num: number | null = null) => ({ device_id, capability_id, value_bool, value_num });
+  const r = tvRemote(devices, [c('tv', 'onoff', true), c('gtv', 'speaker_playing', true), c('bar', 'volume_set', null, 0.3)]);
+  assert.deepEqual(r, {
+    zone: 'v', tv: { id: 'tv', name: 'Samsung The Frame 75', on: true },
+    cast: { id: 'gtv', playing: true, muted: false }, bar: { id: 'bar', volume: 0.3, muted: false },
+  });
+  assert.equal(tvRemote(devices.slice(1), []), null);
+});

@@ -267,6 +267,11 @@ const FLAT = {
 
 // Linjeikoner för rena kontroller (följer textfärgen).
 const LINE = {
+  volDown: 'M3 9.5v5h3.5L11 18V6L6.5 9.5zM15 12h5',
+  volUp: 'M3 9.5v5h3.5L11 18V6L6.5 9.5zM15 12h6M18 9v6',
+  mute: 'M3 9.5v5h3.5L11 18V6L6.5 9.5zM15 9.5l5 5M20 9.5l-5 5',
+  playPause: 'M4 6v12l7.5-6zM15 6v12M20 6v12',
+  powerLine: 'M12 3v8M6.8 6.6a7.5 7.5 0 1 0 10.4 0',
   logo: 'M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5',
   back: 'm15 6-6 6 6 6',
   refresh: 'M20 11a8 8 0 0 0-14.9-3.5M4 4v4h4M4 13a8 8 0 0 0 14.9 3.5M20 20v-4h-4',

@@ -5,7 +5,7 @@ import { PRICE_AREA, type Price } from './prices';
 import { startOfDayStockholm } from './time';
 import { solarElevation } from './sky';
 import { parseMet, parseSmhi, smhiDays, summarizeWeather, type WeatherSummary } from './weather';
-import { MEDIA_CAPS, nowPlaying, type MediaCap, type NowPlaying } from './media';
+import { MEDIA_CAPS, TV_CAPS, nowPlaying, tvRemote, type MediaCap, type NowPlaying, type TvCap, type TvDevice, type TvRemote } from './media';
 import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
 import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } from './warnings';
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
@@ -378,4 +378,16 @@ export async function loadCommute(): Promise<Commute | null> {
   const { data, error } = await sb.functions.invoke('trafik', { body: {} });
   if (error || !data || data.error) return null;
   return roadOnly(parseCommute(data as RawCommute));
+}
+
+/** TV-fjärren (The Frame via SmartThings, Google TV och soundbar via Chromecast). Null utan TV i Homey. */
+export async function loadTv(): Promise<TvRemote | null> {
+  if (DEMO) return { zone: 'vardagsrum', tv: { id: 'tv', name: 'Samsung The Frame 75', on: true }, cast: { id: 'tv', playing: true, muted: false }, bar: null };
+  if (process.env.CONTROL === 'hue') return null;
+  const sb = await createClient();
+  const { data: devices } = await sb.from('devices').select('id,name,class,zone_id,driver_id').in('class', ['tv', 'speaker']).eq('available', true);
+  if (!devices?.some((d) => d.class === 'tv')) return null;
+  const { data: caps } = await sb.from('capability_state').select('device_id,capability_id,value_bool,value_num')
+    .in('device_id', devices.map((d) => d.id)).in('capability_id', TV_CAPS);
+  return tvRemote(devices as TvDevice[], (caps ?? []) as TvCap[]);
 }

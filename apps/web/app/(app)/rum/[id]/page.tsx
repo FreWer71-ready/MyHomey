@@ -5,7 +5,8 @@ import { notFound } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import { MoodButtons } from '@/components/MoodButtons';
 import { SceneButtons } from '@/components/SceneButtons';
-import { loadHome, loadHueScenes } from '@/lib/data';
+import { loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
+import { TvRemote } from '@/components/TvRemote';
 import { HueScenes } from '@/components/HueScenes';
 import { fmtPercent, fmtTemp, heatTint, tint } from '@/lib/scale';
 
@@ -13,7 +14,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function RoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [home, hue] = await Promise.all([loadHome(), loadHueScenes()]);
+  const [home, hue, tv, np] = await Promise.all([loadHome(), loadHueScenes(), loadTv(), loadNowPlaying()]);
+  // TV:n i det här rummet: fjärren visas alltid (även avstängd, så att den kan slås på).
+  const roomTv = tv && tv.zone === id ? tv : null;
+  const tvNow = roomTv?.cast ? np.find((p) => p.id === roomTv.cast!.id) : undefined;
   const isHome = id === home.rootZoneId;
   const room = home.rooms.find((r) => r.id === id);
   if (!room && !isHome) notFound();
@@ -114,6 +118,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
               </details>
             );
           })()}
+          {roomTv && <TvRemote r={roomTv} title={tvNow ? [tvNow.title, tvNow.subtitle].filter(Boolean).join(' · ') : null} />}
           <h2 className="text-[22px] font-extrabold">Belysning</h2>
           <ul className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {room.lights.map((l) => (

@@ -102,3 +102,21 @@ export async function runHueScene(sceneId: string, dynamic: boolean): Promise<Re
   const { data, error } = await sb.functions.invoke('hue', { body: { action: 'activate', id: sceneId, dynamic } });
   return error || !data?.ok ? { ok: false, error: 'Hue svarar inte' } : { ok: true };
 }
+
+/** Fjärrkontroll (TV, Google TV, soundbar): tillåtna capabilities och deras värden. */
+const DEVICE_CAPS: Record<string, 'bool' | 'button' | 'level'> = {
+  onoff: 'bool', volume_mute: 'bool', speaker_playing: 'bool',
+  volume_up: 'button', volume_down: 'button', channel_up: 'button', channel_down: 'button', speaker_next: 'button', speaker_prev: 'button',
+  volume_set: 'level',
+};
+
+/** Sätter en capability på en enhet i Homey (t.ex. volym upp på TV:n). */
+export async function runDevice(deviceId: string, cap: string, value: boolean | number = true): Promise<Result> {
+  if (!/^[\w-]{1,64}$/.test(deviceId)) return { ok: false, error: 'Ogiltig enhet' };
+  const kind = DEVICE_CAPS[cap];
+  if (!kind) return { ok: false, error: 'Stöds inte' };
+  if (kind === 'level' && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1)) return { ok: false, error: 'Ogiltig nivå' };
+  if (kind !== 'level' && typeof value !== 'boolean') return { ok: false, error: 'Ogiltigt värde' };
+  const v = kind === 'level' ? String(Math.round((value as number) * 100) / 100) : String(value);
+  return command({ device: deviceId, cap, value: v }, { type: 'device', device_id: deviceId, payload: { cap, value } });
+}

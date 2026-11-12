@@ -5,9 +5,10 @@ import { Icon, type IconName } from '@/components/Icon';
 import { RoomTile } from '@/components/RoomTile';
 import { SortableCards } from '@/components/SortableCards';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
+import { TvRemote } from '@/components/TvRemote';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadCommute, loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadCommute, loadHome, loadTv, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
@@ -59,9 +60,14 @@ function Value({ value, aside, small }: { value: React.ReactNode; aside?: string
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, openedToday, nameDay, playing, net, wine, commute] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
+  const [h, prices, weather, openedToday, nameDay, nowPlayingAll, net, wine, commute, tv] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(), loadTv(),
   ]);
+  // TV:n på: fjärren tar en plats längst ner och visar det Google TV spelar (det kortet slås ihop med fjärren).
+  const tvOn = !!tv?.tv?.on;
+  const tvTitle = tvOn && tv?.cast ? nowPlayingAll.find((p) => p.id === tv.cast!.id) : undefined;
+  const playing = tvOn && tv?.cast ? nowPlayingAll.filter((p) => p.id !== tv.cast!.id) : nowPlayingAll;
+  const bottomUsed = (tvOn ? 1 : 0) + Math.min(playing.length, 2);
   const wx = await loadWarnings(weather);
   const banners = warningBanners(wx, 3);
   // Pendling: aktuell riktning (morgon mot Stockholm, annars hem) och störningar till varningsraden.
@@ -381,15 +387,16 @@ export default async function HomePage() {
       </div>
 
       {/* Fast plats längst ner: det som spelas, annars (eller bredvid) en kort prognos för kommande dagar. */}
-      {(playing.length > 0 || (weather?.days?.length ?? 0) > 0) && (
+      {(tvOn || playing.length > 0 || (weather?.days?.length ?? 0) > 0) && (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {playing.slice(0, 2).map((p) => <NowPlayingCard key={p.id} p={p} />)}
-          {playing.length < 2 && weather?.days && weather.days.length > 0 && (
+          {tvOn && tv && <TvRemote r={tv} title={tvTitle ? [tvTitle.title, tvTitle.subtitle].filter(Boolean).join(' · ') : null} />}
+          {playing.slice(0, tvOn ? 1 : 2).map((p) => <NowPlayingCard key={p.id} p={p} />)}
+          {bottomUsed < 2 && weather?.days && weather.days.length > 0 && (
             <button
               type="button" popoverTarget="prognos" aria-label="Visa prognos"
-              className={`glass flex min-h-16 items-center justify-around gap-2 rounded-[20px] border border-line px-3 py-1.5 ${playing.length === 0 ? 'md:col-span-2' : ''}`}
+              className={`glass flex min-h-16 items-center justify-around gap-2 rounded-[20px] border border-line px-3 py-1.5 ${bottomUsed === 0 ? 'md:col-span-2' : ''}`}
             >
-              {weather.days.slice(0, playing.length === 0 ? 5 : 3).map((d) => {
+              {weather.days.slice(0, bottomUsed === 0 ? 5 : 3).map((d) => {
                 const day = new Intl.DateTimeFormat('sv-SE', { weekday: 'short', timeZone: 'Europe/Stockholm' }).format(Date.parse(`${d.date}T12:00:00Z`));
                 return (
                   <span key={d.date} className="flex items-center gap-1.5">

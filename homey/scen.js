@@ -6,6 +6,7 @@
 //   {"zone":"<zon-id>","scene":"ljust|mys|slack"}  eller  {"mood":"<mood-id>"}
 //   {"flow":"<flow-id>","advanced":"true|false"}
 //   {"device":"<enhets-id>","on":"true|false","dim":"0–1","temp":"0–1","hue":"0–1","sat":"0–1"} (alla valfria utom device)
+//   {"device":"<enhets-id>","cap":"volume_up|volume_down|volume_set|volume_mute|onoff|speaker_playing|…","value":"true|false|0–1"}  (TV-fjärren)
 
 const a = JSON.parse(args[0] || '{}');
 
@@ -25,6 +26,18 @@ if (a.flow) {
   if (a.advanced === 'true' || a.advanced === true) await Homey.flow.triggerAdvancedFlow({ id: a.flow });
   else await Homey.flow.triggerFlow({ id: a.flow });
   log(`flow ${a.flow} startat`);
+  return true;
+}
+
+// TV-fjärren: en enda capability (knappar som volym upp får värdet true).
+const REMOTE = ['onoff', 'volume_mute', 'speaker_playing', 'volume_up', 'volume_down', 'channel_up', 'channel_down', 'speaker_next', 'speaker_prev', 'volume_set'];
+if (a.device && a.cap) {
+  if (!REMOTE.includes(a.cap)) throw new Error(`Otillåten capability: ${a.cap}`);
+  const d = await Homey.devices.getDevice({ id: a.device });
+  if (!d.capabilities.includes(a.cap)) throw new Error(`${d.name} saknar ${a.cap}`);
+  const value = a.cap === 'volume_set' ? Math.min(1, Math.max(0, Number(a.value))) : a.value === true || a.value === 'true';
+  await Homey.devices.setCapabilityValue({ deviceId: d.id, capabilityId: a.cap, value });
+  log(`${d.name}: ${a.cap} = ${value}`);
   return true;
 }
 
