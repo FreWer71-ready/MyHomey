@@ -88,7 +88,11 @@ async function poll() {
   try {
     const [power, window, media] = await Promise.all([
       shell('dumpsys', 'power'),
-      shell('dumpsys', 'window', 'windows').catch(() => shell('dumpsys', 'activity', 'activities')),
+      // Båda källorna: Android-versionerna skriver förgrundsappen på olika ställen.
+      Promise.all([
+        shell('dumpsys', 'activity', 'activities').catch(() => ''),
+        shell('dumpsys', 'window').catch(() => ''),
+      ]).then((o) => o.join('\n')),
       shell('dumpsys', 'media_session'),
     ]);
     await send(buildState({ power, window, media }));

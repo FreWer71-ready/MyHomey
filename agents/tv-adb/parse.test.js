@@ -37,6 +37,8 @@ test('app i förgrunden: window och activity', () => {
   assert.equal(parseForegroundApp('  mCurrentFocus=Window{1a2b3c u0 com.netflix.ninja/com.netflix.ninja.MainActivity}'), 'com.netflix.ninja');
   assert.equal(parseForegroundApp('  mFocusedApp=ActivityRecord{77 u0 se.svt.svtplay.android/.MainActivity t12}'), 'se.svt.svtplay.android');
   assert.equal(parseForegroundApp('    mResumedActivity: ActivityRecord{88 u0 com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.ShellActivity t3}'), 'com.google.android.youtube.tv');
+  assert.equal(parseForegroundApp('  ResumedActivity: ActivityRecord{4f u0 com.google.android.apps.tv.launcherx/com.google.android.apps.tv.launcherx.home.HomeActivity t2}'), 'com.google.android.apps.tv.launcherx');
+  assert.equal(parseForegroundApp('  mFocusedWindow=Window{9 u0 com.netflix.ninja/com.netflix.ninja.MainActivity}'), 'com.netflix.ninja');
   assert.equal(parseForegroundApp('ingen'), null);
 });
 

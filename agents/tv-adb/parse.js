@@ -8,12 +8,15 @@ export function parsePower(out) {
   return display ? display === 'ON' : false;
 }
 
-/** Appen i förgrunden (package). Stöder `dumpsys window` (mCurrentFocus/mFocusedApp) och `dumpsys activity` (mResumedActivity/topResumedActivity). */
+/** Appen i förgrunden (package) ur `dumpsys activity activities` och/eller `dumpsys window` (flera Android-versioner). */
 export function parseForegroundApp(out) {
+  // Ordning: aktiv aktivitet först (stabilast på Android 12–14), sedan fönsterfokus.
   const patterns = [
+    /(?:mResumedActivity|topResumedActivity|ResumedActivity)[:=][^\n]*?\s([a-zA-Z][\w.]+)\/[\w.$]+/,
     /mCurrentFocus=Window\{[^}]*?\s([a-zA-Z][\w.]+)\/[\w.$]+\}/,
     /mFocusedApp=[^\n]*?\s([a-zA-Z][\w.]+)\/[\w.$]+/,
-    /(?:mResumedActivity|topResumedActivity)[:=][^\n]*?\s([a-zA-Z][\w.]+)\/[\w.$]+/,
+    /mFocusedWindow=Window\{[^}]*?\s([a-zA-Z][\w.]+)\/[\w.$]+/,
+    /mTopFullscreenOpaqueWindowState=Window\{[^}]*?\s([a-zA-Z][\w.]+)\/[\w.$]+/,
   ];
   for (const re of patterns) {
     const m = out.match(re);
