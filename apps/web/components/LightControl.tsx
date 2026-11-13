@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { runLight, type LightCommand } from '@/app/actions/scene';
 import type { Light } from '@/lib/home';
-import { tint } from '@/lib/scale';
 import { Icon } from './Icon';
 
 /** Färdiga vita toner (light_temperature: 0 kallt … 1 varmt) och färger (hue/sat 0–1). */
@@ -60,30 +59,37 @@ export function LightControl({ light }: { light: Light }) {
   };
 
   const canColor = light.can.temp || light.can.color;
-  const glow = !on ? undefined : light.can.color && light.hue != null && light.sat != null && light.sat > 0.3
-    ? `linear-gradient(${hsl(light.hue, light.sat, 0.42)}, ${hsl(light.hue, light.sat, 0.42)}), rgb(14 18 32 / 0.88)` : tint('#FFC21A', 0.42);
+  // Lampans färg (eller varmt gult) syns bara i ikonen och reglaget; kortet är mörkt som resten av appen.
+  const lamp = light.can.color && light.hue != null && light.sat != null && light.sat > 0.3 ? hsl(light.hue, light.sat) : '#F5B544';
 
   return (
-    <li className="flex flex-col gap-2.5 rounded-3xl border border-line bg-card p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_8px_24px_rgb(0_0_0/0.25)]" style={glow ? { background: glow } : undefined}>
+    <li className="flex flex-col gap-3 rounded-[20px] bg-card p-4">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => { setOn(!on); send({ on: !on }); }}
           aria-pressed={on}
           aria-label={`${light.name} ${on ? 'släck' : 'tänd'}`}
-          className={`flex size-14 shrink-0 items-center justify-center rounded-[18px] transition ${on ? 'bg-glass-hi' : 'bg-glass-2 opacity-45 grayscale'} ${status === 'busy' ? 'animate-pulse' : ''}`}
+          className={`flex size-12 shrink-0 items-center justify-center rounded-[14px] transition ${on ? '' : 'bg-white/[0.06] opacity-45 grayscale'} ${status === 'busy' ? 'animate-pulse' : ''}`}
+          style={on ? { background: `color-mix(in srgb, ${lamp} 28%, transparent)`, boxShadow: `0 0 18px color-mix(in srgb, ${lamp} 35%, transparent)` } : undefined}
         >
           <Icon name="bulb" size={28} />
         </button>
-        <span className="min-w-0 grow truncate text-[17px] font-extrabold">{light.name}</span>
-        <span className="w-12 text-right text-sm font-extrabold">{on ? (light.can.dim ? `${dim} %` : 'På') : 'Av'}</span>
+        <span className="flex min-w-0 grow flex-col leading-tight">
+          <span className="truncate text-[17px] font-semibold">{light.name}</span>
+          <span className="text-[15px] text-dim">{on ? 'Tänd' : 'Släckt'}</span>
+        </span>
+        <span className="flex w-14 shrink-0 flex-col items-end leading-none">
+          <span className="text-[24px] font-bold tabular-nums">{on ? (light.can.dim ? dim : 'På') : 'Av'}</span>
+          {on && light.can.dim && <span className="mt-1 text-[13px] text-dim">%</span>}
+        </span>
         {canColor && (
           <button
             type="button"
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label="Färg och vit ton"
-            className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-glass-hi"
+            className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-white/[0.06]"
           >
             <span className="size-6 rounded-full" style={{ background: 'conic-gradient(#FF5A5A, #FFC21A, #5AD07A, #4FA3FF, #B07AFF, #FF5A5A)' }} />
           </button>
@@ -95,13 +101,13 @@ export function LightControl({ light }: { light: Light }) {
           type="range" min={1} max={100} value={dim}
           aria-label={`Ljusstyrka ${light.name}`}
           className="slider"
-          style={{ background: `linear-gradient(90deg, ${on ? 'var(--color-sun)' : 'rgba(255,255,255,0.32)'} ${dim}%, rgba(255,255,255,0.14) ${dim}%)` }}
+          style={{ background: `linear-gradient(90deg, ${on ? lamp : 'rgba(255,255,255,0.32)'} ${dim}%, rgba(255,255,255,0.12) ${dim}%)` }}
           onChange={(e) => { const v = Number(e.target.value); setDim(v); setOn(true); later({ dim: v / 100 }); }}
         />
       )}
 
       {open && canColor && (
-        <div className="flex flex-col gap-2.5 rounded-2xl bg-glass-2 p-2.5">
+        <div className="flex flex-col gap-2.5 rounded-[14px] bg-white/[0.04] p-3">
           {light.can.temp && (
             <>
               <input
@@ -114,7 +120,7 @@ export function LightControl({ light }: { light: Light }) {
               <div className="flex flex-wrap gap-1.5">
                 {WHITES.map((w) => (
                   <button key={w.label} type="button" onClick={() => { setTemp(w.temp); setOn(true); send({ temp: w.temp }); }}
-                    className="flex min-h-10 items-center gap-1.5 rounded-full bg-glass-hi px-3 text-sm font-extrabold">
+                    className="flex min-h-10 items-center gap-1.5 rounded-full bg-white/[0.08] px-3 text-[15px] font-semibold">
                     <span className="size-4 rounded-full" style={{ background: w.css }} />{w.label}
                   </button>
                 ))}
@@ -134,7 +140,7 @@ export function LightControl({ light }: { light: Light }) {
         </div>
       )}
 
-      {status === 'error' && <p role="alert" className="rounded-xl glass px-3 py-1.5 text-sm font-extrabold text-danger">{error}</p>}
+      {status === 'error' && <p role="alert" className="text-[15px] font-semibold text-danger">{error}</p>}
     </li>
   );
 }

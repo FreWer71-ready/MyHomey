@@ -3,12 +3,11 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { LightControl } from '@/components/LightControl';
 import { notFound } from 'next/navigation';
 import { Icon } from '@/components/Icon';
-import { MoodButtons } from '@/components/MoodButtons';
+import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { SceneButtons } from '@/components/SceneButtons';
 import { loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
 import { TvRemote } from '@/components/TvRemote';
-import { HueScenes } from '@/components/HueScenes';
-import { fmtPercent, fmtTemp, heatTint, tint } from '@/lib/scale';
+import { fmtPercent, fmtTemp } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,107 +26,95 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
     ...home.rooms.map((r) => ({ id: r.id, name: r.name })),
   ];
   const nav = (
-    <nav aria-label="Rum" className="flex flex-wrap gap-2">
+    <nav aria-label="Rum" className="scroll-x flex gap-2 max-md:-mx-3 max-md:overflow-x-auto max-md:px-3 md:flex-wrap">
       {tabs.map((r) => (
         <Link
           key={r.id}
           href={`/rum/${r.id}`}
           aria-current={r.id === id ? 'page' : undefined}
-          className={`flex min-h-11 items-center rounded-full px-4 font-extrabold ${r.id === id ? 'bg-sun text-ink' : 'glass'}`}
+          className={`flex min-h-11 shrink-0 items-center rounded-full px-4 text-[16px] font-semibold whitespace-nowrap ${r.id === id ? 'bg-fg text-[#0B0F14]' : 'bg-card text-dim'}`}
         >
           {r.name}
         </Link>
       ))}
     </nav>
   );
+  const card = 'flex flex-col gap-3 rounded-[20px] bg-card p-5 lg:p-6';
+  const h2 = 'flex items-center gap-2.5 text-[18px] font-semibold text-dim';
 
   if (!room) {
     return (
       <>
         {nav}
-        <header className="flex items-center gap-4 rounded-[28px] px-6 py-5" style={{ background: tint('#8B5CF6', 0.42) }}>
-          <span className="flex size-16 shrink-0 items-center justify-center rounded-[22px] bg-deep text-sun">
-            <Icon name="logo" size={36} />
-          </span>
-          <div>
-            <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Hela hemmet</h1>
-            <p className="font-bold text-fg">{home.homeMoods.length} moods</p>
+        <header className={`${card} flex-row items-center`}>
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-[14px] bg-white/[0.06]"><Icon name="home" size={30} /></span>
+          <div className="grow">
+            <h1 className="text-[28px] leading-tight font-bold tracking-tight">Hela hemmet</h1>
+            <p className="text-[16px] text-dim">{home.homeMoods.length} moods</p>
           </div>
         </header>
-        <MoodButtons moods={home.homeMoods} />
+        <section className={card}>
+          <h2 className={h2}><Icon name="star" size={22} />Scener</h2>
+          <ActionTiles items={home.homeMoods.map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const }))} layout="grid" />
+        </section>
       </>
     );
   }
+
+  // Scener för rummet: Homey-moods och Hue-scener (Hue-rum med samma namn som zonen) i samma lista.
+  const scenes: Action[] = [
+    ...room.moods.map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
+    ...(process.env.CONTROL !== 'hue'
+      ? hue.scenes.filter((x) => x.room?.trim().toLowerCase() === room.name.trim().toLowerCase())
+        .map((x) => ({ id: x.id, name: x.name, kind: 'hue' as const, dynamic: x.dynamic, active: x.active, colors: x.colors }))
+      : []),
+  ];
+  const hot = room.temp != null && room.temp >= 26 ? '#F85149' : room.temp != null && room.temp < 18 ? '#4FA3FF' : undefined;
+  const Stat = ({ value, unit, color }: { value: React.ReactNode; unit: string; color?: string }) => (
+    <span className="flex min-w-16 flex-col items-end leading-none">
+      <span className="text-[32px] font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
+      <span className="mt-1 text-[14px] text-dim">{unit}</span>
+    </span>
+  );
 
   return (
     <>
       {nav}
 
-      <header className="flex flex-wrap items-center gap-4 rounded-[28px] px-6 py-4" style={{ background: heatTint(room.temp) }}>
-        <span className="flex size-16 shrink-0 items-center justify-center rounded-[22px] bg-deep text-sun">
-          <Icon name={room.icon} size={36} />
-        </span>
-        <div className="grow">
-          <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">{room.name}</h1>
-          <p className="font-bold text-fg">
-            {room.deviceCount} enheter · {room.lights.length} lampor
-          </p>
+      {/* Rummet: ikon, namn och nyckeltal med enhet under (färg bara när något avviker). */}
+      <header className={`${card} flex-row flex-wrap items-center gap-x-6`}>
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-[14px] bg-white/[0.06]"><Icon name={room.icon} size={30} /></span>
+        <div className="min-w-0 grow">
+          <h1 className="truncate text-[28px] leading-tight font-bold tracking-tight">{room.name}</h1>
+          <p className="text-[16px] text-dim">{room.deviceCount} enheter · {room.lights.length} lampor</p>
         </div>
-        {room.temp != null && (
-          <span className="flex items-center gap-2 rounded-3xl bg-glass-hi px-4 py-3">
-            <Icon name="thermo" size={28} />
-            <span className="text-4xl leading-none font-extrabold tracking-tight">{fmtTemp(room.temp)}<TrendArrow trend={room.tempTrend} /></span>
-          </span>
-        )}
-        {room.humidity != null && (
-          <span className="flex items-center gap-2 rounded-3xl bg-glass-hi px-4 py-3">
-            <Icon name="drop" size={28} />
-            <span className="text-4xl leading-none font-extrabold tracking-tight">{fmtPercent(room.humidity)}</span>
-          </span>
-        )}
-        <span className="flex items-center gap-2 rounded-3xl bg-deep px-4 py-3 text-sun">
-          <Icon name="bulb" size={28} />
-          <span className="text-4xl leading-none font-extrabold tracking-tight">{room.lightsOn}</span>
-        </span>
+        {room.temp != null && <Stat value={<>{fmtTemp(room.temp).replace('°', '')}<TrendArrow trend={room.tempTrend} /></>} unit="°C" color={hot} />}
+        {room.humidity != null && <Stat value={fmtPercent(room.humidity).replace(/\s?%/, '')} unit="% fukt" color={room.humidity >= 70 ? '#E3A008' : undefined} />}
+        {room.lights.length > 0 && <Stat value={room.lightsOn} unit={`av ${room.lights.length} tända`} />}
       </header>
 
-      {room.moods.length > 0 && (
-        <section aria-labelledby="moods" className="flex flex-col gap-2">
-          <h2 id="moods" className="text-[22px] font-extrabold">Moods</h2>
-          <MoodButtons moods={room.moods} />
+      {room.lights.length > 0 && <SceneButtons zoneId={room.id} room={room.name} size="large" />}
+
+      {scenes.length > 0 && (
+        <section className={card}>
+          <h2 className={h2}><Icon name="star" size={22} />Scener</h2>
+          <ActionTiles items={scenes} layout="grid" />
         </section>
       )}
 
+      {roomTv && <TvRemote r={roomTv} title={tvNow ? [tvNow.title, tvNow.subtitle].filter(Boolean).join(' · ') : null} />}
+
       {room.lights.length > 0 ? (
-        <>
-          <SceneButtons zoneId={room.id} room={room.name} size="large" />
-          {/* Hue-scener för rummet (Hue-rum med samma namn som Homey-zonen). */}
-          {process.env.CONTROL !== 'hue' && (() => {
-            const own = hue.scenes.filter((s) => s.room?.trim().toLowerCase() === room.name.trim().toLowerCase());
-            return own.length > 0 && (
-              <details className="group rounded-[24px] border border-line bg-card">
-                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 text-[20px] font-extrabold">
-                  <span>
-                    Hue-scener <span className="text-base font-bold text-dim">({own.length}{own.some((s) => s.active) ? ` · ${own.find((s) => s.active)!.name} på` : ''})</span>
-                  </span>
-                  <span className="text-dim transition-transform group-open:rotate-180">▾</span>
-                </summary>
-                <div className="px-3 pb-3">
-                  <HueScenes scenes={own} />
-                </div>
-              </details>
-            );
-          })()}
-          {roomTv && <TvRemote r={roomTv} title={tvNow ? [tvNow.title, tvNow.subtitle].filter(Boolean).join(' · ') : null} />}
-          <h2 className="text-[22px] font-extrabold">Belysning</h2>
-          <ul className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="flex flex-col gap-3">
+          <h2 className={`${h2} px-1`}><Icon name="bulb" size={22} />Belysning</h2>
+          <ul className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {room.lights.map((l) => (
               <LightControl key={l.id} light={l} />
             ))}
           </ul>
-        </>
+        </section>
       ) : (
-        <p className="rounded-3xl glass p-6 text-lg font-bold text-dim">Inga lampor i det här rummet.</p>
+        <p className={`${card} text-[17px] text-dim`}>Inga lampor i det här rummet.</p>
       )}
     </>
   );

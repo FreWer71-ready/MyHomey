@@ -5,9 +5,9 @@ import { runScene } from '@/app/actions/scene';
 import { Icon, type IconName } from './Icon';
 
 const SCENES: { key: string; label: string; icon: IconName; className: string }[] = [
-  { key: 'ljust', label: 'Ljust', icon: 'sun', className: 'bg-btn text-fg shadow-[inset_0_0_0_1px_rgb(255_255_255/0.12)]' },
-  { key: 'mys', label: 'Mys', icon: 'moon', className: 'bg-btn text-fg shadow-[inset_0_0_0_1px_rgb(255_255_255/0.12)]' },
-  { key: 'slack', label: 'Släck', icon: 'power', className: 'bg-btn text-fg shadow-[inset_0_0_0_1px_rgb(255_255_255/0.12)]' },
+  { key: 'ljust', label: 'Ljust', icon: 'sun', className: 'bg-card text-fg border border-line' },
+  { key: 'mys', label: 'Mys', icon: 'moon', className: 'bg-card text-fg border border-line' },
+  { key: 'slack', label: 'Släck', icon: 'power', className: 'bg-card text-fg border border-line' },
 ];
 
 type State = { key: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null;
@@ -50,10 +50,10 @@ export function SceneButtons({ zoneId, room, size }: { zoneId: string; room: str
             disabled={state?.status === 'busy'}
             aria-label={`${s.label} i ${room}`}
             className={`flex items-center justify-center rounded-[14px] transition-shadow ${s.className} ${ring(s.key)} ${
-              size === 'large' ? 'min-h-20 gap-3 rounded-[24px] text-[22px] font-extrabold' : 'min-h-10'
+              size === 'large' ? 'min-h-16 gap-2 rounded-[20px] text-[18px] font-semibold md:min-h-20 md:gap-3 md:text-[22px]' : 'min-h-10'
             }`}
           >
-            <Icon name={s.icon} size={size === 'large' ? 40 : 24} />
+            <Icon name={s.icon} size={size === 'large' ? 32 : 24} />
             {size === 'large' && s.label}
           </button>
         ))}
