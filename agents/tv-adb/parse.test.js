@@ -48,6 +48,7 @@ test('mediasessioner: titel, undertitel och status', () => {
   assert.deepEqual(s[0], { package: 'com.netflix.ninja', active: true, status: 'playing', title: 'Stranger Things', artist: 'S4:E1 "Chapter One: The Hellfire Club"' });
   assert.deepEqual(s[1], { package: 'com.spotify.tv.android', active: false, status: 'paused', title: 'Yellow', artist: 'Coldplay' });
   assert.equal(pickSession(s, 'com.spotify.tv.android').package, 'com.netflix.ninja'); // spelar slår pausad
+  assert.equal(pickSession([s[1]], 'com.netflix.ninja'), null); // pausad i bakgrunden visas inte
 });
 
 test('samlat tillstånd och appnamn', () => {
@@ -65,4 +66,22 @@ test('Android 13+: state=PLAYING(3) och titel', () => {
       metadata: size=4, description=Wednesday, Avsnitt 1, null`;
   const [s] = parseMediaSessions(out);
   assert.deepEqual([s.status, s.title, s.artist], ['playing', 'Wednesday', 'Avsnitt 1']);
+});
+
+test('riktig utskrift från Google TV (Android 14)', () => {
+  const out = `    a com.netflix.ninja/x (userId=0)
+      package=com.netflix.ninja
+      state=PlaybackState {state=STOPPED(1), position=0, buffered position=0, speed=1.0, updated=1, actions=1049468, custom actions=[], active item id=-1, error=null}
+    b com.spotify.tv.android/y (userId=0)
+      package=com.spotify.tv.android
+      state=PlaybackState {state=PAUSED(2), position=22756, buffered position=0, speed=0.0, updated=2, actions=3125244, custom actions=[], active item id=0, error=null}
+      metadata: size=22, description=feelslikeimfallinginlove - Zerb x Coldplay, Coldplay, Zerb, null
+    c com.teliasonera.telia.playplus/z (userId=0)
+      package=com.teliasonera.telia.playplus
+      state=PlaybackState {state=PAUSED(2), position=-1, buffered position=-1, speed=0.0, updated=3, actions=17029, custom actions=[], active item id=-1, error=null}`;
+  const all = parseMediaSessions(out);
+  assert.deepEqual(all[1], { package: 'com.spotify.tv.android', active: false, status: 'paused', title: 'feelslikeimfallinginlove - Zerb x Coldplay', artist: 'Coldplay, Zerb' });
+  assert.equal(pickSession(all, 'com.netflix.ninja'), null); // Netflix stoppad, Spotify pausad i bakgrunden
+  assert.equal(pickSession(all, 'com.teliasonera.telia.playplus').package, 'com.teliasonera.telia.playplus');
+  assert.equal(appName('com.teliasonera.telia.playplus'), 'Telia Play');
 });

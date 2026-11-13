@@ -44,25 +44,31 @@ export function parseMediaSessions(out) {
     // Äldre Android: state=3. Android 13+: state=PLAYING(3).
     const state = Number(b.match(/state=PlaybackState \{state=(?:[A-Z_]+\()?(\d+)/)?.[1] ?? NaN);
     const desc = b.match(/metadata:[^\n]*description=([^\n]*)/)?.[1] ?? '';
-    // description = "Titel, Undertitel, Beskrivning" (null för tomma fält). Titlar med kommatecken delas ändå rimligt.
-    const parts = desc.split(/, (?=[^,]*(?:, [^,]*)?$)/);
+    // description = "Titel, Undertitel, Beskrivning". Undertiteln kan innehålla kommatecken (flera artister),
+    // så första delen är titeln, sista beskrivningen och allt däremellan undertiteln.
+    const parts = desc.split(', ');
+    const title = parts[0];
+    const subtitle = parts.length > 2 ? parts.slice(1, -1).join(', ') : parts[1];
     sessions.push({
       package: pkg,
       active: /\bactive=true\b/.test(b),
       status: STATES[state] ?? 'none',
-      title: clean(parts[0]),
-      artist: clean(parts[1]?.split(', ')[0]),
+      title: clean(title),
+      artist: clean(subtitle?.split(', ').filter((x) => x !== 'null').join(', ')),
     });
   }
   return sessions;
 }
 
-/** Bästa sessionen: spelar > buffrar > pausad, helst från appen i förgrunden. */
+/**
+ * Bästa sessionen: det som spelar (vilken app som helst), annars appen i förgrunden om den är pausad.
+ * En pausad session i bakgrunden (t.ex. Spotify från i morse) visas inte.
+ */
 export function pickSession(sessions, foreground) {
   const rank = { playing: 0, buffering: 1, paused: 2 };
   return sessions
-    .filter((s) => s.status in rank && (s.title || s.package === foreground))
-    .sort((a, b) => rank[a.status] - rank[b.status] || Number(b.package === foreground) - Number(a.package === foreground) || Number(b.active) - Number(a.active))[0] ?? null;
+    .filter((s) => s.status === 'playing' || s.status === 'buffering' || (s.status === 'paused' && s.package === foreground))
+    .sort((a, b) => rank[a.status] - rank[b.status] || Number(b.package === foreground) - Number(a.package === foreground) || Number(!!b.title) - Number(!!a.title))[0] ?? null;
 }
 
 /** Läsbara appnamn för vanliga TV-appar; annars sista delen av package-namnet. */
@@ -83,6 +89,10 @@ const APPS = {
   'com.apple.atve.androidtv.appletv': 'Apple TV',
   'com.viaplay.android': 'Viaplay',
   'com.plexapp.android': 'Plex',
+  'com.teliasonera.telia.playplus': 'Telia Play',
+  'se.telia.play': 'Telia Play',
+  'com.cmore.android': 'TV4 Play',
+  'com.google.android.youtube.tvkids': 'YouTube Kids',
   'com.google.android.apps.tv.launcherx': 'Startsida',
   'com.google.android.tvlauncher': 'Startsida',
 };
