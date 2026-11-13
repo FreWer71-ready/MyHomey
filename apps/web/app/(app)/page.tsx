@@ -2,14 +2,12 @@ import Link from 'next/link';
 import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
-import { RoomTile } from '@/components/RoomTile';
 import { SortableCards } from '@/components/SortableCards';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
-import { TvRemote } from '@/components/TvRemote';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadCommute, loadHome, loadTv, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
+import { loadCommute, loadHome, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
@@ -61,14 +59,12 @@ function Value({ value, aside, small }: { value: React.ReactNode; aside?: string
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, openedToday, nameDay, nowPlayingAll, net, wine, commute, tv] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(), loadTv(),
+  const [h, prices, weather, openedToday, nameDay, nowPlayingAll, net, wine, commute] = await Promise.all([
+    loadHome(), loadPrices(), loadWeather(), loadOpeningsToday(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
   ]);
-  // TV:n på: fjärren tar en plats längst ner och visar det Google TV spelar (det kortet slås ihop med fjärren).
-  const tvOn = !!tv?.tv?.on;
-  const tvTitle = tvOn && tv?.cast ? nowPlayingAll.find((p) => p.id === tv.cast!.id) : undefined;
-  const playing = tvOn && tv?.cast ? nowPlayingAll.filter((p) => p.id !== tv.cast!.id) : nowPlayingAll;
-  const bottomUsed = (tvOn ? 1 : 0) + Math.min(playing.length, 2);
+  // Hem är bara visning: det som spelas visas, fjärren finns i rummet (Rum).
+  const playing = nowPlayingAll;
+  const bottomUsed = Math.min(playing.length, 2);
   const wx = await loadWarnings(weather);
   const banners = warningBanners(wx, 3);
   // Pendling: aktuell riktning (morgon mot Stockholm, annars hem) och störningar till varningsraden.
@@ -76,7 +72,7 @@ export default async function HomePage() {
   const trains = commute?.[dir] ?? [];
   const trafficAlerts = commute ? commuteAlerts(commute, Date.now(), hhmm) : [];
   const roads = commute ? groupRoad(commute.road) : [];
-  const shownRooms = h.rooms.filter((r) => r.temp != null || r.humidity != null || r.lights.length > 0);
+  const tempRooms = h.rooms.filter((r) => r.temp != null);
   // Kolumner på plattan: så många att alla kort ryms på två rader.
   const hasCal = !!(process.env.CALENDAR_ICAL_URL || process.env.ULRIKA_ICAL_URL);
   const bigN = [h.outdoorTemp != null || h.outdoorStale || !!weather, !!commute].filter(Boolean).length;
@@ -362,16 +358,29 @@ export default async function HomePage() {
         </div>
       )}
 
-      <h2 className="sr-only">Rum</h2>
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:min-h-0 lg:flex-[1.3] lg:grid-cols-6 lg:[grid-template-rows:repeat(var(--rows),minmax(118px,1fr))]" style={{ '--rows': Math.max(1, Math.ceil((shownRooms.length + (wine ? 1 : 0)) / 6)) } as React.CSSProperties}>
-        {shownRooms.map((r) => (
-          <RoomTile key={r.id} room={r} />
-        ))}
-        {/* Vinkällaren (Trandvine) som ett eget rumskort. */}
+      {/* Inomhus: alla rum med temperatur i ett kort (bara visning, styrning finns under Rum). */}
+      <h2 className="sr-only">Inomhus</h2>
+      <section className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-[0.75] lg:grid-cols-6">
+        {tempRooms.length > 0 && (
+          <Link href="/rum" className={`glass col-span-2 flex min-w-0 flex-col gap-2 rounded-[22px] px-3 py-2.5 ${wine ? 'lg:col-span-5' : 'lg:col-span-6'}`}>
+            <span className="flex items-center gap-2">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glass-hi"><Icon name="thermo" size={18} /></span>
+              <span className="text-[15px] font-bold">Inomhus</span>
+            </span>
+            <span className="grid grow grid-cols-2 gap-2 sm:grid-cols-3 lg:[grid-template-columns:repeat(auto-fit,minmax(120px,1fr))]">
+              {tempRooms.map((r) => (
+                <span key={r.id} className="flex min-w-0 flex-col justify-center rounded-2xl px-3 py-2" style={{ background: heatTint(r.temp) }}>
+                  <span className="truncate text-[14px] font-bold opacity-90">{r.name}</span>
+                  <span className="text-[28px] leading-none font-extrabold tracking-tight lg:text-[32px]">{fmtTemp(r.temp)}<TrendArrow trend={r.tempTrend} /></span>
+                </span>
+              ))}
+            </span>
+          </Link>
+        )}
         {wine && (
           <a
             href="https://wine.trand.se" target="_blank" rel="noopener noreferrer" title="Öppna Trandvine i nytt fönster"
-            className="flex h-full min-h-[118px] flex-col gap-1 overflow-hidden rounded-[20px] p-2.5" style={{ background: tint('#9B2C4A', 0.5) }}
+            className="col-span-2 flex h-full min-h-[118px] flex-col gap-1 overflow-hidden rounded-[22px] p-2.5 lg:col-span-1" style={{ background: tint('#9B2C4A', 0.5) }}
           >
             <span className="flex items-center gap-2">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
@@ -398,10 +407,9 @@ export default async function HomePage() {
       </div>
 
       {/* Fast plats längst ner: det som spelas, annars (eller bredvid) en kort prognos för kommande dagar. */}
-      {(tvOn || playing.length > 0 || (weather?.days?.length ?? 0) > 0) && (
+      {(playing.length > 0 || (weather?.days?.length ?? 0) > 0) && (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {tvOn && tv && <TvRemote r={tv} title={tvTitle ? [tvTitle.title, tvTitle.subtitle].filter(Boolean).join(' · ') : null} />}
-          {playing.slice(0, tvOn ? 1 : 2).map((p) => <NowPlayingCard key={p.id} p={p} />)}
+          {playing.slice(0, 2).map((p) => <NowPlayingCard key={p.id} p={p} />)}
           {bottomUsed < 2 && weather?.days && weather.days.length > 0 && (
             <button
               type="button" popoverTarget="prognos" aria-label="Visa prognos"

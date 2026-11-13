@@ -34,7 +34,8 @@ export function CalendarWidget() {
     return () => { alive = false; clearInterval(poll); clearInterval(tick); };
   }, []);
 
-  const days = (cal?.days ?? []).filter((d, i) => i < 2 || d.allDay.length + d.timed.filter((e) => e.end! > now).length > 0);
+  // Heldagshändelser visas inte, bara en markering vid dagen att det finns sådana.
+  const days = (cal?.days ?? []).filter((d, i) => i < 2 || d.timed.some((e) => e.end! > now));
 
   return (
     <section aria-label="Kalender" className="glass relative flex h-full max-h-[26rem] w-full min-w-0 flex-col gap-2 overflow-hidden lg:max-h-none rounded-[22px] px-3 py-2.5" style={{ background: 'linear-gradient(rgb(139 92 246 / 0.32), rgb(139 92 246 / 0.32)), rgb(14 18 32 / 0.88)' }}>
@@ -52,16 +53,18 @@ export function CalendarWidget() {
         <div className="scroll-x -mr-1.5 flex min-h-0 flex-col gap-1.5 overflow-y-auto pr-1.5">
           {days.map((d) => {
             const timed = d.timed.filter((e) => e.end! > now || d.date !== cal.days[0].date);
-            const empty = d.allDay.length === 0 && timed.length === 0;
+            const empty = timed.length === 0;
             return (
               <section key={d.date} className="flex flex-col gap-0.5">
-                <h3 className="text-[13px] font-extrabold tracking-wide uppercase opacity-80 first-letter:uppercase">{dayLabel(d.date, now)}</h3>
-                {empty && <p className="text-[14px] font-bold opacity-70">Inget inplanerat</p>}
-                {d.allDay.map((e) => (
-                  <p key={e.id} className="truncate rounded-lg bg-black/20 px-2 py-0.5 text-[14px] font-bold">
-                    <span className="mr-1.5 text-[12px] opacity-75">Heldag</span>{e.title}
-                  </p>
-                ))}
+                <h3 className="flex items-center gap-2 text-[13px] font-extrabold tracking-wide uppercase">
+                  <span className="opacity-80">{dayLabel(d.date, now)}</span>
+                  {d.allDay.length > 0 && (
+                    <span className="rounded-full bg-black/25 px-1.5 text-[11px] font-bold tracking-normal normal-case opacity-90" title="Heldagshändelser">
+                      + {d.allDay.length} heldag
+                    </span>
+                  )}
+                </h3>
+                {empty && <p className="text-[14px] font-bold opacity-70">Inget inplanerat{d.allDay.length ? ' med tid' : ''}</p>}
                 {timed.map((e) => <Row key={e.id} e={e} now={now} />)}
               </section>
             );

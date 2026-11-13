@@ -92,7 +92,7 @@ export function SortableCards({ items, storageKey, className, style, ...rest }: 
               // Klicket som följer på ett långt tryck ska inte öppna kortets länk eller popup.
               if (suppressClick.current || edit) { e.preventDefault(); e.stopPropagation(); suppressClick.current = false; }
             }}
-            className={`relative flex min-w-0 ${it.span ?? ''} ${edit ? 'sort-wiggle' : ''} ${drag === it.id ? 'z-10 scale-[1.03] opacity-80' : ''} transition-transform`}
+            className={`relative flex min-h-0 min-w-0 ${it.span ?? ''} ${edit ? 'sort-wiggle' : ''} ${drag === it.id ? 'z-10 scale-[1.03] opacity-80' : ''} transition-transform`}
           >
             {it.node}
             {edit && (
