@@ -4,6 +4,7 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
+import { MinutesTo } from '@/components/MinutesTo';
 import type { NowPlaying } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
 import { warningBanners } from '@/components/WarningBanners';
@@ -271,16 +272,37 @@ export default async function HomePage() {
                   return (
                     <li key={t.id} className="flex items-center gap-3">
                       <span className={`font-bold tabular-nums ${i === 0 ? 'text-[44px] leading-none' : 'text-[24px]'} ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : t.est ?? t.dep)}</span>
-                      <span className="min-w-0 grow truncate text-[16px] text-dim">{t.track ? `spår ${t.track}` : t.dest}</span>
+                      <span className="flex min-w-0 grow flex-col leading-tight">
+                        {!t.canceled && <MinutesTo at={t.est ?? t.dep} className={`font-semibold tabular-nums ${i === 0 ? 'text-[18px]' : 'text-[16px]'}`} />}
+                        <span className="truncate text-[16px] text-dim">{t.track ? `spår ${t.track}` : t.dest}</span>
+                      </span>
                       <span className="shrink-0 text-[16px] font-semibold" style={{ color: tone === 'ok' ? C.mute : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
                     </li>
                   );
                 })}
               </ul>
-              <p className="flex items-center gap-2 text-[16px]" style={{ color: roads.some((g) => g.tone === 'bad') ? C.bad : roads.length ? C.warn : C.mute }}>
-                <Icon name="road" size={20} />
-                <span className="truncate">{roads.length === 0 ? 'Väg 56/E18: fritt' : roads.length === 1 ? `${roads[0].road}: ${roads[0].type.toLowerCase()} · ${roads[0].places.map(shortPlace)[0] ?? ''}` : `Väg 56/E18: ${roads.length} ärenden`}</span>
-              </p>
+              {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). */}
+              <ul className="flex flex-col gap-1.5 border-t border-line pt-3">
+                {roads.length === 0 && (
+                  <li className="flex items-center gap-3 text-[16px]">
+                    <Icon name="road" size={22} /><span className="grow text-dim">Väg 56/E18</span>
+                    <span className="font-semibold" style={{ color: C.ok }}>Fritt</span>
+                  </li>
+                )}
+                {roads.slice(0, 2).map((g) => (
+                  <li key={g.id} className="flex min-w-0 items-center gap-3">
+                    <Icon name="road" size={22} />
+                    <span className="flex min-w-0 grow flex-col leading-tight">
+                      <span className="truncate text-[16px] font-semibold">{g.road} · {g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
+                      <span className="truncate text-[16px] text-dim">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
+                    </span>
+                    <span className="shrink-0 text-[16px] font-semibold" style={{ color: TONE_COLOR[g.tone] }}>
+                      {g.tone === 'bad' ? 'Stor påverkan' : g.tone === 'warn' ? 'Påverkan' : 'Liten'}
+                    </span>
+                  </li>
+                ))}
+                {roads.length > 2 && <li className="pl-[34px] text-[16px] text-dim">+ {roads.length - 2} till</li>}
+              </ul>
             </Card>
           )}
           {commute && !commute.trains && (
