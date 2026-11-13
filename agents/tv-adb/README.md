@@ -39,6 +39,19 @@ npm test && npm start
 
 Rätt uppsatt syns till exempel `Ny status: Netflix · Stranger Things (playing)` i loggen.
 
+## Plattan (Termux)
+
+```bash
+pkg update && pkg upgrade -y && pkg install -y git
+git clone https://github.com/FreWer71-ready/MyHomey.git
+bash ~/MyHomey/agents/tv-adb/start.sh
+```
+
+`start.sh` installerar Node och adb om de saknas och skapar `.env`. Den frågar efter IP-adress, hushåll och hemlighet,
+och hemligheten skrivs in dolt. Sedan ansluter den till TV:n och startar agenten. Efter en omstart av Termux räcker
+`bash ~/MyHomey/agents/tv-adb/start.sh`. För att den ska starta av sig själv: installera **Termux:Boot** och kör
+raden som står i `termux-boot.sh`.
+
 ## 3. Kör som tjänst (startar vid uppstart, startar om vid fel)
 
 `/etc/systemd/system/tv-agent.service`:
