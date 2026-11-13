@@ -1,4 +1,4 @@
-# TV-agent (Google TV via ADB)
+# TV-agent (Google TV / Android TV via ADB)
 
 Liten lokal tjänst som läser vad Google TV visar och skickar det till dashboarden.
 Var 10:e sekund körs tre ADB-kommandon:
@@ -19,10 +19,11 @@ Inga npm-beroenden: Node 20+ har `fetch` och `--env-file`, och `adb` körs som e
 - ADB ger full kontroll över TV:n. Kör agenten på en dator du litar på i hemnätet, och öppna aldrig port 5555 mot internet.
 - `.env` ligger i `.gitignore` och får aldrig checkas in.
 
-## 1. Förbered Google TV
+## 1. Förbered TV:n
 
-1. **Inställningar → System → Om → Android TV OS-version**: tryck 7 gånger på **Android TV OS-version** (eller "Build") tills
-   "Du är nu utvecklare" visas.
+1. Slå på utvecklarläget genom att trycka 7 gånger tills "Du är nu utvecklare" visas:
+   - **Google TV:** Inställningar → System → Om → **Android TV OS-version** (eller "Build").
+   - **Android TV** (t.ex. Philips, Sony, TCL): Inställningar → Enhetsinställningar → Om → **Version**.
 2. **Inställningar → System → Utvecklaralternativ**: slå på **USB-felsökning**. Slå också på **Nätverksfelsökning** om den finns.
 3. Ge TV:n en fast IP-adress i routern, till exempel 192.168.1.50.
 
@@ -63,6 +64,12 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload && sudo systemctl enable --now tv-agent
 journalctl -u tv-agent -f
 ```
+
+## Flera hushåll
+
+Varje hushåll har en egen hemlighet i Vault: `tv_secret` för fredrik och `tv_secret_<hushåll>` för övriga, till exempel
+`tv_secret_ulrika`. Hemligheten avgör vilket hushåll agenten får skriva till. Sätt `HOUSEHOLD` och `TV_SECRET` i `.env`
+efter det, och ge `DEVICE_ID` ett eget namn, t.ex. `android-tv`.
 
 ## Begränsningar
 
