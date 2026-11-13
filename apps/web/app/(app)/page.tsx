@@ -17,7 +17,7 @@ import { seenAgo, startOfDayStockholm } from '@/lib/time';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { hhmm, hourly, summarize } from '@/lib/prices';
-import { fmtTemp, fmtWatt } from '@/lib/scale';
+import { fmtTemp } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,21 +45,27 @@ function Card({ title, icon, href, className = '', children }: { title?: string;
   );
 }
 
-/** Rad i Hemmet: etikett till vänster, värde till höger, högst en rad detalj under. */
-function Row({ icon, label, value, detail, color, href, extra }: {
-  icon: IconName; label: string; value: React.ReactNode; detail?: React.ReactNode; color?: string; href?: string; extra?: React.ReactNode;
+/**
+ * Rad i Hemmet, samma upplägg överallt: ikon · rubrik med undertext · värde med enhet under.
+ * Värdekolumnen har fast bredd och är högerjusterad, så att värdena står rakt under varandra.
+ */
+function Row({ icon, label, value, unit, detail, color, href, extra }: {
+  icon: IconName; label: string; value: React.ReactNode; unit?: string; detail?: React.ReactNode; color?: string; href?: string; extra?: React.ReactNode;
 }) {
   const Box = href ? (href.startsWith('http') ? 'a' : Link) : 'div';
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <Box href={href!} {...ext} className="flex h-[54px] min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
-      <span className="flex min-w-0 grow flex-col leading-tight">
+    <Box href={href!} {...ext} className="flex h-[60px] min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
+      <span className="flex min-w-0 grow flex-col gap-0.5 leading-tight">
         <span className="truncate text-[17px] font-semibold text-fg">{label}</span>
         {detail && <span className="truncate text-[16px] text-dim">{detail}</span>}
       </span>
       {extra}
-      <span className="shrink-0 text-right text-[30px] leading-none font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
+      <span className="flex w-[92px] shrink-0 flex-col items-end leading-none">
+        <span className="text-[30px] font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
+        {unit && <span className="mt-1 text-[14px] text-dim">{unit}</span>}
+      </span>
       {href && <span className="shrink-0 text-[22px] text-dim" aria-hidden="true">›</span>}
     </Box>
   );
@@ -296,42 +302,43 @@ export default async function HomePage() {
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
-        <Card title="Hemmet" icon="home" className="order-6 lg:order-none lg:col-span-4">
+        <Card className="order-6 lg:order-none lg:col-span-4 lg:py-3">
+          <h2 className="sr-only">Hemmet</h2>
           <div className="scroll-x flex min-h-0 flex-col overflow-y-auto">
             {tempAvg != null && (
               <Row
-                icon="thermo" label="Inomhus" href="/rum"
+                icon="thermo" label="Inomhus" href="/rum" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt"
                 detail={odd.length ? (
                   <span className="font-semibold">
                     {odd.slice(0, 3).map((r, i) => (
                       <span key={r.id} style={{ color: r.temp! >= COMFORT.high + 2 || r.temp! < COMFORT.low - 2 ? C.bad : C.warn }}>{i ? ' · ' : ''}{r.name} {fmtTemp(r.temp)}</span>
                     ))}
                   </span>
-                ) : `alla rum ${COMFORT.low}–${COMFORT.high}°`}
-                value={fmtTemp(Math.round(tempAvg * 10) / 10)}
+                ) : `Alla rum ${COMFORT.low}–${COMFORT.high}°`}
               />
             )}
             {h.openings.length > 0 && (
               <Row
                 icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/larm#oppet"
-                detail={open.length ? open.map((o) => o.name).join(', ') : undefined}
-                value={open.length ? `${open.length} öppna` : 'Stängt'} color={open.length ? C.warn : C.ok}
+                detail={open.length ? open.map((o) => o.name).join(', ') : 'Alla stängda'}
+                value={open.length} unit="öppna" color={open.length ? C.warn : C.ok}
               />
             )}
-            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" href="/rum" value={h.lightsOn} detail={`tända av ${h.lightsTotal}`} />}
+            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" href="/rum" value={h.lightsOn} unit="tända" detail={`av ${h.lightsTotal} lampor`} />}
             {h.powerMeters + h.powerEstimated > 0 && (
-              <Row icon="bolt" label="Effekt" href="/energi?vy=forbrukning" value={fmtWatt(h.powerW)}
-                detail={kwh > 0 ? `${num(kwh, 1)} kWh · ${num(kr, 0)} kr idag` : undefined}
+              <Row icon="bolt" label="Effekt" href="/energi?vy=forbrukning"
+                value={h.powerW >= 1000 ? num(h.powerW / 1000, 2) : num(h.powerW, h.powerW < 100 ? 1 : 0)} unit={h.powerW >= 1000 ? 'kW' : 'W'}
+                detail={kwh > 0 ? `${num(kwh, 1)} kWh · ${num(kr, 0)} kr idag` : 'Just nu'}
                 extra={<Sparkline points={powerLine} />}
               />
             )}
             {price.now && (
-              <Row icon="money" label="Elpris" href="/energi?vy=pris" value={<>{Math.round(price.now.ore)}<span className="text-[16px]"> öre</span></>} color={priceColor}
-                detail={cheap ? `Billigast ${hhmm(cheap.start).slice(0, 2)}–${hhmm(cheap.end).slice(0, 2)} · ${Math.round(cheap.ore)} öre` : undefined}
+              <Row icon="money" label="Elpris" href="/energi?vy=pris" value={Math.round(price.now.ore)} unit="öre/kWh" color={priceColor}
+                detail={cheap ? `Billigast ${hhmm(cheap.start).slice(0, 2)}–${hhmm(cheap.end).slice(0, 2)} · ${Math.round(cheap.ore)} öre` : price.level?.label}
               />
             )}
             {wine && (
-              <Row icon="wine" label="Vinkällaren" href="https://wine.trand.se" value={<>{wine.total}<span className="text-[16px] font-semibold"> fl</span></>}
+              <Row icon="wine" label="Vinkällaren" href="https://wine.trand.se" value={wine.total} unit="flaskor"
                 detail={['red', 'white', 'sparkling', 'rose'].filter((c) => wine.by_color[c]).map((c) => `${wine.by_color[c]} ${({ red: 'röda', white: 'vita', sparkling: 'bubbel', rose: 'rosé' } as Record<string, string>)[c]}`).join(' · ')}
               />
             )}

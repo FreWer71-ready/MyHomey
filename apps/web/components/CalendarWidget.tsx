@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
 import { CAL_COLORS, dayLabel, isOngoing, isOwnTeam, shortTitle, TZ, type Calendar, type CalEvent } from '@/lib/calendar-view';
 import { Icon } from './Icon';
@@ -35,10 +35,21 @@ export function CalendarWidget() {
   }, []);
 
   const days = (cal?.days ?? []).filter((d, i) => i < 2 || d.timed.some((e) => e.end! > now));
+  const week = useRef<HTMLDivElement>(null);
 
   return (
-    <section aria-label="Kalender" className="flex max-h-[30rem] min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden rounded-[20px] bg-card p-5 lg:max-h-none lg:p-6">
-      <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim"><Icon name="calendar" size={22} />Kalender</h2>
+    <>
+    {/* Tryck på kortet: de närmaste 7 dagarna i en egen ruta. */}
+    <section
+      aria-label="Kalender" role="button" tabIndex={0}
+      onClick={() => cal && week.current?.showPopover()}
+      onKeyDown={(e) => { if (cal && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); week.current?.showPopover(); } }}
+      className="flex max-h-[30rem] min-h-0 w-full min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-[20px] bg-card p-5 lg:max-h-none lg:p-6"
+    >
+      <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim">
+        <Icon name="calendar" size={22} />Kalender
+        <span className="ml-auto text-[16px] font-normal">7 dagar ›</span>
+      </h2>
       {error ? (
         <p role="status" className="text-[16px] text-dim">{error} Vi försöker igen om en stund.</p>
       ) : !cal ? (
@@ -61,6 +72,31 @@ export function CalendarWidget() {
         </div>
       )}
     </section>
+    {cal && (
+      <div ref={week} id="kalender-vecka" popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,720px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <h2 className="flex items-center gap-2.5 text-[20px] font-semibold"><Icon name="calendar" size={24} />Kommande 7 dagar</h2>
+          <button type="button" popoverTarget="kalender-vecka" popoverTargetAction="hide" className="rounded-full bg-white/[0.08] px-4 py-2 text-[16px] font-semibold">Stäng</button>
+        </div>
+        <div className="max-h-[calc(88dvh-72px)] overflow-y-auto px-5 py-4">
+          {cal.days.map((d) => (
+            <section key={d.date} className="flex flex-col gap-1.5 border-b border-line py-3 last:border-b-0">
+              <h3 className="text-[17px] font-semibold first-letter:uppercase">{dayLabel(d.date, now)}</h3>
+              {d.allDay.map((e) => (
+                <p key={e.id} className="flex items-center gap-3 px-3 text-[16px] text-dim">
+                  {e.src !== undefined && <span className="size-2.5 shrink-0 rounded-full" style={{ background: CAL_COLORS[e.src % CAL_COLORS.length] }} aria-hidden="true" />}
+                  <span className="w-[108px] shrink-0">Heldag</span>
+                  <span className="truncate text-fg">{shortTitle(e.title)}</span>
+                </p>
+              ))}
+              {d.timed.map((e) => <Row key={e.id} e={e} now={now} />)}
+              {d.allDay.length + d.timed.length === 0 && <p className="px-3 text-[16px] text-dim">Inget inplanerat</p>}
+            </section>
+          ))}
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
