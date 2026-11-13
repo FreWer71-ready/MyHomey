@@ -124,7 +124,7 @@ function road(raw: RawCommute['situations'], now: number): RoadEvent[] {
   return out.sort((a, b) => rank[roadTone(a, now)] - rank[roadTone(b, now)] || Number(b.incident) - Number(a.incident) || b.severity - a.severity);
 }
 
-export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Date.now(), max = 6): Commute {
+export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Date.now(), max = 4): Commute {
   return {
     out: trains(raw.out ?? [], raw.arrivals ?? [], to, now, max),
     home: trains(raw.home ?? [], raw.arrivals ?? [], from, now, max),

@@ -15,6 +15,7 @@ import { compass } from '@/lib/home';
 import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
+import { dayOf } from '@/lib/calendar-view';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { hhmm, hourly, summarize } from '@/lib/prices';
@@ -266,17 +267,20 @@ export default async function HomePage() {
           {commute?.trains && (
             <Card title={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`} icon="train" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
               {trains.length === 0 && <p className="text-[18px] text-dim">Inga tåg de närmaste timmarna</p>}
-              <ul className="flex flex-col gap-2">
-                {trains.slice(0, 3).map((t, i) => {
+              {/* Fyra avgångar: lista i mobil, 2×2 på plattan så att kalendern under får plats. */}
+              <ul className="grid grid-cols-1 gap-x-5 gap-y-2.5 lg:grid-cols-2">
+                {trains.slice(0, 4).map((t) => {
                   const tone = trainTone(t);
                   return (
-                    <li key={t.id} className="flex items-center gap-3">
-                      <span className={`font-bold tabular-nums ${i === 0 ? 'text-[44px] leading-none' : 'text-[24px]'} ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : t.est ?? t.dep)}</span>
-                      <span className="flex min-w-0 grow flex-col leading-tight">
-                        {!t.canceled && <MinutesTo at={t.est ?? t.dep} className={`font-semibold tabular-nums ${i === 0 ? 'text-[18px]' : 'text-[16px]'}`} />}
-                        <span className="truncate text-[16px] text-dim">{t.track ? `spår ${t.track}` : t.dest}</span>
+                    <li key={t.id} className="flex min-w-0 flex-col leading-tight">
+                      <span className="flex items-baseline gap-2">
+                        <span className={`text-[28px] font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : t.est ?? t.dep)}</span>
+                        <span className="ml-auto shrink-0 text-[15px] font-semibold" style={{ color: tone === 'ok' ? C.mute : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
                       </span>
-                      <span className="shrink-0 text-[16px] font-semibold" style={{ color: tone === 'ok' ? C.mute : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
+                      <span className="truncate text-[15px] text-dim">
+                        {!t.canceled && (dayOf(t.dep) !== dayOf(now) ? <span className="font-semibold text-fg">imorgon</span> : <MinutesTo at={t.est ?? t.dep} className="font-semibold text-fg tabular-nums" />)}
+                        {t.canceled ? '' : ' · '}{t.track ? `spår ${t.track}` : t.dest}
+                      </span>
                     </li>
                   );
                 })}
@@ -320,7 +324,7 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:grow"><CalendarWidget /></div>}
+          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow"><CalendarWidget /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}

@@ -4,6 +4,7 @@ import { loadCommute } from '@/lib/data';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, trainStatus, trainTone, type RoadEvent, type Train } from '@/lib/commute';
 import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
+import { dayOf } from '@/lib/calendar-view';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ function Trains({ title, icon, list, active }: { title: string; icon: IconName; 
             <li key={t.id} className="flex items-center gap-3 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[trainTone(t)], 0.4) }}>
               <span className="flex w-[64px] shrink-0 flex-col leading-tight">
                 <span className={`text-xl font-extrabold tabular-nums ${t.canceled || t.delay >= 3 ? 'line-through decoration-2 opacity-70' : ''}`}>{hhmm(t.dep)}</span>
+                {dayOf(t.dep) !== dayOf(Date.now()) && <span className="text-[13px] font-semibold text-dim">imorgon</span>}
                 {!t.canceled && t.delay >= 3 && t.est && <span className="text-lg font-extrabold tabular-nums">{hhmm(t.est)}</span>}
               </span>
               <span className="flex min-w-0 grow flex-col leading-tight">

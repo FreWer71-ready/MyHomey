@@ -35,10 +35,10 @@ const TRAIN_FIELDS = ["AdvertisedTrainIdent", "AdvertisedTimeAtLocation", "Estim
   .map((f) => `<INCLUDE>${f}</INCLUDE>`).join("");
 
 const departures = (from: string, to: string) => `
-<QUERY objecttype="TrainAnnouncement" schemaversion="1.9" limit="10" orderby="AdvertisedTimeAtLocation">
+<QUERY objecttype="TrainAnnouncement" schemaversion="1.9" limit="12" orderby="AdvertisedTimeAtLocation">
   <FILTER><AND>
     <EQ name="ActivityType" value="Avgang"/><EQ name="LocationSignature" value="${from}"/><EQ name="Advertised" value="true"/>
-    <GT name="AdvertisedTimeAtLocation" value="$dateadd(-00:20:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(06:00:00)"/>
+    <GT name="AdvertisedTimeAtLocation" value="$dateadd(-00:20:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(18:00:00)"/>
     <OR><EQ name="ToLocation.LocationName" value="${to}"/><EQ name="ViaToLocation.LocationName" value="${to}"/></OR>
   </AND></FILTER>${TRAIN_FIELDS}
 </QUERY>`;
@@ -74,10 +74,10 @@ Deno.serve(async (req) => {
     const idents = [...new Set([...outT, ...homeT].map((t) => t.AdvertisedTrainIdent))].join(",");
     const [arr] = idents
       ? await query(`
-<QUERY objecttype="TrainAnnouncement" schemaversion="1.9" limit="40">
+<QUERY objecttype="TrainAnnouncement" schemaversion="1.9" limit="60">
   <FILTER><AND>
     <EQ name="ActivityType" value="Ankomst"/><IN name="LocationSignature" value="${A},${B}"/><IN name="AdvertisedTrainIdent" value="${idents}"/>
-    <GT name="AdvertisedTimeAtLocation" value="$dateadd(-00:20:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(08:00:00)"/>
+    <GT name="AdvertisedTimeAtLocation" value="$dateadd(-00:20:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(20:00:00)"/>
   </AND></FILTER>
   <INCLUDE>AdvertisedTrainIdent</INCLUDE><INCLUDE>LocationSignature</INCLUDE><INCLUDE>AdvertisedTimeAtLocation</INCLUDE><INCLUDE>EstimatedTimeAtLocation</INCLUDE>
 </QUERY>`)
