@@ -3,6 +3,7 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
+import { NowPlayingCard } from '@/components/NowPlayingCard';
 import { HomeShell } from '@/components/HomeShell';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
@@ -50,7 +51,7 @@ function Row({ icon, label, value, detail, color, href, extra }: {
   const Box = href ? (href.startsWith('http') ? 'a' : Link) : 'div';
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <Box href={href!} {...ext} className="flex h-12 min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
+    <Box href={href!} {...ext} className="flex h-[54px] min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
       <span className="flex min-w-0 grow flex-col leading-tight">
         <span className="truncate text-[17px] font-semibold text-fg">{label}</span>
@@ -58,6 +59,7 @@ function Row({ icon, label, value, detail, color, href, extra }: {
       </span>
       {extra}
       <span className="shrink-0 text-right text-[30px] leading-none font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
+      {href && <span className="shrink-0 text-[22px] text-dim" aria-hidden="true">›</span>}
     </Box>
   );
 }
@@ -126,7 +128,7 @@ export default async function HomePage() {
 
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
-      <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-6">
+      <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:gap-6">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
         <header className="order-1 flex items-end gap-4 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-1">
           <h1 className="sr-only">Hemma</h1>
@@ -185,7 +187,7 @@ export default async function HomePage() {
         </section>
 
         {/* NU: väder med timmar och 5 dygn sammanslaget. */}
-        <Card title={`Ute${weather?.source ? ` · ${weather.source}` : ''}`} icon="thermo" className="order-4 lg:order-none lg:col-span-4">
+        <Card title={`Ute${weather?.source ? ` · ${weather.source}` : ''}`} icon="thermo" className="order-4 lg:order-none lg:col-span-4 lg:row-span-2">
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-1">
               {outTemp != null ? (
@@ -306,15 +308,15 @@ export default async function HomePage() {
                 value={open.length ? `${open.length} öppna` : 'Stängt'} color={open.length ? C.warn : C.ok}
               />
             )}
-            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" value={h.lightsOn} detail={`tända av ${h.lightsTotal}`} />}
+            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" href="/rum" value={h.lightsOn} detail={`tända av ${h.lightsTotal}`} />}
             {h.powerMeters + h.powerEstimated > 0 && (
-              <Row icon="bolt" label="Effekt" href="/energi" value={fmtWatt(h.powerW)}
+              <Row icon="bolt" label="Effekt" href="/energi?vy=forbrukning" value={fmtWatt(h.powerW)}
                 detail={kwh > 0 ? `${num(kwh, 1)} kWh · ${num(kr, 0)} kr idag` : undefined}
                 extra={<Sparkline points={powerLine} />}
               />
             )}
             {price.now && (
-              <Row icon="money" label="Elpris" href="/energi" value={<>{Math.round(price.now.ore)}<span className="text-[16px]"> öre</span></>} color={priceColor}
+              <Row icon="money" label="Elpris" href="/energi?vy=pris" value={<>{Math.round(price.now.ore)}<span className="text-[16px]"> öre</span></>} color={priceColor}
                 detail={cheap ? `Billigast ${hhmm(cheap.start).slice(0, 2)}–${hhmm(cheap.end).slice(0, 2)} · ${Math.round(cheap.ore)} öre` : undefined}
               />
             )}
@@ -323,11 +325,22 @@ export default async function HomePage() {
                 detail={['red', 'white', 'sparkling', 'rose'].filter((c) => wine.by_color[c]).map((c) => `${wine.by_color[c]} ${({ red: 'röda', white: 'vita', sparkling: 'bubbel', rose: 'rosé' } as Record<string, string>)[c]}`).join(' · ')}
               />
             )}
-            {playing.slice(0, 2).map((p) => (
-              <Row key={p.id} icon={p.kind === 'tv' ? 'tv' : 'music'} label={`${p.kind === 'tv' ? 'TV' : 'Spelas'} · ${p.device}`} value="" detail={<span className="text-fg">{[p.title, p.subtitle].filter(Boolean).join(' · ')}</span>} />
-            ))}
           </div>
         </Card>
+
+        {/* TV och ljud: alltid samma plats längst ner (mitten + höger). Spelar något visas titeln, annars en lugn rad. */}
+        <section aria-label="TV och ljud" className="order-7 grid grid-cols-1 gap-4 md:grid-cols-2 lg:order-none lg:col-span-8 lg:gap-6">
+          {(['tv', 'music'] as const).map((kind) => {
+            const p = playing.find((x) => x.kind === kind);
+            return p ? <NowPlayingCard key={kind} p={p} /> : (
+              <div key={kind} className="flex min-h-16 items-center gap-3 rounded-[20px] bg-card px-5 text-[17px] text-dim">
+                <Icon name={kind === 'tv' ? 'tv' : 'music'} size={26} />
+                <span className="font-semibold text-fg">{kind === 'tv' ? 'TV' : 'Högtalare'}</span>
+                <span>· {kind === 'tv' ? 'inget castas just nu' : 'tyst'}</span>
+              </div>
+            );
+          })}
+        </section>
       </div>
     </HomeShell>
   );
