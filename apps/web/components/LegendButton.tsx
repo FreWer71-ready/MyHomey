@@ -8,10 +8,10 @@ export function LegendButton() {
       <button
         type="button"
         popoverTarget="legend"
-        className="flex w-full flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] font-bold text-dim"
+        className="flex w-full flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] font-bold text-dim" title="Temperaturfärger"
       >
         <Icon name="thermo" size={24} />
-        Färger
+        <span className="md:sr-only">Färger</span>
       </button>
       <div
         id="legend"

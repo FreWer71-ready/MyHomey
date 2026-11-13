@@ -1,14 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
-import { CAL_COLORS, dayLabel, isOngoing, TZ, type Calendar, type CalEvent } from '@/lib/calendar-view';
+import { CAL_COLORS, dayLabel, isOngoing, isOwnTeam, shortTitle, TZ, type Calendar, type CalEvent } from '@/lib/calendar-view';
 import { Icon } from './Icon';
 
 const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);
 
 /**
- * Kalenderwidget (Ulrikas Google-kalender via /api/calendar). Idag och Imorgon visas alltid,
- * övriga dagar bara om något är inplanerat. Pågående händelse markeras. Uppdateras var 10:e minut.
+ * Kalender (hushållets Google-kalendrar via /api/calendar). Idag och Imorgon visas alltid, övriga dagar bara
+ * om något med tid är inplanerat. Heldag markeras bara vid dagen. Pågående och egna lagets matcher lyfts fram.
  */
 export function CalendarWidget() {
   const [cal, setCal] = useState<Calendar | null>(null);
@@ -34,37 +34,26 @@ export function CalendarWidget() {
     return () => { alive = false; clearInterval(poll); clearInterval(tick); };
   }, []);
 
-  // Heldagshändelser visas inte, bara en markering vid dagen att det finns sådana.
   const days = (cal?.days ?? []).filter((d, i) => i < 2 || d.timed.some((e) => e.end! > now));
 
   return (
-    <section aria-label="Kalender" className="relative flex h-full max-h-[26rem] w-full min-w-0 flex-col gap-1.5 overflow-hidden rounded-[22px] border px-4 py-3 backdrop-blur-md lg:max-h-none" style={{ background: 'linear-gradient(rgb(139 92 246 / 0.13), rgb(139 92 246 / 0.05)), rgb(14 18 32 / 0.55)', borderColor: 'rgb(139 92 246 / 0.28)' }}>
-      <h2 className="flex items-center gap-2.5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px]" style={{ background: 'rgb(139 92 246 / 0.2)' }}><Icon name="calendar" size={24} /></span>
-        <span className="text-[14px] font-bold text-fg/80">Kalender</span>
-      </h2>
+    <section aria-label="Kalender" className="flex max-h-[30rem] min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden rounded-[20px] bg-card p-5 lg:max-h-none lg:p-6">
+      <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim"><Icon name="calendar" size={22} />Kalender</h2>
       {error ? (
-        <p role="status" className="rounded-xl bg-black/20 px-3 py-2 text-[15px] font-bold">
-          {error} <span className="opacity-80">Vi försöker igen om en stund.</span>
-        </p>
+        <p role="status" className="text-[16px] text-dim">{error} Vi försöker igen om en stund.</p>
       ) : !cal ? (
-        <p className="animate-pulse px-1 text-[15px] font-bold opacity-80">Hämtar kalendern …</p>
+        <p className="animate-pulse text-[16px] text-dim">Hämtar kalendern …</p>
       ) : (
-        <div className="scroll-x -mr-1.5 flex min-h-0 flex-col gap-1.5 overflow-y-auto pr-1.5">
+        <div className="scroll-x -mr-2 flex min-h-0 flex-col gap-3 overflow-y-auto pr-2">
           {days.map((d) => {
             const timed = d.timed.filter((e) => e.end! > now || d.date !== cal.days[0].date);
-            const empty = timed.length === 0;
             return (
-              <section key={d.date} className="flex flex-col gap-0.5">
-                <h3 className="flex items-center gap-2 text-[13px] font-extrabold tracking-wide uppercase">
-                  <span className="opacity-80">{dayLabel(d.date, now)}</span>
-                  {d.allDay.length > 0 && (
-                    <span className="rounded-full bg-black/25 px-1.5 text-[11px] font-bold tracking-normal normal-case opacity-90" title="Heldagshändelser">
-                      + {d.allDay.length} heldag
-                    </span>
-                  )}
+              <section key={d.date} className="flex flex-col gap-1.5">
+                <h3 className="flex items-center gap-2 text-[16px] font-semibold">
+                  <span className="first-letter:uppercase">{dayLabel(d.date, now)}</span>
+                  {d.allDay.length > 0 && <span className="text-[16px] font-normal text-dim">· {d.allDay.length} heldag</span>}
                 </h3>
-                {empty && <p className="text-[14px] font-bold opacity-70">Inget inplanerat{d.allDay.length ? ' med tid' : ''}</p>}
+                {timed.length === 0 && <p className="text-[16px] text-dim">Inget inplanerat{d.allDay.length ? ' med tid' : ''}</p>}
                 {timed.map((e) => <Row key={e.id} e={e} now={now} />)}
               </section>
             );
@@ -77,16 +66,16 @@ export function CalendarWidget() {
 
 function Row({ e, now }: { e: CalEvent; now: number }) {
   const live = isOngoing(e, now);
+  const own = isOwnTeam(e.title);
   return (
-    <p className={`flex min-w-0 items-baseline gap-2 rounded-lg px-2 py-0.5 ${live ? 'bg-sun text-ink' : 'bg-black/15'}`}>
-      {e.src !== undefined && <span className="size-2 shrink-0 self-center rounded-full" style={{ background: CAL_COLORS[e.src % CAL_COLORS.length] }} aria-hidden="true" />}
-      <span className="shrink-0 text-[14px] font-extrabold tabular-nums">{hm(e.start!)}</span>
-      <span className="min-w-0 grow truncate text-[15px] font-bold">
-        {e.title}{e.location && <span className="font-semibold opacity-75"> · {e.location}</span>}
+    <p className={`flex min-w-0 items-baseline gap-3 rounded-[12px] px-3 py-1.5 ${live ? 'bg-[#E6EDF3] text-[#0B0F14]' : own ? 'shadow-[inset_3px_0_0_#E6EDF3]' : ''}`}>
+      {e.src !== undefined && <span className="size-2.5 shrink-0 self-center rounded-full" style={{ background: CAL_COLORS[e.src % CAL_COLORS.length] }} aria-hidden="true" />}
+      <span className="shrink-0 text-[16px] font-semibold tabular-nums">{hm(e.start!)}–{hm(e.end!)}</span>
+      <span className={`min-w-0 grow truncate text-[17px] ${own ? 'font-bold' : ''}`}>
+        {shortTitle(e.title)}
+        {e.location && <span className={live ? 'opacity-70' : 'text-dim'}> · {e.location.split(',')[0]}</span>}
       </span>
-      {live
-        ? <span className="shrink-0 text-[12px] font-extrabold uppercase">Pågår · till {hm(e.end!)}</span>
-        : <span className="shrink-0 text-[12px] font-bold opacity-70">–{hm(e.end!)}</span>}
+      {live && <span className="shrink-0 text-[14px] font-bold uppercase">Pågår</span>}
     </p>
   );
 }

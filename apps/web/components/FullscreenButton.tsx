@@ -44,7 +44,7 @@ export function FullscreenButton() {
       className="flex w-full flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] font-bold text-dim"
     >
       <Icon name={full ? 'shrink' : 'expand'} size={24} />
-      {full ? 'Avsluta' : 'Helskärm'}
+      <span className="md:sr-only">{full ? 'Avsluta' : 'Helskärm'}</span>
     </button>
   );
 }

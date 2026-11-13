@@ -25,7 +25,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- rotlayouten gäller alla sidor i App Router */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
         />
       </head>
       <body className="font-sans antialiased">

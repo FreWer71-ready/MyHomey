@@ -49,3 +49,9 @@ export const CAL_COLORS = ['#8B5CF6', '#34C27A', '#4FA3FF', '#FF8A3D', '#F0503C'
 
 /** Pågår just nu (tidsatt händelse). */
 export const isOngoing = (e: CalEvent, now = Date.now()) => !e.allDay && e.start! <= now && now < e.end!;
+
+/** Kortare titlar: "IFK Mariefred  - FBC Nyköping  (Division 3 Herr Västra)" -> "IFK Mariefred – FBC Nyköping". */
+export const shortTitle = (t: string) =>
+  t.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s+-\s+/g, ' – ').replace(/\s{2,}/g, ' ').trim();
+/** Egna lagets matcher lyfts fram (OWN_TEAM, standard Torshälla). */
+export const isOwnTeam = (t: string, team = 'Torshälla') => new RegExp(team, 'i').test(t);
