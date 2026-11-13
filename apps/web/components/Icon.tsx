@@ -45,6 +45,20 @@ const FLAT = {
       <path className="wx-twinkle" d="M10 7.8v8.4l6.5-4.2z" fill={C.teal} />
     </>
   ),
+  // Kalender: bladet med en dag som pulserar.
+  calendar: (
+    <>
+      <rect x={3} y={4.5} width={18} height={16.5} rx={3} fill={C.cloud} />
+      <path d="M3 9.5V7.5a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v2z" fill={C.red} />
+      <rect x={7} y={2.5} width={2} height={4} rx={1} fill={C.dark} />
+      <rect x={15} y={2.5} width={2} height={4} rx={1} fill={C.dark} />
+      <rect x={6} y={12} width={3} height={2.6} rx={0.6} fill={C.grey} />
+      <rect className="wx-pop" x={10.5} y={12} width={3} height={2.6} rx={0.6} fill={C.violet} />
+      <rect x={15} y={12} width={3} height={2.6} rx={0.6} fill={C.grey} />
+      <rect x={6} y={16} width={3} height={2.6} rx={0.6} fill={C.grey} />
+      <rect x={10.5} y={16} width={3} height={2.6} rx={0.6} fill={C.grey} />
+    </>
+  ),
   // Tåg framifrån som kommer mot en: vaggar lätt, strålkastarna blinkar och sliprarna rusar förbi under.
   train: (
     <>

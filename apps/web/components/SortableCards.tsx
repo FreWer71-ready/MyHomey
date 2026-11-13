@@ -30,7 +30,7 @@ const write = (key: string, order: string[] | null) => {
  * Kortrad som går att sortera: håll inne ett kort ~0,5 s för att börja, dra till ny plats, tryck Klar.
  * Fungerar med finger och mus (pointer events). Ordningen sparas per enhet (localStorage).
  */
-export function SortableCards({ items, storageKey, className, style }: { items: SortItem[]; storageKey: string; className: string; style?: React.CSSProperties }) {
+export function SortableCards({ items, storageKey, className, style, ...rest }: { items: SortItem[]; storageKey: string; className: string; style?: React.CSSProperties; 'data-tight'?: string }) {
   const ids = items.map((i) => i.id);
   const [order, setOrder] = useState(ids);
   const [edit, setEdit] = useState(false);
@@ -78,7 +78,7 @@ export function SortableCards({ items, storageKey, className, style }: { items: 
 
   return (
     <>
-      <section className={className} style={style} onPointerMove={onMove} onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}>
+      <section className={className} style={style} {...rest} onPointerMove={onMove} onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}>
         {sorted.map((it) => (
           <div
             key={it.id}

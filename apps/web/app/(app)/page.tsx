@@ -6,6 +6,7 @@ import { RoomTile } from '@/components/RoomTile';
 import { SortableCards } from '@/components/SortableCards';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
 import { TvRemote } from '@/components/TvRemote';
+import { CalendarWidget } from '@/components/CalendarWidget';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadCommute, loadHome, loadTv, loadNameDay, loadNet, loadWarnings, loadWine, loadNowPlaying, loadOpeningsToday, loadPrices, loadWeather } from '@/lib/data';
@@ -54,7 +55,7 @@ function Value({ value, aside, small }: { value: React.ReactNode; aside?: string
   return (
     <span className="mt-auto flex min-w-0 items-end justify-between gap-2">
       <span className={`leading-none font-extrabold tracking-tight whitespace-nowrap ${small ? 'text-[26px]' : 'text-[34px]'}`}>{value}</span>
-      {aside && <span className="truncate pb-0.5 text-[13px] font-bold opacity-90">{aside}</span>}
+      {aside && <span className="truncate pb-0.5 text-[13px] font-bold opacity-90 lg:in-data-tight:hidden">{aside}</span>}
     </span>
   );
 }
@@ -76,6 +77,12 @@ export default async function HomePage() {
   const trafficAlerts = commute ? commuteAlerts(commute, Date.now(), hhmm) : [];
   const roads = commute ? groupRoad(commute.road) : [];
   const shownRooms = h.rooms.filter((r) => r.temp != null || r.humidity != null || r.lights.length > 0);
+  // Kolumner på plattan: så många att alla kort ryms på två rader.
+  const hasCal = !!(process.env.CALENDAR_ICAL_URL || process.env.ULRIKA_ICAL_URL);
+  const bigN = [h.outdoorTemp != null || h.outdoorStale || !!weather, !!commute].filter(Boolean).length;
+  const smallN = [h.lightsTotal > 0, h.openings.length > 0, h.powerMeters + h.powerEstimated > 0, prices.length > 0].filter(Boolean).length;
+  // Rutor på två rader: stora kort 2×2, kalendern 2×1, små 1×1.
+  const topCols = Math.max(4, Math.ceil((bigN * 4 + (hasCal ? 2 : 0) + smallN) / 2));
   const names = joinNames(nameDay);
   // Utan egen väderstation (t.ex. Hue-hushåll) visas SMHI:s temperatur.
   const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
@@ -179,7 +186,9 @@ export default async function HomePage() {
       <div className="flex flex-col gap-3 lg:min-h-0 lg:flex-1">
       <SortableCards
         storageKey="hem-kort-v2"
-        className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-flow-dense lg:grid-cols-6 lg:[grid-template-rows:repeat(2,minmax(92px,1fr))]"
+        className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-flow-dense lg:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))] lg:[grid-template-rows:repeat(2,minmax(92px,1fr))]"
+        style={{ '--cols': topCols } as React.CSSProperties}
+        data-tight={topCols > 6 ? '' : undefined}
         items={[
           ...((h.outdoorTemp != null || h.outdoorStale || weather) ? [{ id: 'ute', span: BIG, node: (
             <Hero popover={weather ? 'prognos' : undefined} bg={heatTint(outTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
@@ -278,6 +287,8 @@ export default async function HomePage() {
               )}
             </Hero>
           ) }] : []),
+          // Kalender (Google-kalender via hemlig iCal-adress): bara när en iCal-adress finns på servern. Adressen skickas aldrig hit.
+          ...(hasCal ? [{ id: 'kalender', span: 'col-span-2', node: <CalendarWidget /> }] : []),
           ...(h.lightsTotal > 0 ? [{ id: 'lampor', node: (
             <Hero bg={tint('#FFC21A', 0.5)} icon="bulb" label="Lampor">
               <Value value={h.lightsOn} aside={`av ${h.lightsTotal}`} />
