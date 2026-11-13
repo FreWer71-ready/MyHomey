@@ -57,7 +57,7 @@ function Row({ icon, label, value, unit, detail, color, href, extra }: {
   const Box = href ? (href.startsWith('http') ? 'a' : Link) : 'div';
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <Box href={href!} {...ext} className="flex h-[60px] min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
+    <Box href={href!} {...ext} className="flex h-[var(--row-h,60px)] min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
       <span className="flex min-w-0 grow flex-col gap-0.5 leading-tight">
         <span className="truncate text-[17px] font-semibold text-fg">{label}</span>
@@ -142,6 +142,8 @@ export default async function HomePage() {
   const roadNote = roads.length ? `Väg 56/E18: ${roads.length === 1 ? roads[0].type.toLowerCase() : `${roads.length} ärenden`}` : 'väg 56/E18 fri';
   const trainNote = commute?.trains ? (trains.some((t) => trainTone(t) !== 'ok') ? 'tåg med förseningar' : 'tågen i tid') : null;
 
+  // Antal rader i Hemmet: fler än sex ger lite lägre rader så att allt ryms på plattan.
+  const rowCount = [tempAvg != null, h.openings.length > 0, !!net, h.lightsTotal > 0, h.powerMeters + h.powerEstimated > 0, !!price.now, !!wine].filter(Boolean).length;
   const people = [...h.people].sort((x, y) => Number(y.present) - Number(x.present));
 
   return (
@@ -330,7 +332,7 @@ export default async function HomePage() {
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
         <Card className="order-6 lg:order-none lg:col-span-4 lg:py-3">
           <h2 className="sr-only">Hemmet</h2>
-          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto">
+          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto" style={{ '--row-h': rowCount > 6 ? '54px' : '60px' } as React.CSSProperties}>
             {tempAvg != null && (
               <Row
                 icon="thermo" label="Inomhus" href="/rum" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt"
@@ -348,6 +350,19 @@ export default async function HomePage() {
                 icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/larm#oppet"
                 detail={open.length ? open.map((o) => o.name).join(', ') : 'Alla stängda'}
                 value={open.length} unit="öppna" color={open.length ? C.warn : C.ok}
+              />
+            )}
+            {net && (
+              <Row
+                icon="wifi" label="Internet" href="/larm#natverk"
+                value={net.state === 'down' ? 'Nere' : net.latency != null ? Math.round(net.latency) : '–'}
+                unit={net.state === 'down' ? undefined : 'ms svarstid'}
+                color={net.state === 'down' ? C.bad : net.state === 'slow' ? C.warn : net.state === 'ok' ? C.ok : undefined}
+                detail={[
+                  net.state === 'unknown' ? 'Status okänd' : net.state === 'slow' ? 'Långsamt' : null,
+                  net.downMbit != null ? `↓ ${Math.round(net.downMbit)} / ↑ ${Math.round(net.upMbit ?? 0)} Mbit` : null,
+                  net.isp,
+                ].filter(Boolean).join(' · ') || undefined}
               />
             )}
             {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" href="/rum" value={h.lightsOn} unit="tända" detail={`av ${h.lightsTotal} lampor`} />}
