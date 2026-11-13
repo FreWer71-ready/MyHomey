@@ -19,10 +19,6 @@ import { fmtTemp, fmtWatt, heatTint, tint } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
-/** Vinfärger från Trandvine: ordning, namn och färgprick. */
-const WINE_ORDER = ['red', 'white', 'rose', 'sparkling', 'dessert', 'fortified', 'okänd'];
-const WINE_COLOR: Record<string, string> = { red: 'Röda', white: 'Vita', rose: 'Rosé', sparkling: 'Bubbel', dessert: 'Dessert', fortified: 'Starkvin', 'okänd': 'Övriga' };
-const WINE_DOT: Record<string, string> = { red: '#9B1B30', white: '#F2E6A8', rose: '#F4A6B8', sparkling: '#F7E7A1', dessert: '#D69A2D', fortified: '#6B2A1A', 'okänd': '#9AA1B5' };
 
 const fmtNum = (v: number) => v.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
 
@@ -53,7 +49,7 @@ function Value({ value, aside, small }: { value: React.ReactNode; aside?: string
   return (
     <span className="mt-auto flex min-w-0 items-end justify-between gap-2">
       <span className={`leading-none font-extrabold tracking-tight whitespace-nowrap ${small ? 'text-[26px]' : 'text-[34px]'}`}>{value}</span>
-      {aside && <span className="truncate pb-0.5 text-[13px] font-bold opacity-90 lg:in-data-tight:hidden">{aside}</span>}
+      {aside && <span className="truncate pb-0.5 text-[13px] font-bold opacity-90">{aside}</span>}
     </span>
   );
 }
@@ -72,13 +68,15 @@ export default async function HomePage() {
   const trains = commute?.[dir] ?? [];
   const trafficAlerts = commute ? commuteAlerts(commute, Date.now(), hhmm) : [];
   const roads = commute ? groupRoad(commute.road) : [];
-  const tempRooms = h.rooms.filter((r) => r.temp != null);
-  // Kolumner på plattan: så många att alla kort ryms på två rader.
   const hasCal = !!(process.env.CALENDAR_ICAL_URL || process.env.ULRIKA_ICAL_URL);
   const bigN = [h.outdoorTemp != null || h.outdoorStale || !!weather, !!commute].filter(Boolean).length;
   const smallN = [h.lightsTotal > 0, h.openings.length > 0, h.powerMeters + h.powerEstimated > 0, prices.length > 0].filter(Boolean).length;
   // Rutor på två rader: stora kort 2×2, kalendern 2×1, små 1×1.
-  const topCols = Math.max(4, Math.ceil((bigN * 4 + (hasCal ? 2 : 0) + smallN) / 2));
+  const tempRooms = h.rooms.filter((r) => r.temp != null);
+  const tempAvg = tempRooms.length ? tempRooms.reduce((a, r) => a + r.temp!, 0) / tempRooms.length : null;
+  // Rutor i rutnätet (6 kolumner): stora 2×2, kalender och inomhus 2×1, små 1×1. Två eller tre rader efter behov.
+  const cells = bigN * 4 + (hasCal ? 2 : 0) + (tempRooms.length ? 2 : 0) + smallN + (wine ? 1 : 0);
+  const topRows = Math.max(2, Math.ceil(cells / 6));
   const names = joinNames(nameDay);
   // Utan egen väderstation (t.ex. Hue-hushåll) visas SMHI:s temperatur.
   const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
@@ -179,12 +177,11 @@ export default async function HomePage() {
 
       {/* Kort i rutnät: Ute och Pendling stora (2×2), övriga lika stora. På plattan fyller rutnätet höjden.
           Korten går att ordna: håll inne, dra (byter bara med kort av samma storlek), tryck Klar. */}
-      <div className="flex flex-col gap-3 lg:min-h-0 lg:flex-1">
+      <div className="flex flex-col gap-3 lg:min-h-0 lg:flex-[1_1_0px]">
       <SortableCards
         storageKey="hem-kort-v2"
-        className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-flow-dense lg:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))] lg:[grid-template-rows:repeat(2,minmax(92px,1fr))]"
-        style={{ '--cols': topCols } as React.CSSProperties}
-        data-tight={topCols > 6 ? '' : undefined}
+        className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-[1_1_0px] lg:grid-flow-dense lg:grid-cols-6 lg:[grid-template-rows:repeat(var(--rows),minmax(92px,1fr))]"
+        style={{ '--rows': topRows } as React.CSSProperties}
         items={[
           ...((h.outdoorTemp != null || h.outdoorStale || weather) ? [{ id: 'ute', span: BIG, node: (
             <Hero popover={weather ? 'prognos' : undefined} bg={heatTint(outTemp)} icon="thermo" label={`Ute${weather?.source ? ` · ${weather.source}` : ''}`}>
@@ -285,6 +282,33 @@ export default async function HomePage() {
           ) }] : []),
           // Kalender (Google-kalender via hemlig iCal-adress): bara när en iCal-adress finns på servern. Adressen skickas aldrig hit.
           ...(hasCal ? [{ id: 'kalender', span: 'col-span-2', node: <CalendarWidget /> }] : []),
+          // Inomhus: snittemperatur stort, rummen i mindre text under (bara visning).
+          ...(tempAvg != null ? [{ id: 'inomhus', span: 'col-span-2', node: (
+            <Hero href="/rum" bg={heatTint(tempAvg)} icon="thermo" label={`Inomhus · snitt ${tempRooms.length} rum`}>
+              <span className="text-4xl leading-none font-extrabold tracking-tight md:text-[42px]">{fmtTemp(Math.round(tempAvg * 10) / 10)}</span>
+              <span className="mt-auto flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] font-bold">
+                {tempRooms.map((r) => (
+                  <span key={r.id} className="whitespace-nowrap">
+                    <span className="opacity-80">{r.name}</span> {fmtTemp(r.temp)}
+                  </span>
+                ))}
+              </span>
+            </Hero>
+          ) }] : []),
+          // Vinkällaren (Trandvine): litet kort, öppnar Trandvine i nytt fönster.
+          ...(wine ? [{ id: 'vin', node: (
+            <a
+              href="https://wine.trand.se" target="_blank" rel="noopener noreferrer" title="Öppna Trandvine i nytt fönster"
+              className="glass relative flex h-full w-full min-w-0 flex-col gap-1 overflow-hidden rounded-[22px] px-3 py-2.5" style={{ background: tint('#9B2C4A', 0.5) }}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glass-hi"><Icon name="wine" size={18} /></span>
+                <span className="truncate text-[15px] font-bold">Vinkällaren</span>
+                <span className="ml-auto opacity-70" aria-hidden="true">↗</span>
+              </span>
+              <Value value={<>{wine.total}<span className="text-lg"> fl</span></>} aside={wine.by_color.red ? `${wine.by_color.red} röda` : undefined} />
+            </a>
+          ) }] : []),
           ...(h.lightsTotal > 0 ? [{ id: 'lampor', node: (
             <Hero bg={tint('#FFC21A', 0.5)} icon="bulb" label="Lampor">
               <Value value={h.lightsOn} aside={`av ${h.lightsTotal}`} />
@@ -358,52 +382,6 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* Inomhus: alla rum med temperatur i ett kort (bara visning, styrning finns under Rum). */}
-      <h2 className="sr-only">Inomhus</h2>
-      <section className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-[0.75] lg:grid-cols-6">
-        {tempRooms.length > 0 && (
-          <Link href="/rum" className={`glass col-span-2 flex min-w-0 flex-col gap-2 rounded-[22px] px-3 py-2.5 ${wine ? 'lg:col-span-5' : 'lg:col-span-6'}`}>
-            <span className="flex items-center gap-2">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glass-hi"><Icon name="thermo" size={18} /></span>
-              <span className="text-[15px] font-bold">Inomhus</span>
-            </span>
-            <span className="grid grow grid-cols-2 gap-2 sm:grid-cols-3 lg:[grid-template-columns:repeat(auto-fit,minmax(120px,1fr))]">
-              {tempRooms.map((r) => (
-                <span key={r.id} className="flex min-w-0 flex-col justify-center rounded-2xl px-3 py-2" style={{ background: heatTint(r.temp) }}>
-                  <span className="truncate text-[14px] font-bold opacity-90">{r.name}</span>
-                  <span className="text-[28px] leading-none font-extrabold tracking-tight lg:text-[32px]">{fmtTemp(r.temp)}<TrendArrow trend={r.tempTrend} /></span>
-                </span>
-              ))}
-            </span>
-          </Link>
-        )}
-        {wine && (
-          <a
-            href="https://wine.trand.se" target="_blank" rel="noopener noreferrer" title="Öppna Trandvine i nytt fönster"
-            className="col-span-2 flex h-full min-h-[118px] flex-col gap-1 overflow-hidden rounded-[22px] p-2.5 lg:col-span-1" style={{ background: tint('#9B2C4A', 0.5) }}
-          >
-            <span className="flex items-center gap-2">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-glass-hi">
-                <Icon name="wine" size={20} />
-              </span>
-              <span className="min-w-0 grow truncate text-[17px] font-extrabold">Vinkällaren</span>
-              <span className="text-dim" aria-hidden="true">↗</span>
-            </span>
-            <span className="flex items-baseline gap-1.5">
-              <span className="text-[26px] leading-none font-extrabold tracking-tight">{wine.total}</span>
-              <span className="font-extrabold">flaskor</span>
-            </span>
-            <span className="mt-auto flex flex-wrap gap-x-2 gap-y-0.5 text-[13px] font-bold">
-              {WINE_ORDER.filter((c) => wine.by_color[c]).map((c) => (
-                <span key={c} className="flex items-center gap-1">
-                  <span className="size-2.5 rounded-full shadow-[0_0_0_1px_rgb(255_255_255/0.4)]" style={{ background: WINE_DOT[c] }} />
-                  {WINE_COLOR[c]} {wine.by_color[c]}
-                </span>
-              ))}
-            </span>
-          </a>
-        )}
-      </section>
       </div>
 
       {/* Fast plats längst ner: det som spelas, annars (eller bredvid) en kort prognos för kommande dagar. */}
