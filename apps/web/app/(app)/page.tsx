@@ -51,13 +51,13 @@ function Row({ icon, label, value, detail, color, href, extra }: {
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
     <Box href={href!} {...ext} className="flex h-12 min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
-      <Icon name={icon} size={24} />
-      <span className="flex min-w-0 grow flex-col">
-        <span className="truncate text-[16px] text-dim">{label}</span>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
+      <span className="flex min-w-0 grow flex-col leading-tight">
+        <span className="truncate text-[17px] font-semibold text-fg">{label}</span>
         {detail && <span className="truncate text-[16px] text-dim">{detail}</span>}
       </span>
       {extra}
-      <span className="shrink-0 text-right text-[26px] leading-none font-bold tabular-nums" style={{ color }}>{value}</span>
+      <span className="shrink-0 text-right text-[30px] leading-none font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
     </Box>
   );
 }
@@ -69,7 +69,7 @@ function Sparkline({ points }: { points: [number, number][] }) {
   const [x0, x1] = [Math.min(...xs), Math.max(...xs)]; const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
   const d = points.map(([x, y], i) => `${i ? 'L' : 'M'}${((x - x0) / (x1 - x0 || 1)) * 100},${28 - ((y - y0) / (y1 - y0 || 1)) * 26}`).join(' ');
   return (
-    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="hidden h-7 w-14 shrink-0 sm:block" aria-hidden="true">
+    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="hidden h-7 w-11 shrink-0 sm:block" aria-hidden="true">
       <path d={d} fill="none" stroke={C.mute} strokeWidth={2} vectorEffect="non-scaling-stroke" />
     </svg>
   );
@@ -288,7 +288,7 @@ export default async function HomePage() {
           <div className="scroll-x flex min-h-0 flex-col overflow-y-auto">
             {tempAvg != null && (
               <Row
-                icon="thermo" label="Inomhus · snitt" href="/rum"
+                icon="thermo" label="Inomhus" href="/rum"
                 detail={odd.length ? (
                   <span className="font-semibold">
                     {odd.slice(0, 3).map((r, i) => (
@@ -296,17 +296,17 @@ export default async function HomePage() {
                     ))}
                   </span>
                 ) : `alla rum ${COMFORT.low}–${COMFORT.high}°`}
-                value={<span className="text-dim">{fmtTemp(Math.round(tempAvg * 10) / 10)}</span>}
+                value={fmtTemp(Math.round(tempAvg * 10) / 10)}
               />
             )}
             {h.openings.length > 0 && (
               <Row
                 icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/larm#oppet"
                 detail={open.length ? open.map((o) => o.name).join(', ') : undefined}
-                value={open.length ? `${open.length} öppna` : '✓ stängda'} color={open.length ? C.warn : C.ok}
+                value={open.length ? `${open.length} öppna` : 'Stängt'} color={open.length ? C.warn : C.ok}
               />
             )}
-            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" value={`${h.lightsOn} tända`} />}
+            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" value={h.lightsOn} detail={`tända av ${h.lightsTotal}`} />}
             {h.powerMeters + h.powerEstimated > 0 && (
               <Row icon="bolt" label="Effekt" href="/energi" value={fmtWatt(h.powerW)}
                 detail={kwh > 0 ? `${num(kwh, 1)} kWh · ${num(kr, 0)} kr idag` : undefined}
@@ -319,7 +319,7 @@ export default async function HomePage() {
               />
             )}
             {wine && (
-              <Row icon="wine" label="Vinkällaren · flaskor" href="https://wine.trand.se" value={wine.total}
+              <Row icon="wine" label="Vinkällaren" href="https://wine.trand.se" value={<>{wine.total}<span className="text-[16px] font-semibold"> fl</span></>}
                 detail={['red', 'white', 'sparkling', 'rose'].filter((c) => wine.by_color[c]).map((c) => `${wine.by_color[c]} ${({ red: 'röda', white: 'vita', sparkling: 'bubbel', rose: 'rosé' } as Record<string, string>)[c]}`).join(' · ')}
               />
             )}
