@@ -27,7 +27,8 @@ export async function GET() {
 
   if (memo && Date.now() - memo.at < TTL * 1000) return ok(memo.cal);
   // Flera kalendrar: adresserna separeras med mellanslag, komma eller radbrytning.
-  const urls = url.split(/[\s,]+/).filter(Boolean);
+  // webcal:// (prenumerationslänkar) hämtas som https://.
+  const urls = url.split(/[\s,]+/).filter(Boolean).map((u) => u.replace(/^webcal:\/\//i, 'https://'));
   const parsed = await Promise.all(urls.map(async (u, i) => {
     try {
       // Next cachar varje flöde i 10 min (delas mellan serverinstanser), minnet ovan sparar tolkningen.
