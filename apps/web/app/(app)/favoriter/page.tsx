@@ -47,7 +47,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
           <Icon name="star" size={32} /> Favoriter
         </h1>
         {!hueMode && allMoods.length > 0 && (
-          <button type="button" popoverTarget="alla-moods" className="rounded-full bg-card px-4 py-2 text-[16px] font-semibold text-dim">
+          <button type="button" popoverTarget="alla-moods" className="pill">
             Alla moods ({allMoods.length}) ›
           </button>
         )}
@@ -89,7 +89,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
         <div id="alla-moods" popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,820px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
           <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
             <h2 className="text-[20px] font-semibold">Alla moods</h2>
-            <button type="button" popoverTarget="alla-moods" popoverTargetAction="hide" className="rounded-full bg-white/[0.08] px-4 py-2 text-[16px] font-semibold">Stäng</button>
+            <button type="button" popoverTarget="alla-moods" popoverTargetAction="hide" className="pill">Stäng</button>
           </div>
           <div className="grid max-h-[calc(88dvh-72px)] grid-cols-1 gap-x-6 overflow-y-auto px-5 py-3 md:grid-cols-2">
             {allRooms.map((room) => (

@@ -76,7 +76,7 @@ export function CalendarWidget() {
       <div ref={week} id="kalender-vecka" popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,720px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
           <h2 className="flex items-center gap-2.5 text-[20px] font-semibold"><Icon name="calendar" size={24} />Kommande 7 dagar</h2>
-          <button type="button" popoverTarget="kalender-vecka" popoverTargetAction="hide" className="rounded-full bg-white/[0.08] px-4 py-2 text-[16px] font-semibold">Stäng</button>
+          <button type="button" popoverTarget="kalender-vecka" popoverTargetAction="hide" className="pill">Stäng</button>
         </div>
         <div className="max-h-[calc(88dvh-72px)] overflow-y-auto px-5 py-4">
           {cal.days.map((d) => (

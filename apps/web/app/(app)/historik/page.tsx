@@ -22,8 +22,7 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
 ];
 const SHORT: PeriodKey[] = ['4h', '12h', '24h'];
 
-const chip = (active: boolean) =>
-  `flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 font-extrabold ${active ? 'bg-sun text-ink' : 'glass'}`;
+const chip = (active: boolean) => `pill ${active ? 'on' : ''}`;
 /** Mobil: en rad som sveps i sidled (kant till kant). Större skärmar: radbryts som vanligt. */
 const scrollRow = 'scroll-x flex gap-1.5 max-md:-mx-3 max-md:overflow-x-auto max-md:px-3 md:flex-wrap';
 
@@ -72,13 +71,9 @@ export default async function HistoryPage({
             key={v.key}
             href={href(v.key, period)}
             aria-current={v.key === view ? 'page' : undefined}
-            className={`flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap rounded-[20px] px-3 font-extrabold lg:min-h-14 lg:min-w-0 lg:px-2.5 ${
-              v.key === view ? 'bg-sun' : 'glass'
-            }`}
+            className={`pill lg:min-w-0 lg:justify-center ${v.key === view ? 'on' : ''}`}
           >
-            <span className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${v.key === view ? 'bg-glass-hi' : 'bg-glass-2'}`}>
-              <Icon name={v.icon} size={20} />
-            </span>
+            <Icon name={v.icon} size={20} />
             {v.label}
           </Link>
         ))}

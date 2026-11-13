@@ -23,8 +23,7 @@ function Card({ bg, icon, label, value, sub }: { bg: string; icon: IconName; lab
 
 type View = 'pris' | 'forbrukning';
 const USE_PERIODS: PeriodKey[] = ['4h', '12h', '24h', '7d'];
-const chip = (active: boolean) =>
-  `flex min-h-12 items-center gap-2 rounded-full pr-5 pl-2 text-lg font-extrabold ${active ? 'bg-sun text-ink' : 'glass'}`;
+const chip = (active: boolean) => `pill ${active ? 'on' : ''}`;
 const kwh = (v: number | null) => (v == null ? '–' : `${v.toLocaleString('sv-SE', { maximumFractionDigits: v < 10 ? 2 : 1 })} kWh`);
 
 const span = (w: { start: number; end: number } | null) => (w ? `${hhmm(w.start)}–${hhmm(w.end)}` : '–');
@@ -46,10 +45,10 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
           <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Energi</h1>
           <nav aria-label="Vy" className="flex gap-1.5">
             <Link href={href('pris')} aria-current={view === 'pris' ? 'page' : undefined} className={chip(view === 'pris')}>
-              <span className="flex size-8 items-center justify-center rounded-full bg-ground/80"><Icon name="money" size={20} /></span> Elpris
+              <Icon name="money" size={20} /> Elpris
             </Link>
             <Link href={href('forbrukning')} aria-current={view === 'forbrukning' ? 'page' : undefined} className={chip(view === 'forbrukning')}>
-              <span className="flex size-8 items-center justify-center rounded-full bg-ground/80"><Icon name="bolt" size={20} /></span> Förbrukning
+              <Icon name="bolt" size={20} /> Förbrukning
             </Link>
           </nav>
         </div>
@@ -93,7 +92,7 @@ async function UseView({ period, powerW, meters, estimated, href, kwhChart }: { 
       <nav aria-label="Period" className="flex flex-wrap gap-1.5">
         {USE_PERIODS.map((k) => (
           <Link key={k} href={href('forbrukning', k)} aria-current={k === period ? 'page' : undefined}
-            className={`flex min-h-11 items-center rounded-full px-4 font-extrabold ${k === period ? 'bg-sun text-ink' : 'glass'}`}>
+            className={`pill ${k === period ? 'on' : ''}`}>
             {PERIODS[k].label}
           </Link>
         ))}

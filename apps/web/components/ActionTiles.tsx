@@ -56,8 +56,8 @@ export function ActionTiles({ items, layout = 'list' }: { items: Action[]; layou
                 type="button" onClick={() => run(a)} disabled={state?.status === 'busy'}
                 className={`relative flex w-full min-w-0 gap-3 text-left transition-colors ${
                   layout === 'grid'
-                    ? 'min-h-[72px] flex-col items-start rounded-[16px] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:flex-row sm:items-center sm:px-4'
-                    : 'min-h-14 items-center py-2'
+                    ? 'h-[108px] flex-col items-start justify-center overflow-hidden rounded-[16px] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[76px] sm:flex-row sm:items-center sm:px-4'
+                    : 'h-14 items-center'
                 } ${st === 'busy' ? 'animate-pulse' : ''}`}
               >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06]">
@@ -68,7 +68,7 @@ export function ActionTiles({ items, layout = 'list' }: { items: Action[]; layou
                   ) : <Icon name={iconFor(a.name)} size={24} />}
                 </span>
                 <span className="flex min-w-0 grow flex-col leading-tight">
-                  <span className={`text-[17px] font-semibold ${layout === 'grid' ? 'line-clamp-2' : 'truncate'}`}>{a.name}</span>
+                  <span className={`text-[17px] font-semibold ${layout === 'grid' ? 'line-clamp-1 sm:line-clamp-2' : 'truncate'}`}>{a.name}</span>
                   <span className="truncate text-[15px] text-dim">
                     {KIND[a.kind]}{a.dynamic ? ' · dynamisk' : ''}{a.active ? ' · på' : ''}
                   </span>

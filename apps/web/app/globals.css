@@ -172,3 +172,8 @@ svg.ico {
 .eq span:nth-child(4) { animation-duration: 0.85s; animation-delay: -0.2s; }
 @keyframes eq { from { transform: scaleY(0.2); } to { transform: scaleY(1); } }
 @media (prefers-reduced-motion: reduce) { .np-card, .np-pulse, .eq span { animation: none; } }
+
+/* Enhetliga knappar på alla sidor. Flikar/filter: .pill (44 px). Åtgärder: .tile (76 px, i mobil 108 px när ikonen står ovanför). */
+.pill { display: inline-flex; flex-shrink: 0; align-items: center; gap: 0.5rem; height: 44px; padding: 0 1rem; border-radius: 9999px;
+  font-size: 16px; font-weight: 600; white-space: nowrap; background: var(--color-card); color: var(--color-dim); }
+.pill[aria-current="page"], .pill.on { background: var(--color-fg); color: #0B0F14; }
