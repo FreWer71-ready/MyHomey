@@ -50,7 +50,7 @@ function Row({ icon, label, value, detail, color, href, extra }: {
   const Box = href ? (href.startsWith('http') ? 'a' : Link) : 'div';
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <Box href={href!} {...ext} className="flex min-h-12 min-w-0 flex-1 items-center gap-3 border-b border-line py-2 last:border-b-0">
+    <Box href={href!} {...ext} className="flex h-12 min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
       <Icon name={icon} size={24} />
       <span className="flex min-w-0 grow flex-col">
         <span className="truncate text-[16px] text-dim">{label}</span>
@@ -225,11 +225,11 @@ export default async function HomePage() {
             </ol>
           )}
           {weather?.days && weather.days.length > 0 && (
-            <ol aria-label="Kommande dagar" className="flex min-h-0 flex-col justify-between gap-0.5 lg:grow">
+            <ol aria-label="Kommande dagar" className="flex min-h-0 flex-col gap-0.5">
               {weather.days.slice(0, 5).map((d) => {
                 const day = new Intl.DateTimeFormat('sv-SE', { weekday: 'short', timeZone: 'Europe/Stockholm' }).format(Date.parse(`${d.date}T12:00:00Z`)).replace('.', '');
                 return (
-                  <li key={d.date} className="flex items-center gap-3 text-[17px]">
+                  <li key={d.date} className="flex h-7 items-center gap-3 text-[17px]">
                     <span className="w-10 text-dim capitalize">{day}</span>
                     <WeatherIcon kind={weatherKind(d.symbol)} size={28} label={symbolInfo(d.symbol).label} />
                     <span className="grow text-[16px] text-dim">{d.precip >= 0.5 ? `${num(d.precip)} mm` : ''}</span>
@@ -285,7 +285,7 @@ export default async function HomePage() {
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
         <Card title="Hemmet" icon="home" className="order-6 lg:order-none lg:col-span-4">
-          <div className="flex min-h-0 grow flex-col">
+          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto">
             {tempAvg != null && (
               <Row
                 icon="thermo" label="Inomhus · snitt" href="/rum"
