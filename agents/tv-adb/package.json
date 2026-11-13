@@ -1,0 +1,13 @@
+{
+  "name": "tv-adb-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lokal agent: läser Google TV via ADB och skickar Now Playing till dashboarden (Supabase edge-funktionen tv-ingest).",
+  "type": "module",
+  "main": "index.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node --env-file=.env index.js",
+    "test": "node --test parse.test.js"
+  }
+}

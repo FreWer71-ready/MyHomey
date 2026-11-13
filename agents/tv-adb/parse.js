@@ -1,0 +1,105 @@
+// Tolkning av ADB-utdata (dumpsys). Rena funktioner, inga sidoeffekter – testas i parse.test.js.
+
+/** Skärmen/enheten vaken? `dumpsys power`: mWakefulness=Awake|Asleep|Dreaming|Dozing. Faller tillbaka på Display Power. */
+export function parsePower(out) {
+  const wake = out.match(/mWakefulness=(\w+)/)?.[1];
+  if (wake) return wake === 'Awake';
+  const display = out.match(/Display Power: state=(\w+)/)?.[1];
+  return display ? display === 'ON' : false;
+}
+
+/** Appen i förgrunden (package). Stöder `dumpsys window` (mCurrentFocus/mFocusedApp) och `dumpsys activity` (mResumedActivity/topResumedActivity). */
+export function parseForegroundApp(out) {
+  const patterns = [
+    /mCurrentFocus=Window\{[^}]*?\s([a-zA-Z][\w.]+)\/[\w.$]+\}/,
+    /mFocusedApp=[^\n]*?\s([a-zA-Z][\w.]+)\/[\w.$]+/,
+    /(?:mResumedActivity|topResumedActivity)[:=][^\n]*?\s([a-zA-Z][\w.]+)\/[\w.$]+/,
+  ];
+  for (const re of patterns) {
+    const m = out.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+const STATES = { 0: 'none', 1: 'stopped', 2: 'paused', 3: 'playing', 6: 'buffering', 8: 'buffering' };
+const clean = (s) => {
+  const v = (s ?? '').trim();
+  return v && v !== 'null' ? v : null;
+};
+
+/**
+ * Mediasessioner ur `dumpsys media_session`. Varje session börjar med en rad "<namn> <package>/<tag> (userId=0)"
+ * och innehåller bl.a. "package=", "active=", "state=PlaybackState {state=3, ...}" och "metadata: size=N, description=Titel, Undertitel, Beskrivning".
+ */
+export function parseMediaSessions(out) {
+  const sessions = [];
+  const blocks = out.split(/\n(?=\s{2,6}\S[^\n]*\(userId=\d+\)\s*$)/m);
+  for (const b of blocks) {
+    const pkg = b.match(/\bpackage=([\w.]+)/)?.[1];
+    if (!pkg) continue;
+    const state = Number(b.match(/state=PlaybackState \{state=(\d+)/)?.[1] ?? NaN);
+    const desc = b.match(/metadata:[^\n]*description=([^\n]*)/)?.[1] ?? '';
+    // description = "Titel, Undertitel, Beskrivning" (null för tomma fält). Titlar med kommatecken delas ändå rimligt.
+    const parts = desc.split(/, (?=[^,]*(?:, [^,]*)?$)/);
+    sessions.push({
+      package: pkg,
+      active: /\bactive=true\b/.test(b),
+      status: STATES[state] ?? 'none',
+      title: clean(parts[0]),
+      artist: clean(parts[1]?.split(', ')[0]),
+    });
+  }
+  return sessions;
+}
+
+/** Bästa sessionen: spelar > buffrar > pausad, helst från appen i förgrunden. */
+export function pickSession(sessions, foreground) {
+  const rank = { playing: 0, buffering: 1, paused: 2 };
+  return sessions
+    .filter((s) => s.status in rank && (s.title || s.package === foreground))
+    .sort((a, b) => rank[a.status] - rank[b.status] || Number(b.package === foreground) - Number(a.package === foreground) || Number(b.active) - Number(a.active))[0] ?? null;
+}
+
+/** Läsbara appnamn för vanliga TV-appar; annars sista delen av package-namnet. */
+const APPS = {
+  'com.netflix.ninja': 'Netflix',
+  'com.google.android.youtube.tv': 'YouTube',
+  'com.google.android.youtube.tvmusic': 'YouTube Music',
+  'se.svt.svtplay.android': 'SVT Play',
+  'se.svt.android.svtplay': 'SVT Play',
+  'com.svt.play': 'SVT Play',
+  'se.tv4.tv4playtab': 'TV4 Play',
+  'se.tv4.tv4play': 'TV4 Play',
+  'com.disney.disneyplus': 'Disney+',
+  'com.hbo.hbonow': 'Max',
+  'com.wbd.stream': 'Max',
+  'com.amazon.amazonvideo.livingroom': 'Prime Video',
+  'com.spotify.tv.android': 'Spotify',
+  'com.apple.atve.androidtv.appletv': 'Apple TV',
+  'com.viaplay.android': 'Viaplay',
+  'com.plexapp.android': 'Plex',
+  'com.google.android.apps.tv.launcherx': 'Startsida',
+  'com.google.android.tvlauncher': 'Startsida',
+};
+export function appName(pkg) {
+  if (!pkg) return null;
+  if (APPS[pkg]) return APPS[pkg];
+  const last = pkg.split('.').filter((p) => !['android', 'tv', 'app', 'com', 'se'].includes(p)).at(-1) ?? pkg;
+  return last.charAt(0).toUpperCase() + last.slice(1);
+}
+
+/** Samlat tillstånd som skickas till dashboarden. */
+export function buildState({ power, window, media }) {
+  const isOn = parsePower(power);
+  const app = isOn ? parseForegroundApp(window) : null;
+  const s = isOn ? pickSession(parseMediaSessions(media), app) : null;
+  return {
+    is_on: isOn,
+    current_app: s?.package ?? app,
+    app_name: appName(s?.package ?? app),
+    media_title: s?.title ?? null,
+    media_artist: s?.artist ?? null,
+    media_status: s?.status ?? 'none',
+  };
+}

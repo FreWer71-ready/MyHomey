@@ -4,10 +4,11 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
+import type { NowPlaying } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadCommute, loadHistory, loadHome, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { loadCommute, loadHistory, loadHome, loadTvStatus, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
@@ -78,11 +79,20 @@ function Sparkline({ points }: { points: [number, number][] }) {
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, nameDay, playing, net, wine, commute, powerHist, energyHist] = await Promise.all([
+  const [h, prices, weather, nameDay, castPlaying, net, wine, commute, powerHist, energyHist] = await Promise.all([
     loadHome(), loadPrices(), loadWeather(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
     loadHistory('power', '12h').catch(() => []), loadHistory('energy', '24h').catch(() => []),
   ]);
+  // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
+  const tvs2 = await loadTvStatus().catch(() => null);
   const wx = await loadWarnings(weather);
+  const tvAgent: NowPlaying | null = tvs2?.is_on && tvs2.app_name && tvs2.media_status !== 'none'
+    ? { id: tvs2.device_id, device: tvs2.app_name, kind: 'tv', playing: tvs2.media_status === 'playing',
+        title: tvs2.media_title ?? tvs2.app_name, subtitle: [tvs2.media_artist, tvs2.media_status === 'paused' ? 'pausad' : null].filter(Boolean).join(' · ') || null }
+    : null;
+  const playing = tvAgent ? [tvAgent, ...castPlaying.filter((p) => p.kind !== 'tv')] : castPlaying;
+  // TV på men inget spelas: visa appen (t.ex. "Netflix · startsida").
+  const tvIdle = tvs2?.is_on && !tvAgent ? tvs2.app_name : null;
   const now = Date.now();
   const names = joinNames(nameDay);
 
@@ -336,7 +346,7 @@ export default async function HomePage() {
               <div key={kind} className="flex min-h-16 items-center gap-3 rounded-[20px] bg-card px-5 text-[17px] text-dim">
                 <Icon name={kind === 'tv' ? 'tv' : 'music'} size={26} />
                 <span className="font-semibold text-fg">{kind === 'tv' ? 'TV' : 'Högtalare'}</span>
-                <span>· {kind === 'tv' ? 'inget castas just nu' : 'tyst'}</span>
+                <span>· {kind === 'tv' ? (tvIdle ? `på · ${tvIdle}` : 'inget spelas') : 'tyst'}</span>
               </div>
             );
           })}
