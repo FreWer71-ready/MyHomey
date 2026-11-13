@@ -1,115 +1,105 @@
 import { BASE_PATH } from '@/lib/paths';
 import { Icon } from '@/components/Icon';
-import { MoodButtons } from '@/components/MoodButtons';
+import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { loadFlows, loadHome, loadHueScenes } from '@/lib/data';
-import { HueScenes } from '@/components/HueScenes';
 
 export const dynamic = 'force-dynamic';
 
-type Group = { name: string; moods: { id: string; name: string }[] };
+// Favoriter sorterade efter var och när: Rutiner (flows och hela hemmet) överst, sedan ett kort per rum
+// med rummets moods och Hue-scener tillsammans. Alla moods finns bakom en länk.
 
-/** Grupperar moods: Hela hemmet först, sedan rummen i bokstavsordning. */
-function groupByRoom(moods: { id: string; name: string; room: string | null }[]): Group[] {
-  const map = new Map<string, Group>();
-  for (const m of moods) {
-    const name = m.room ?? 'Hela hemmet';
-    if (!map.has(name)) map.set(name, { name, moods: [] });
-    map.get(name)!.moods.push({ id: m.id, name: m.name });
-  }
-  return [...map.values()].sort((a, b) =>
-    a.name === 'Hela hemmet' ? -1 : b.name === 'Hela hemmet' ? 1 : a.name.localeCompare(b.name, 'sv'));
-}
+const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
 
 export default async function FavoritesPage({ searchParams }: { searchParams: Promise<{ hue?: string }> }) {
   const { hue: hueResult } = await searchParams;
   const [h, flows, hue] = await Promise.all([loadHome(), loadFlows(), loadHueScenes()]);
-  const hueRooms = [...new Set(hue.scenes.map((s) => s.room ?? 'Övrigt'))].sort((a, b) => a.localeCompare(b, 'sv'));
   const hueMode = process.env.CONTROL === 'hue';
-  const favorites = groupByRoom(hueMode
+
+  // Hue-hushåll: alla scener (synkade som moods) räknas som favoriter. Homey: de markerade favoriterna.
+  const favMoods = hueMode
     ? [...h.homeMoods.map((m) => ({ ...m, room: null })), ...h.rooms.flatMap((r) => r.moods.map((m) => ({ ...m, room: r.name })))]
-    : h.favoriteMoods);
-  const all = groupByRoom([
-    ...h.homeMoods.map((m) => ({ ...m, room: null })),
+    : h.favoriteMoods;
+
+  const routines: Action[] = [
+    ...flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' as const, advanced: f.advanced })),
+    ...favMoods.filter((m) => !m.room).map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
+  ].sort(byName);
+
+  // Rum: favoritmoods + Hue-scener (Homey-hushåll med anslutet Hue) i samma kort.
+  const rooms = new Map<string, Action[]>();
+  const add = (room: string, a: Action) => rooms.set(room, [...(rooms.get(room) ?? []), a]);
+  for (const m of favMoods.filter((x) => x.room)) add(m.room!, { id: m.id, name: m.name, kind: 'mood' });
+  if (!hueMode) for (const s of hue.scenes) add(s.room ?? 'Övrigt', { id: s.id, name: s.name, kind: 'hue', dynamic: s.dynamic, active: s.active, colors: s.colors });
+  const roomList = [...rooms.entries()].map(([name, items]) => ({ name, items: items.sort((a, b) => Number(a.kind === 'hue') - Number(b.kind === 'hue') || byName(a, b)) }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+
+  // Alla moods (även de som inte är favoriter), bakom en länk.
+  const allMoods = [
+    ...h.homeMoods.map((m) => ({ ...m, room: 'Hela hemmet' })),
     ...h.rooms.flatMap((r) => r.moods.map((m) => ({ ...m, room: r.name }))),
-  ]);
+  ];
+  const allRooms = [...new Set(allMoods.map((m) => m.room))];
 
   return (
     <>
-      <h1 className="flex items-center gap-3 text-[32px] leading-tight font-extrabold tracking-tight">
-        <Icon name="star" size={32} /> Favoriter
-      </h1>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="flex items-center gap-3 text-[32px] leading-tight font-bold tracking-tight">
+          <Icon name="star" size={32} /> Favoriter
+        </h1>
+        {!hueMode && allMoods.length > 0 && (
+          <button type="button" popoverTarget="alla-moods" className="rounded-full bg-card px-4 py-2 text-[16px] font-semibold text-dim">
+            Alla moods ({allMoods.length}) ›
+          </button>
+        )}
+      </header>
 
-      {/* Moods och flows i varsin kolumn på plattan så att båda syns utan scroll. */}
-      <div className={`grid grid-cols-1 gap-4 lg:items-start ${hueMode ? '' : 'lg:grid-cols-2'}`}>
-        <div className="flex flex-col gap-3">
-          <h2 className="text-[13px] font-bold tracking-wider text-dim uppercase">{hueMode ? 'Scener' : 'Moods'}</h2>
-          {favorites.length ? (
-            favorites.map((g) => (
-              <section key={g.name} className="flex flex-col gap-1.5">
-                <h3 className="text-lg font-extrabold">{g.name}</h3>
-                <MoodButtons moods={g.moods} large />
-              </section>
-            ))
-          ) : (
-            <p className="rounded-[20px] glass p-4 text-lg font-bold text-dim">
-              {hueMode ? 'Inga scener än. Anslut Philips Hue nedan.' : 'Inga favoritmoods än. Markera moods som favoriter i Homey-appen så dyker de upp här.'}
-            </p>
-          )}
+      {hueResult === 'ok' && <p role="status" className="rounded-[14px] bg-card px-4 py-2 text-[16px] font-semibold text-ok">Hue är anslutet.</p>}
+      {hueResult === 'fel' && <p role="alert" className="rounded-[14px] bg-card px-4 py-2 text-[16px] font-semibold text-danger">Det gick inte att ansluta Hue. Försök igen.</p>}
+
+      {routines.length > 0 && (
+        <section className="flex flex-col gap-3 rounded-[20px] bg-card p-5 lg:p-6">
+          <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim"><Icon name="home" size={22} />Rutiner</h2>
+          <ActionTiles items={routines} layout="grid" />
+        </section>
+      )}
+
+      {roomList.length > 0 ? (
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:gap-6 xl:grid-cols-3">
+          {roomList.map((r) => (
+            <section key={r.name} className="flex flex-col gap-1 rounded-[20px] bg-card p-5 lg:p-6">
+              <h2 className="text-[18px] font-semibold text-dim">{r.name}</h2>
+              <ActionTiles items={r.items} />
+            </section>
+          ))}
         </div>
-        {!hueMode && <div className="flex flex-col gap-3">
-          <h2 className="text-[13px] font-bold tracking-wider text-dim uppercase">Flows</h2>
-          {flows.length ? (
-            <MoodButtons moods={flows} kind="flow" large />
-          ) : (
-            <p className="rounded-[20px] glass p-4 text-lg font-bold text-dim">
-              Inga favoritflows än. Markera flows som favoriter i Homey-appen så dyker de upp här.
-            </p>
-          )}
-        </div>}
-      </div>
+      ) : routines.length === 0 && (
+        <p className="rounded-[20px] bg-card p-5 text-[17px] text-dim">
+          {hueMode ? 'Inga scener än. Anslut Philips Hue nedan.' : 'Inga favoriter än. Markera moods och flows som favoriter i Homey-appen så dyker de upp här.'}
+        </p>
+      )}
 
-      {/* Philips Hue: anslut en gång, sedan alla Hue-scener per rum. */}
-      {hueResult === 'ok' && <p role="status" className="rounded-[16px] bg-ok-soft px-4 py-2 font-extrabold text-ok">Hue är anslutet.</p>}
-      {hueResult === 'fel' && <p role="alert" className="rounded-[16px] bg-[rgb(240_80_60/0.2)] px-4 py-2 font-extrabold text-danger">Det gick inte att ansluta Hue. Försök igen.</p>}
-      {hue.connected ? (
-        !hueMode && hue.scenes.length > 0 && (
-          <details className="group rounded-[24px] glass">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 text-lg font-extrabold">
-              Hue-scener ({hue.scenes.length})
-              <span className="text-dim transition-transform group-open:rotate-180">▾</span>
-            </summary>
-            <div className="flex flex-col gap-3 px-4 pb-4">
-              {hueRooms.map((r) => (
-                <section key={r} className="flex flex-col gap-2">
-                  <h3 className="font-extrabold text-dim">{r}</h3>
-                  <HueScenes scenes={hue.scenes.filter((s) => (s.room ?? 'Övrigt') === r)} />
-                </section>
-              ))}
-            </div>
-          </details>
-        )
-      ) : (
-        <a href={`${BASE_PATH}/api/hue/login`} className="flex min-h-14 items-center justify-between gap-3 rounded-[24px] glass px-4 text-lg font-extrabold">
+      {!hue.connected && (
+        <a href={`${BASE_PATH}/api/hue/login`} className="flex min-h-14 items-center justify-between gap-3 rounded-[20px] bg-card px-5 text-[17px] font-semibold">
           Anslut Philips Hue för att använda Hue-scener
           <span className="rounded-full bg-sun px-4 py-1.5 text-ink">Anslut</span>
         </a>
       )}
 
-      {!hueMode && all.length > 0 && (
-        <details className="group rounded-[24px] glass">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 text-lg font-extrabold">
-            Alla moods ({all.reduce((n, g) => n + g.moods.length, 0)})
-            <span className="text-dim transition-transform group-open:rotate-180">▾</span>
-          </summary>
-          <div className="flex flex-col gap-3 px-4 pb-4">
-            {all.map((g) => (
-              <section key={g.name} className="flex flex-col gap-2">
-                <h3 className="font-extrabold text-dim">{g.name}</h3>
-                <MoodButtons moods={g.moods} />
+      {!hueMode && allMoods.length > 0 && (
+        <div id="alla-moods" popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,820px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
+          <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+            <h2 className="text-[20px] font-semibold">Alla moods</h2>
+            <button type="button" popoverTarget="alla-moods" popoverTargetAction="hide" className="rounded-full bg-white/[0.08] px-4 py-2 text-[16px] font-semibold">Stäng</button>
+          </div>
+          <div className="grid max-h-[calc(88dvh-72px)] grid-cols-1 gap-x-6 overflow-y-auto px-5 py-3 md:grid-cols-2">
+            {allRooms.map((room) => (
+              <section key={room} className="py-2">
+                <h3 className="text-[16px] font-semibold text-dim">{room}</h3>
+                <ActionTiles items={allMoods.filter((m) => m.room === room).map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const }))} />
               </section>
             ))}
           </div>
-        </details>
+        </div>
       )}
     </>
   );
