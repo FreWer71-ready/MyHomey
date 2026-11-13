@@ -56,3 +56,13 @@ test('samlat tillstånd och appnamn', () => {
   assert.deepEqual(buildState({ power: 'mWakefulness=Asleep', window: '', media: MEDIA }), { is_on: false, current_app: null, app_name: null, media_title: null, media_artist: null, media_status: 'none' });
   assert.equal(appName('com.example.tv.coolplayer'), 'Coolplayer');
 });
+
+test('Android 13+: state=PLAYING(3) och titel', () => {
+  const out = `    session com.netflix.ninja/NetflixMediaSession (userId=0)
+      package=com.netflix.ninja
+      active=true
+      state=PlaybackState {state=PLAYING(3), position=1000, buffered position=0, speed=1.0, updated=5, actions=0, custom actions=[], active item id=-1, error=null}
+      metadata: size=4, description=Wednesday, Avsnitt 1, null`;
+  const [s] = parseMediaSessions(out);
+  assert.deepEqual([s.status, s.title, s.artist], ['playing', 'Wednesday', 'Avsnitt 1']);
+});

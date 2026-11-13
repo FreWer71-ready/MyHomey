@@ -41,7 +41,8 @@ export function parseMediaSessions(out) {
   for (const b of blocks) {
     const pkg = b.match(/\bpackage=([\w.]+)/)?.[1];
     if (!pkg) continue;
-    const state = Number(b.match(/state=PlaybackState \{state=(\d+)/)?.[1] ?? NaN);
+    // Äldre Android: state=3. Android 13+: state=PLAYING(3).
+    const state = Number(b.match(/state=PlaybackState \{state=(?:[A-Z_]+\()?(\d+)/)?.[1] ?? NaN);
     const desc = b.match(/metadata:[^\n]*description=([^\n]*)/)?.[1] ?? '';
     // description = "Titel, Undertitel, Beskrivning" (null för tomma fält). Titlar med kommatecken delas ändå rimligt.
     const parts = desc.split(/, (?=[^,]*(?:, [^,]*)?$)/);
