@@ -38,10 +38,10 @@ export function CalendarWidget() {
   const days = (cal?.days ?? []).filter((d, i) => i < 2 || d.timed.some((e) => e.end! > now));
 
   return (
-    <section aria-label="Kalender" className="glass relative flex h-full max-h-[26rem] w-full min-w-0 flex-col gap-2 overflow-hidden lg:max-h-none rounded-[22px] px-3 py-2.5" style={{ background: 'linear-gradient(rgb(139 92 246 / 0.32), rgb(139 92 246 / 0.32)), rgb(14 18 32 / 0.88)' }}>
-      <h2 className="flex items-center gap-2">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-glass-hi"><Icon name="calendar" size={16} /></span>
-        <span className="text-[15px] font-bold">Kalender</span>
+    <section aria-label="Kalender" className="relative flex h-full max-h-[26rem] w-full min-w-0 flex-col gap-1.5 overflow-hidden rounded-[22px] border px-4 py-3 backdrop-blur-md lg:max-h-none" style={{ background: 'linear-gradient(rgb(139 92 246 / 0.13), rgb(139 92 246 / 0.05)), rgb(14 18 32 / 0.55)', borderColor: 'rgb(139 92 246 / 0.28)' }}>
+      <h2 className="flex items-center gap-2.5">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px]" style={{ background: 'rgb(139 92 246 / 0.2)' }}><Icon name="calendar" size={24} /></span>
+        <span className="text-[14px] font-bold text-fg/80">Kalender</span>
       </h2>
       {error ? (
         <p role="status" className="rounded-xl bg-black/20 px-3 py-2 text-[15px] font-bold">

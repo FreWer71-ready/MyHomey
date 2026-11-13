@@ -281,6 +281,7 @@ const FLAT = {
 
 // Linjeikoner för rena kontroller (följer textfärgen).
 const LINE = {
+  wind: 'M3 8.5h10.5a2.75 2.75 0 1 0-2.75-2.75M3 12.5h15a3 3 0 1 1-3 3M3 16.5h7',
   volDown: 'M3 9.5v5h3.5L11 18V6L6.5 9.5zM15 12h5',
   volUp: 'M3 9.5v5h3.5L11 18V6L6.5 9.5zM15 12h6M18 9v6',
   mute: 'M3 9.5v5h3.5L11 18V6L6.5 9.5zM15 9.5l5 5M20 9.5l-5 5',
