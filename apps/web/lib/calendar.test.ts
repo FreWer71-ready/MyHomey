@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dayLabel, isOngoing, parseCalendar } from './calendar.ts';
+import { dayLabel, isOngoing, mergeCalendars, parseCalendar } from './calendar.ts';
 
 const VTZ = `BEGIN:VTIMEZONE
 TZID:Europe/Stockholm
@@ -73,4 +73,15 @@ test('kalender: pågående och rubriker', () => {
   assert.equal(dayLabel('2026-11-13', now), 'Idag');
   assert.equal(dayLabel('2026-11-14', now), 'Imorgon');
   assert.equal(dayLabel('2026-11-16', now), 'måndag 16 nov');
+});
+
+test('kalender: flera kalendrar slås ihop, märks per källa och dubbletter tas bort', () => {
+  const other = parseCalendar(['BEGIN:VCALENDAR', 'VERSION:2.0',
+    ev('UID:tand2\nSUMMARY:Tandläkare\nDTSTART:20261113T083000Z\nDTEND:20261113T093000Z'),
+    ev('UID:mote\nSUMMARY:Möte\nDTSTART:20261113T070000Z\nDTEND:20261113T080000Z'),
+    'END:VCALENDAR'].join('\n'), now, 7);
+  const m = mergeCalendars([cal, other]);
+  const today = m.days[0].timed.map((e) => [e.title, e.src]);
+  assert.deepEqual(today, [['Promenad', 0], ['Möte', 1], ['Tandläkare', 0]]);
+  assert.equal(m.days.length, 8);
 });

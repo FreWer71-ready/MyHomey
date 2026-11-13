@@ -125,3 +125,27 @@ export function parseCalendar(ics: string, now = Date.now(), days = 7): Calendar
   return { days: result, generated: now };
 }
 
+
+/** Slår ihop flera kalendrar (samma dagar) och märker varje händelse med sin kalender. Dubbletter tas bort. */
+export function mergeCalendars(cals: Calendar[]): Calendar {
+  if (cals.length === 1) return cals[0];
+  const days = cals[0].days.map((d) => {
+    const all = cals.flatMap((c, src) => {
+      const day = c.days.find((x) => x.date === d.date);
+      return day ? [...day.allDay, ...day.timed].map((e) => ({ ...e, src })) : [];
+    });
+    const seen = new Set<string>();
+    const uniq = all.filter((e) => {
+      const k = `${e.title}|${e.start ?? e.firstDay}|${e.end ?? e.lastDay}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    return {
+      date: d.date,
+      allDay: uniq.filter((e) => e.allDay).sort((a, b) => a.title.localeCompare(b.title, 'sv')),
+      timed: uniq.filter((e) => !e.allDay).sort((a, b) => a.start! - b.start! || a.title.localeCompare(b.title, 'sv')),
+    };
+  });
+  return { days, generated: Math.max(...cals.map((c) => c.generated)) };
+}

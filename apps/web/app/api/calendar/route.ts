@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { parseCalendar, type Calendar } from '@/lib/calendar';
+import { mergeCalendars, parseCalendar, type Calendar } from '@/lib/calendar';
 
 // Google-kalender via hemlig iCal-adress per installation (CALENDAR_ICAL_URL, för Ulrika även ULRIKA_ICAL_URL). Bara på servern.
 // Google blockerar anrop från webbläsaren, så flödet hämtas här. Adressen får aldrig
@@ -26,21 +26,27 @@ export async function GET() {
   }
 
   if (memo && Date.now() - memo.at < TTL * 1000) return ok(memo.cal);
-  try {
-    // Next cachar själva flödet i 10 min (delas mellan serverinstanser), minnet ovan sparar tolkningen.
-    const res = await fetch(url, { next: { revalidate: TTL }, signal: AbortSignal.timeout(10_000) });
-    const text = res.ok ? await res.text() : '';
-    if (!text.trimStart().startsWith('BEGIN:VCALENDAR')) {
-      console.error(`Kalender: oväntat svar (status ${res.status})`);
-      return fail(502, 'Kalendern kunde inte hämtas just nu.');
+  // Flera kalendrar: adresserna separeras med mellanslag, komma eller radbrytning.
+  const urls = url.split(/[\s,]+/).filter(Boolean);
+  const parsed = await Promise.all(urls.map(async (u, i) => {
+    try {
+      // Next cachar varje flöde i 10 min (delas mellan serverinstanser), minnet ovan sparar tolkningen.
+      const res = await fetch(u, { next: { revalidate: TTL }, signal: AbortSignal.timeout(10_000) });
+      const text = res.ok ? await res.text() : '';
+      if (text.trimStart().startsWith('BEGIN:VCALENDAR')) return parseCalendar(text);
+      console.error(`Kalender ${i + 1}: oväntat svar (status ${res.status})`);
+    } catch (e) {
+      // Bara feltypen loggas: meddelandet kan innehålla adressen.
+      console.error(`Kalender ${i + 1}: hämtningen misslyckades (${(e as Error)?.name ?? 'fel'})`);
     }
-    memo = { at: Date.now(), cal: parseCalendar(text) };
-    return ok(memo.cal);
-  } catch (e) {
-    // Bara feltypen loggas: meddelandet kan innehålla adressen.
-    console.error(`Kalender: hämtningen misslyckades (${(e as Error)?.name ?? 'fel'})`);
-    return fail(502, 'Kalendern kunde inte hämtas just nu.');
-  }
+    return null;
+  }));
+  const okCals = parsed.filter((c): c is Calendar => !!c);
+  if (!okCals.length) return fail(502, 'Kalendern kunde inte hämtas just nu.');
+  // Behåll källordningen (färgen per kalender) även om någon misslyckas.
+  const merged = mergeCalendars(parsed.map((c) => c ?? { days: okCals[0].days.map((d) => ({ date: d.date, allDay: [], timed: [] })), generated: 0 }));
+  memo = { at: Date.now(), cal: merged };
+  return ok(merged);
 }
 
 function ok(cal: Calendar) {

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
-import { dayLabel, isOngoing, TZ, type Calendar, type CalEvent } from '@/lib/calendar-view';
+import { CAL_COLORS, dayLabel, isOngoing, TZ, type Calendar, type CalEvent } from '@/lib/calendar-view';
 import { Icon } from './Icon';
 
 const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);
@@ -79,6 +79,7 @@ function Row({ e, now }: { e: CalEvent; now: number }) {
   const live = isOngoing(e, now);
   return (
     <p className={`flex min-w-0 items-baseline gap-2 rounded-lg px-2 py-0.5 ${live ? 'bg-sun text-ink' : 'bg-black/15'}`}>
+      {e.src !== undefined && <span className="size-2 shrink-0 self-center rounded-full" style={{ background: CAL_COLORS[e.src % CAL_COLORS.length] }} aria-hidden="true" />}
       <span className="shrink-0 text-[14px] font-extrabold tabular-nums">{hm(e.start!)}</span>
       <span className="min-w-0 grow truncate text-[15px] font-bold">
         {e.title}{e.location && <span className="font-semibold opacity-75"> · {e.location}</span>}

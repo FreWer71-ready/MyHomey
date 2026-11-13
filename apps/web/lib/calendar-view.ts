@@ -13,6 +13,8 @@ export type CalEvent = {
   allDay: boolean;
   firstDay: string;
   lastDay: string;
+  /** Vilken kalender händelsen kommer från (0, 1, …) när flera slås ihop. */
+  src?: number;
 };
 export type CalDay = { date: string; allDay: CalEvent[]; timed: CalEvent[] };
 export type Calendar = { days: CalDay[]; generated: number };
@@ -41,6 +43,9 @@ export function dayLabel(date: string, now = Date.now()): string {
   const ms = Date.parse(`${date}T12:00:00Z`);
   return new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'short' }).format(ms).replace('.', '');
 }
+
+/** Färg per kalender (prick vid händelsen). */
+export const CAL_COLORS = ['#8B5CF6', '#34C27A', '#4FA3FF', '#FF8A3D', '#F0503C', '#FFC21A'];
 
 /** Pågår just nu (tidsatt händelse). */
 export const isOngoing = (e: CalEvent, now = Date.now()) => !e.allDay && e.start! <= now && now < e.end!;
