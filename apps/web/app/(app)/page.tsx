@@ -178,9 +178,9 @@ export default async function HomePage() {
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
       <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-6">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
-        <header className="order-1 flex items-end gap-4 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-1">
+        <header className="order-1 flex items-end gap-4 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-3">
           <h1 className="sr-only">Hemma</h1>
-          <Clock show="time" className="text-[76px] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:text-[112px] xl:text-[120px]" />
+          <Clock show="time" className="text-[76px] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:text-[88px] lg:leading-[0.75]" />
           <span className="flex flex-col pb-1 leading-tight">
             <Clock show="date" className="text-[18px] font-semibold first-letter:uppercase" />
             {names && <span className="text-[16px] text-dim">Namnsdag <span className="text-sun">{names}</span></span>}
