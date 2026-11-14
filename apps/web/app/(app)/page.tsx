@@ -3,7 +3,6 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
-import { NowPlayingCard } from '@/components/NowPlayingCard';
 import { TvBar, type TvView } from '@/components/TvBar';
 import { MinutesTo } from '@/components/MinutesTo';
 import { tvAppLabel } from '@/lib/media';
@@ -179,6 +178,15 @@ export default async function HomePage() {
 
         {/* STATUS: närvaro och läget. Lugnt = dämpad rad; något händer = färgade rader. */}
         <section aria-label="Status" className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 lg:order-none lg:col-span-8 lg:self-end">
+          {/* Spelas nu (högtalare): kompakt rad överst till höger, bara när något spelar. */}
+          {speaker && (
+            <p className="-mb-1 flex min-w-0 items-center gap-2.5 text-[16px] leading-6 lg:justify-end">
+              <span className="np-card np-music flex size-6 shrink-0 items-center justify-center rounded-[8px]"><Icon name="music" size={15} /></span>
+              <span className="shrink-0 text-dim">Spelas nu · {speaker.device}</span>
+              <span className="min-w-0 truncate font-semibold">{speaker.title}{speaker.subtitle && <span className="font-normal text-dim"> · {speaker.subtitle}</span>}</span>
+              <span className="eq flex h-4 shrink-0 items-end gap-[2px]" aria-hidden="true"><span /><span /><span /></span>
+            </p>
+          )}
           {people.length > 0 && (
             <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-x-5 gap-y-1 lg:justify-end">
               {people.map((p) => (
@@ -344,7 +352,7 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow"><CalendarWidget /></div>}
+          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[96px] lg:grow"><CalendarWidget /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
@@ -406,14 +414,9 @@ export default async function HomePage() {
 
         {/* TV och ljud: alltid samma plats längst ner (mitten + höger). Spelar något visas titeln, annars en lugn rad. */}
         {/* TV och ljud längst ner: TV-rutan bred och tydlig (2/3), högtalaren vid sidan. */}
-        <section aria-label="TV och ljud" className="order-7 grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[2fr_1fr] lg:order-none lg:col-span-8 lg:gap-6">
+        {/* TV längst ner i hela bredden (mitten + höger). */}
+        <section aria-label="TV" className="order-7 md:col-span-2 lg:order-none lg:col-span-8">
           <TvBar v={tvView} />
-          {speaker ? <NowPlayingCard p={speaker} /> : (
-            <div className="flex h-20 items-center gap-3 rounded-[20px] bg-card px-5 text-[17px] text-dim">
-              <Icon name="music" size={26} />
-              <span className="font-semibold text-fg">Högtalare</span><span>· tyst</span>
-            </div>
-          )}
         </section>
       </div>
     </HomeShell>
