@@ -5,5 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function RoomsIndex() {
   const home = await loadHome();
-  redirect(home.rooms[0] ? `/rum/${home.rooms[0].id}` : '/');
+  // Standard: Hela hemmet (när det finns), annars första rummet.
+  const first = home.rootZoneId && home.homeMoods.length ? home.rootZoneId : home.rooms[0]?.id;
+  redirect(first ? `/rum/${first}` : '/');
 }
