@@ -23,7 +23,7 @@ export type PlayingItem = {
 };
 
 /**
- * "Spelas nu" överst till höger på Hem: TV och högtalare i samma rad.
+ * "Spelas nu" överst till höger på Hem: TV och högtalare i samma tonade platta.
  * Spelar flera samtidigt växlar raden lugnt var 8:e sekund.
  */
 export function NowPlayingStrip({ items }: { items: PlayingItem[] }) {
@@ -40,22 +40,25 @@ export function NowPlayingStrip({ items }: { items: PlayingItem[] }) {
   if (!items.length) return null;
   const p = items[i % items.length];
   return (
-    <div aria-live="polite" className="-mb-1 flex min-w-0 items-center gap-2.5 text-[16px] leading-6 lg:justify-end">
-      <div className={`flex min-w-0 items-center gap-2.5 transition-opacity duration-[400ms] ${shown ? 'opacity-100' : 'opacity-0'}`}>
-        <span className={`np-card ${p.kind === 'tv' ? 'np-tv' : 'np-music'} flex size-6 shrink-0 items-center justify-center rounded-[8px]`}>
-          <Icon name={p.kind === 'tv' ? 'tv' : 'music'} size={15} />
+    <div aria-live="polite" className={`np-card ${p.kind === 'tv' ? 'np-tv' : 'np-music'} relative flex h-16 min-w-0 items-center gap-3.5 overflow-hidden rounded-[18px] border border-line pl-3 pr-4`}>
+      <div className={`flex min-w-0 grow items-center gap-3.5 transition-opacity duration-[400ms] ${shown ? 'opacity-100' : 'opacity-0'}`}>
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-black/30">
+          <Icon name={p.kind === 'tv' ? 'tv' : 'music'} size={24} />
         </span>
-        <span className="shrink-0 text-dim">{p.label}</span>
-        <span className="min-w-0 truncate font-semibold">
-          {p.title}{p.subtitle && <span className="font-normal text-dim"> · {p.subtitle}</span>}
+        <span className="flex min-w-0 grow flex-col leading-tight">
+          <span className="truncate text-[14px] text-white/75">{p.label}</span>
+          <span className="truncate text-[21px] font-bold text-white">
+            {p.title}{p.subtitle && <span className="text-[16px] font-semibold text-white/75"> · {p.subtitle}</span>}
+          </span>
         </span>
-        {p.paused
-          ? <span className="shrink-0 text-[15px] font-semibold text-warn">Pausad</span>
-          : <span className="eq flex h-4 shrink-0 items-end gap-[2px]" aria-hidden="true"><span /><span /><span /></span>}
+        <span className={`flex shrink-0 items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-[15px] font-semibold ${p.paused ? 'text-warn' : 'text-ok'}`}>
+          {!p.paused && <span className="eq flex h-4 items-end gap-[2px]" aria-hidden="true"><span /><span /><span /></span>}
+          {p.paused ? 'Pausad' : 'Spelar'}
+        </span>
       </div>
       {items.length > 1 && (
-        <span className="flex shrink-0 gap-1" aria-hidden="true">
-          {items.map((x, n) => <span key={x.key} className={`size-1.5 rounded-full ${n === i % items.length ? 'bg-fg' : 'bg-mute/50'}`} />)}
+        <span className="flex shrink-0 flex-col gap-1" aria-hidden="true">
+          {items.map((x, n) => <span key={x.key} className={`size-1.5 rounded-full ${n === i % items.length ? 'bg-white' : 'bg-white/35'}`} />)}
         </span>
       )}
     </div>
