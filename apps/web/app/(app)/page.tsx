@@ -7,7 +7,8 @@ import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/Now
 import { MinutesTo } from '@/components/MinutesTo';
 import { tvAppLabel } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
-import { warningBanners } from '@/components/WarningBanners';
+import { AlertChips, type Alert } from '@/components/AlertChips';
+import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadCommute, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
@@ -165,8 +166,18 @@ export default async function HomePage() {
   // ---- Status: växer och får färg bara när något händer ----
   const rain = rainWarning(weather, h.openings);
   const damp = humidityWarnings(h.rooms);
-  const banners = warningBanners(wx, 3);
-  const issues = banners.length + trafficAlerts.length + (rain ? 1 : 0) + damp.length + (net?.state === 'down' ? 1 : 0);
+  // Alla varningar i samma format; nivån (gul/orange/röd) styr bara färgen.
+  const alerts: Alert[] = [
+    ...weatherAlerts(wx),
+    ...trafficAlerts.map((a): Alert => ({
+      id: a.id, icon: a.kind === 'train' ? 'train' : 'road', text: a.label, href: '/pendling',
+      level: a.kind === 'road' ? 'orange' : a.tone === 'bad' ? 'red' : 'yellow',
+    })),
+    ...(net?.state === 'down' ? [{ id: 'net', level: 'red', icon: 'wifi', text: `Internet nere${net.isp ? ` · ${net.isp}` : ''}`, href: '/larm#natverk' } as Alert] : []),
+    ...(rain ? [{ id: 'rain', level: 'orange', icon: 'rain', text: `Regn kl ${hhmm(rain.at)} – stäng ${rain.windows.map((w) => w.name).join(', ')}`, href: '/larm' } as Alert] : []),
+    ...(damp.length ? [{ id: 'damp', level: 'yellow', icon: 'drop', text: `Fukt ${damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')}`, href: '/larm#fukt' } as Alert] : []),
+  ];
+  const issues = alerts.length;
   const roadNote = roads.length ? `Väg 56/E18: ${roads.length === 1 ? roads[0].type.toLowerCase() : `${roads.length} ärenden`}` : 'väg 56/E18 fri';
   const trainNote = commute?.trains ? (trains.some((t) => trainTone(t) !== 'ok') ? 'tåg med förseningar' : 'tågen i tid') : null;
 
@@ -202,29 +213,7 @@ export default async function HomePage() {
             </ul>
           )}
           {issues > 0 ? (
-            <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap">
-              {banners}
-              {trafficAlerts.slice(0, 2).map((a) => (
-                <Link key={a.id} href="/pendling" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[14px] px-4 py-2 text-[16px] font-semibold" style={{ background: a.tone === 'bad' ? C.bad : C.warn, color: '#0B0F14' }}>
-                  <Icon name={a.kind === 'train' ? 'train' : 'road'} size={22} /><span className="lg:truncate">{a.label}</span>
-                </Link>
-              ))}
-              {net?.state === 'down' && (
-                <Link href="/larm#natverk" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[14px] px-4 py-2 text-[16px] font-semibold text-white" style={{ background: C.bad }}>
-                  <Icon name="wifi" size={22} /><span className="lg:truncate">Internet nere{net.isp ? ` · ${net.isp}` : ''}</span>
-                </Link>
-              )}
-              {rain && (
-                <Link href="/larm" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[14px] px-4 py-2 text-[16px] font-semibold" style={{ background: C.warn, color: '#0B0F14' }}>
-                  <Icon name="rain" size={22} /><span className="lg:truncate">Regn kl {hhmm(rain.at)} – stäng {rain.windows.map((w) => w.name).join(', ')}</span>
-                </Link>
-              )}
-              {damp.length > 0 && (
-                <Link href="/larm#fukt" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[14px] px-4 py-2 text-[16px] font-semibold" style={{ background: C.warn, color: '#0B0F14' }}>
-                  <Icon name="drop" size={22} /><span className="lg:truncate">Fukt {damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')}</span>
-                </Link>
-              )}
-            </div>
+            <AlertChips alerts={alerts} />
           ) : (
             <Link href="/larm" className="flex min-w-0 items-center gap-2.5 text-[16px] text-dim lg:justify-end">
               <span className="size-2.5 shrink-0 rounded-full" style={{ background: C.ok }} />

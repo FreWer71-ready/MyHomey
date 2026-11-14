@@ -184,3 +184,8 @@ svg.ico {
 .pill { display: inline-flex; flex-shrink: 0; align-items: center; gap: 0.5rem; height: 44px; padding: 0 1rem; border-radius: 9999px;
   font-size: 16px; font-weight: 600; white-space: nowrap; background: var(--color-card); color: var(--color-dim); }
 .pill[aria-current="page"], .pill.on { background: var(--color-fg); color: #0B0F14; }
+
+/* Röd varning: svag puls i kanten (inte i texten). */
+.alert-pulse { animation: alert-pulse 2.4s ease-in-out infinite; }
+@keyframes alert-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(248 81 73 / 0.0); } 50% { box-shadow: 0 0 0 4px rgb(248 81 73 / 0.35); } }
+@media (prefers-reduced-motion: reduce) { .alert-pulse { animation: none; } }

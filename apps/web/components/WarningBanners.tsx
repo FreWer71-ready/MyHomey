@@ -1,12 +1,6 @@
-import Link from 'next/link';
 import type { Warnings } from '@/lib/data';
-import { Icon } from './Icon';
+import type { Alert } from './AlertChips';
 
-const STYLE = {
-  red: 'bg-danger-strong text-white',
-  orange: 'bg-[#FF8A3D] text-[#1A1205]',
-  yellow: 'bg-[#E8B400] text-[#1A1205]',
-} as const;
 const NAME = { red: 'Röd varning', orange: 'Orange varning', yellow: 'Gul varning' } as const;
 
 /** "18:00" i dag, annars "fre 18:00" (Stockholm). */
@@ -18,29 +12,17 @@ export function when(ms: number | null): string {
   return day(ms) === day(Date.now()) ? time : `${new Intl.DateTimeFormat('sv-SE', { timeZone: tz, weekday: 'short' }).format(ms).replace('.', '')} ${time}`;
 }
 
-/** Varningar för startsidans varningsrad: VMA först, sedan SMHI (allvarligast), sedan oväder. Högst `max` st. */
-export function warningBanners(w: Warnings, max = 3) {
-  const items = [
-    ...w.vma.map((v) => (
-      <Link key={`vma-${v.id}`} href="/larm#vader" role="alert" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-danger-strong px-3.5 py-1.5 text-white">
-        <Icon name="bellAlert" size={22} />
-        <span className="font-extrabold lg:truncate">VMA: {v.headline}</span>
-      </Link>
-    )),
-    ...w.smhi.map((s) => (
-      <Link key={`smhi-${s.id}`} href="/larm#vader" role="alert" className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] px-3.5 py-1.5 ${STYLE[s.level]}`}>
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-black/15 text-sm font-black">!</span>
-        <span className="font-extrabold lg:truncate">
-          {NAME[s.level]}: {s.event}{s.start && s.start > Date.now() ? ` från ${when(s.start)}` : ''}
-        </span>
-      </Link>
-    )),
-    ...w.storms.map((s) => (
-      <Link key={`storm-${s.kind}`} href="/larm#vader" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] bg-info-strong px-3.5 py-1.5 text-white">
-        <Icon name={s.kind === 'thunder' ? 'thunder' : s.kind === 'snow' ? 'snow' : 'rain'} size={22} />
-        <span className="font-extrabold lg:truncate">{s.label} från {when(s.at)}</span>
-      </Link>
-    )),
+/** Väderlarm som enhetliga varningar: VMA och röd SMHI = röd, orange = orange, gul SMHI och oväder = gul. */
+export function weatherAlerts(w: Warnings): Alert[] {
+  return [
+    ...w.vma.map((v): Alert => ({ id: `vma-${v.id}`, level: 'red', icon: 'bellAlert', text: `VMA: ${v.headline}`, href: '/larm#vader' })),
+    ...w.smhi.map((s): Alert => ({
+      id: `smhi-${s.id}`, level: s.level, icon: '!', href: '/larm#vader',
+      text: `${NAME[s.level]}: ${s.event}${s.start && s.start > Date.now() ? ` från ${when(s.start)}` : ''}`,
+    })),
+    ...w.storms.map((s): Alert => ({
+      id: `storm-${s.kind}`, level: 'yellow', icon: s.kind === 'thunder' ? 'thunder' : s.kind === 'snow' ? 'snow' : 'rain',
+      text: `${s.label} från ${when(s.at)}`, href: '/larm#vader',
+    })),
   ];
-  return items.slice(0, max);
 }
