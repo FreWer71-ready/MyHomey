@@ -148,9 +148,9 @@ export default async function HomePage() {
 
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
-      <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:gap-6">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:items-stretch lg:gap-6">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
-        <header className="order-1 flex items-end gap-4 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-1">
+        <header className="order-1 flex items-end gap-4 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-1">
           <h1 className="sr-only">Hemma</h1>
           <Clock show="time" className="text-[76px] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:text-[112px] xl:text-[120px]" />
           <span className="flex flex-col pb-1 leading-tight">
@@ -160,7 +160,7 @@ export default async function HomePage() {
         </header>
 
         {/* STATUS: närvaro och läget. Lugnt = dämpad rad; något händer = färgade rader. */}
-        <section aria-label="Status" className="order-2 flex min-w-0 flex-col gap-3 lg:order-none lg:col-span-8 lg:self-end">
+        <section aria-label="Status" className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 lg:order-none lg:col-span-8 lg:self-end">
           {people.length > 0 && (
             <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-x-5 gap-y-1 lg:justify-end">
               {people.map((p) => (
@@ -387,7 +387,7 @@ export default async function HomePage() {
         </Card>
 
         {/* TV och ljud: alltid samma plats längst ner (mitten + höger). Spelar något visas titeln, annars en lugn rad. */}
-        <section aria-label="TV och ljud" className="order-7 grid grid-cols-1 gap-4 md:grid-cols-2 lg:order-none lg:col-span-8 lg:gap-6">
+        <section aria-label="TV och ljud" className="order-7 grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2 lg:order-none lg:col-span-8 lg:gap-6">
           {(['tv', 'music'] as const).map((kind) => {
             const p = playing.find((x) => x.kind === kind);
             return p ? <NowPlayingCard key={kind} p={p} /> : (
