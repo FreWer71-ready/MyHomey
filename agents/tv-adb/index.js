@@ -93,7 +93,7 @@ async function poll() {
     return backoff;
   }
   try {
-    const [power, window, media] = await Promise.all([
+    const [power, window, media, audio] = await Promise.all([
       shell('dumpsys', 'power'),
       // Båda källorna: Android-versionerna skriver förgrundsappen på olika ställen.
       Promise.all([
@@ -101,8 +101,10 @@ async function poll() {
         shell('dumpsys', 'window').catch(() => ''),
       ]).then((o) => o.join('\n')),
       shell('dumpsys', 'media_session'),
+      // Spelare som faktiskt spelar ljud (rättar appar som rapporterar fel mediastatus).
+      shell('dumpsys', 'audio').catch(() => ''),
     ]);
-    await send(buildState({ power, window, media }));
+    await send(buildState({ power, window, media, audio }));
     return CFG.pollMs;
   } catch (e) {
     log(`ADB-kommandot misslyckades (${(e.stderr || e.message || '').toString().trim().split('\n')[0]}), återansluter.`);

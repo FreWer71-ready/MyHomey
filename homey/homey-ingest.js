@@ -55,7 +55,36 @@ if (typeof global !== 'undefined' && global.set) {
   global.set('estPower', Object.fromEntries(Object.entries(est).map(([id, w]) => [id, { w, t: estT[id] }])));
 }
 
+// Dörrar/fönster: Homey Insights sparar varje ändring. Skicka senaste timmens händelser,
+// så att även öppningar kortare än en minut (mellan körningarna) kommer med. Dubbletter tas bort i databasen.
+const EVENT_CAPS = ['alarm_contact'];
+const events = [];
+if (Homey.insights && Homey.insights.getLogEntries) {
+  const g = typeof global !== 'undefined' && global.get ? global : null;
+  let logs = g && g.get('contactLogs');
+  if (!logs || Date.now() - logs.at > 3600_000) {
+    const all = await Homey.insights.getLogs().catch(() => ({}));
+    logs = {
+      at: Date.now(),
+      list: Object.values(all || {})
+        .filter((l) => (l.ownerUri || '').startsWith('homey:device:') && EVENT_CAPS.some((c) => (l.id || '').endsWith(c)))
+        .map((l) => ({ id: l.id, uri: l.ownerUri, cap: EVENT_CAPS.find((c) => l.id.endsWith(c)) })),
+    };
+    if (g) g.set('contactLogs', logs);
+  }
+  for (const l of logs.list) {
+    const r = await Homey.insights.getLogEntries({ id: l.id, resolution: 'lastHour' })
+      .catch(() => Homey.insights.getLogEntries({ uri: l.uri, id: l.cap, resolution: 'lastHour' }).catch(() => null));
+    for (const e of (r && r.values) || []) {
+      if (e && e.t && (typeof e.v === 'boolean' || typeof e.v === 'number')) {
+        events.push({ device: l.uri.split(':').pop(), cap: l.cap, t: iso(e.t), v: e.v });
+      }
+    }
+  }
+}
+
 const payload = {
+  events,
   v: 1,
   source: 'homeyscript',
   sent_at: new Date().toISOString(),
@@ -95,5 +124,6 @@ const text = await res.text();
 if (!res.ok) throw new Error(`Ingest ${res.status}: ${text}`);
 
 log(`Energi: ${energyOk ? `${Object.keys(est).length} enheter, ${Math.round(Object.values(est).reduce((a, b) => a + b, 0))} W` : 'ingen energirapport'}`);
+log(`Dörr/fönster-händelser: ${events.length}`);
 log(`${payload.devices.length} enheter, ${moods ? Object.keys(moods).length : 'inga'} moods (${favorites.size} favoriter), ${flows.length} favoritflows → ${text}`);
 return true;

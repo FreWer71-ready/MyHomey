@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appName, buildState, parseForegroundApp, parseMediaSessions, parsePower, pickSession } from './parse.js';
+import { appName, buildState, parseAudioPlaying, parseForegroundApp, parseMediaSessions, parsePower, pickSession } from './parse.js';
 
 const MEDIA = `MEDIA SESSION SERVICE (dumpsys media_session)
 
@@ -97,4 +97,19 @@ test('The Frame: ström, konstläge och status', () => {
   assert.deepEqual(frameToStatus({ power: 'on', artMode: true, app: null }), { is_on: false, current_app: 'art-mode', app_name: 'Konstläge', media_title: null, media_artist: null, media_status: 'none' });
   assert.equal(frameToStatus({ power: 'on', artMode: false, app: 'Netflix' }).app_name, 'Netflix');
   assert.equal(frameToStatus({ power: 'off', artMode: null, app: null }).is_on, false);
+});
+
+test('pausad session men ljud spelas i förgrundsappen = spelar (Telia Play)', () => {
+  const media = `  Sessions Stack:
+    tv com.teliasonera.telia.playplus/tv (userId=0)
+      package=com.teliasonera.telia.playplus
+      active=true
+      state=PlaybackState {state=PAUSED(2), position=0}
+`;
+  const audio = '  AudioPlaybackConfiguration piid:79 type:android.media.AudioTrack u/pid:10140/5000 state:started attr:AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MOVIE flags=0x800 tags= bundle=null';
+  assert.equal(parseAudioPlaying(audio), true);
+  assert.equal(parseAudioPlaying(audio.replace('state:started', 'state:paused')), false);
+  const w = 'mCurrentFocus=Window{1 u0 com.teliasonera.telia.playplus/x.Main}';
+  assert.equal(buildState({ power: 'mWakefulness=Awake', window: w, media, audio }).media_status, 'playing');
+  assert.equal(buildState({ power: 'mWakefulness=Awake', window: w, media, audio: '' }).media_status, 'paused');
 });

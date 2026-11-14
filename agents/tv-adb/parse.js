@@ -104,16 +104,28 @@ export function appName(pkg) {
 }
 
 /** Samlat tillstånd som skickas till dashboarden. */
-export function buildState({ power, window, media }) {
+/**
+ * Ljud spelas just nu? `dumpsys audio` listar spelare som "AudioPlaybackConfiguration ... state:started ... usage=USAGE_MEDIA".
+ * Vissa appar (t.ex. Telia Play) rapporterar sin mediasession som pausad fast de spelar; ljudet avslöjar sanningen.
+ */
+export function parseAudioPlaying(out = '') {
+  return out.split('\n').some((l) => /AudioPlaybackConfiguration/.test(l) && /state:started/.test(l)
+    && /usage=(USAGE_MEDIA|USAGE_GAME|USAGE_UNKNOWN|1\b|0\b|14\b)/.test(l));
+}
+
+export function buildState({ power, window, media, audio = '' }) {
   const isOn = parsePower(power);
   const app = isOn ? parseForegroundApp(window) : null;
   const s = isOn ? pickSession(parseMediaSessions(media), app) : null;
+  let status = s?.status ?? 'none';
+  // Pausad (eller ingen session) men ljud spelas i förgrundsappen: räkna som spelar.
+  if (isOn && (status === 'paused' || status === 'none') && (s?.package ?? app) === app && app && parseAudioPlaying(audio)) status = 'playing';
   return {
     is_on: isOn,
     current_app: s?.package ?? app,
     app_name: appName(s?.package ?? app),
     media_title: s?.title ?? null,
     media_artist: s?.artist ?? null,
-    media_status: s?.status ?? 'none',
+    media_status: status,
   };
 }

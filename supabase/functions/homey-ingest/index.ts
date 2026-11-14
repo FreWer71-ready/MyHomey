@@ -44,6 +44,12 @@ Deno.serve(async (req) => {
     if (flows.error) error = flows.error;
     else data = { ...data, flows: flows.data };
   }
+  // Insights-händelser (varje ändring, även korta dörröppningar mellan snapshotarna).
+  if (!error && Array.isArray(p.events)) {
+    const ev = await db.rpc("ingest_events", { p });
+    if (ev.error) error = ev.error;
+    else data = { ...data, events: ev.data };
+  }
   const ms = Date.now() - t0;
 
   await db.from("ingest_log").insert({

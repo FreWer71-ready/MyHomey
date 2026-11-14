@@ -98,7 +98,7 @@ export default async function TemperaturePage() {
           {avg != null && <span className="text-fg"><span className="text-[22px] font-bold tabular-nums">{n1(avg)}°</span> <span className="text-[15px] font-normal text-dim">snitt</span></span>}
         </h2>
         {inside.length ? (
-          <ul className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+          <ul className="flex flex-col">
             {inside.map((s) => <SensorRow key={s.id} s={s} hum={humOf.get(s.id) ?? null} />)}
           </ul>
         ) : <p className="text-[16px] text-dim">Inga temperaturgivare med värden.</p>}
