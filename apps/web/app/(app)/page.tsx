@@ -149,6 +149,8 @@ export default async function HomePage() {
   const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
   const outTemp = h.outdoorTemp ?? tvs?.air ?? smhiTemp;
   const sky = weather ? symbolInfo(weather.current.symbol) : null;
+  // Källan för temperaturen som visas (inte prognosens): station i Homey, Trafikverket direkt eller prognosen.
+  const outSource = h.outdoorTemp != null ? h.outdoorSource : tvs?.air != null ? `Trafikverket · ${tvs.name}` : weather?.source ?? null;
   // Vad vädret betyder för hemmet (en rad, bara när det är relevant).
   const nightMin = weather ? Math.min(...weather.hours.slice(0, 12).map((x) => x.temp).filter(Number.isFinite)) : Infinity;
   const hint: { icon: IconName; text: string } | null =
@@ -243,7 +245,7 @@ export default async function HomePage() {
 
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6">
-          <Card title={`Ute${weather?.source ? ` · ${weather.source}` : ''}`} icon="thermo" href="/vader" className="order-4 lg:order-none lg:shrink-0">
+          <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader" className="order-4 lg:order-none lg:shrink-0">
             <div className="flex items-center gap-3">
               {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={60} label={sky.label} />}
               <div className="flex min-w-0 grow flex-col">

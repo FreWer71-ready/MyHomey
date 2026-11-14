@@ -1,7 +1,7 @@
 // Räknar fram hemöversikten ur rådata från Supabase. Ren logik, inga anrop.
 
 export type Zone = { id: string; name: string; parent_id: string | null };
-export type Device = { id: string; name: string; zone_id: string | null; class: string | null; available: boolean };
+export type Device = { id: string; name: string; zone_id: string | null; class: string | null; available: boolean; driver_id?: string | null };
 export type Cap = {
   device_id: string;
   capability_id: string;
@@ -51,6 +51,8 @@ export type Station = { wind: number | null; gust: number | null; dir: string | 
 
 export type Home = {
   outdoorTemp: number | null;
+  /** Varifrån utetemperaturen kommer, t.ex. "Trafikverket · Eskilstuna Ö" (Homey-appen) eller stationens namn. */
+  outdoorSource: string | null;
   /** Personer från närvaroappar i Homey (t.ex. Smart Presence, capability presence). */
   /** since = när närvaron senast ändrades (för den som är borta: senast sedd). */
   people: { id: string; name: string; present: boolean; since: string | null }[];
@@ -245,6 +247,9 @@ export function buildHome(
 
   return {
     outdoorTemp: avg(nums(stations, 'measure_temperature')),
+    outdoorSource: stations.length
+      ? stations.map((d) => (/trafikverket/i.test(d.driver_id ?? '') ? `Trafikverket · ${d.name.trim()}` : d.name.trim())).join(', ')
+      : null,
     people: devices
       .filter((d) => {
         const p = cap(d, 'presence');

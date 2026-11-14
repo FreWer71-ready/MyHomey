@@ -25,7 +25,7 @@ export async function loadHome(): Promise<Home> {
   const sb = await createClient();
   const [zones, devices, caps, moods, hour] = await Promise.all([
     sb.from('zones').select('id,name,parent_id'),
-    sb.from('devices').select('id,name,zone_id,class,available'),
+    sb.from('devices').select('id,name,zone_id,class,available,driver_id'),
     sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,last_updated').in('capability_id', CAPS),
     sb.from('moods').select('id,name,zone_id,favorite'),
     // Temperaturen för en timme sedan (första minutbucketen bär med värdet före perioden).
