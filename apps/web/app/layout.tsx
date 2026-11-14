@@ -2,15 +2,16 @@ import type { Metadata, Viewport } from 'next';
 import { Backdrop } from '@/components/Backdrop';
 import { PLACE, loadWeather } from '@/lib/data';
 import { conditionOf, skyState, solarElevation } from '@/lib/sky';
-import { BASE_PATH } from '@/lib/paths';
+import { RegisterSW } from '@/components/RegisterSW';
+import { APP_NAME, BASE_PATH } from '@/lib/paths';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'MyHomey',
+  title: APP_NAME,
   description: 'Dashboard för hemmet',
-  icons: { icon: `${BASE_PATH}/icon.svg`, apple: `${BASE_PATH}/icon.svg` },
+  icons: { icon: `${BASE_PATH}/icon.svg`, apple: `${BASE_PATH}/icon-192.png` },
   manifest: `${BASE_PATH}/manifest.webmanifest`,
-  appleWebApp: { capable: true, title: 'MyHomey', statusBarStyle: 'black-translucent' },
+  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: 'black-translucent' },
 };
 
 export const viewport: Viewport = { themeColor: '#070A14', colorScheme: 'dark' };
@@ -48,6 +49,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           el0={solarElevation(Date.now(), PLACE.lat, PLACE.lon)} lat={PLACE.lat} lon={PLACE.lon}
         />
         {children}
+        <RegisterSW />
       </body>
     </html>
   );
