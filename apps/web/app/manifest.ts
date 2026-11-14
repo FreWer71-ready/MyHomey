@@ -1,20 +1,16 @@
-import { APP_NAME, BASE_PATH } from '@/lib/paths';
+import { BASE_PATH } from '@/lib/paths';
 import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: `${BASE_PATH}/`,
-    name: APP_NAME,
-    short_name: APP_NAME,
-    description: 'Dashboard för hemmet',
-    lang: 'sv',
+    name: 'MyHomey',
+    short_name: 'MyHomey',
     start_url: `${BASE_PATH}/`,
     scope: `${BASE_PATH}/`,
     // Installerad som app: helskärm utan adressfält (Chrome på Android).
     display: 'fullscreen',
     display_override: ['fullscreen', 'standalone'],
-    // Ingen låsning: plattan står på högkant eller liggande, mobilen följer handen.
-    orientation: 'any',
+    orientation: 'landscape',
     background_color: '#070A14',
     theme_color: '#070A14',
     icons: [
