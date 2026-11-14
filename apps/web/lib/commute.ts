@@ -41,6 +41,8 @@ export type Train = {
 export type RoadEvent = {
   id: string; road: string; type: string; code: string; incident: boolean; text: string | null; place: string | null; severity: number;
   severityText: string | null; start: number | null; end: number | null;
+  /** Position (WGS84) om Trafikverket anger en. */
+  lat?: number; lon?: number;
 };
 /** trains=false: bara väg (COMMUTE=road), t.ex. hushåll som inte pendlar med tåg. */
 export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; station: RoadStation | null; fetched: number; trains: boolean };
@@ -88,27 +90,35 @@ function trains(raw: RawTrain[], arrivals: RawArrival[], to: string, now: number
     .slice(0, max);
 }
 
+const point = (d: RawDeviation) => {
+  const m = d.Geometry?.Point?.WGS84?.match(/POINT \(([\d.]+) ([\d.]+)\)/);
+  return m ? { lon: Number(m[1]), lat: Number(m[2]) } : null;
+};
+
 function inBox(d: RawDeviation) {
   const box = BOXES[d.RoadNumberNumeric ?? 56];
   if (!box) return false;
-  const m = d.Geometry?.Point?.WGS84?.match(/POINT \(([\d.]+) ([\d.]+)\)/);
-  if (!m) return d.RoadNumberNumeric !== 18; // E18 utan position kan ligga var som helst
-  const lon = Number(m[1]), lat = Number(m[2]);
+  const p = point(d);
+  if (!p) return d.RoadNumberNumeric !== 18; // E18 utan position kan ligga var som helst
+  const { lon, lat } = p;
   return lat >= box.lat[0] && lat <= box.lat[1] && lon >= box.lon[0] && lon <= box.lon[1];
 }
 
-/** En händelse per situation: den allvarligaste avvikelsen. Pausade och de utan påverkan tas bort; incidenter först. */
-function road(raw: RawCommute['situations'], now: number): RoadEvent[] {
+/**
+ * En händelse per situation: den allvarligaste avvikelsen. Pausade och de utan påverkan tas bort; incidenter först.
+ * keep väljer avvikelser (pendling: väg 56/E18 inom sträckan; område: alla med position).
+ */
+export function parseRoad(raw: RawCommute['situations'], now: number, keep: (d: RawDeviation) => boolean = inBox): RoadEvent[] {
   const out: RoadEvent[] = [];
   for (const s of raw ?? []) {
-    const devs = (s.Deviation ?? []).filter((d) => !d.Suspended && inBox(d) && (t(d.EndTime) ?? Infinity) > now && (t(d.StartTime) ?? 0) <= now + 24 * 3600_000);
+    const devs = (s.Deviation ?? []).filter((d) => !d.Suspended && keep(d) && (t(d.EndTime) ?? Infinity) > now && (t(d.StartTime) ?? 0) <= now + 24 * 3600_000);
     if (!devs.length) continue;
     const d = [...devs].sort((a, b) => (b.SeverityCode ?? 0) - (a.SeverityCode ?? 0) || Number(!!b.Message) - Number(!!a.Message))[0];
     // Ärenden utan påverkan (vägarbete m.m. med påverkan 0–1) tillför inget och hoppas över. Incidenter visas alltid.
     if (PLANNED.test(d.MessageTypeValue ?? '') && Math.max(...devs.map((x) => x.SeverityCode ?? 0)) <= 1) continue;
     out.push({
       id: d.Id ?? `${out.length}`,
-      road: d.RoadNumber ?? (d.RoadNumberNumeric === 18 ? 'E18' : 'Väg 56'),
+      road: d.RoadNumber ?? (d.RoadNumberNumeric === 18 ? 'E18' : `Väg ${d.RoadNumberNumeric ?? 56}`),
       type: d.MessageType ?? 'Händelse',
       code: d.MessageTypeValue ?? '',
       incident: !PLANNED.test(d.MessageTypeValue ?? ''),
@@ -118,6 +128,7 @@ function road(raw: RawCommute['situations'], now: number): RoadEvent[] {
       severityText: d.SeverityText ?? null,
       start: t(d.StartTime),
       end: t(d.EndTime),
+      ...(point(d) ?? {}),
     });
   }
   const rank = { bad: 0, warn: 1, ok: 2 } as const;
@@ -128,7 +139,7 @@ export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Dat
   return {
     out: trains(raw.out ?? [], raw.arrivals ?? [], to, now, max),
     home: trains(raw.home ?? [], raw.arrivals ?? [], from, now, max),
-    road: road(raw.situations, now),
+    road: parseRoad(raw.situations, now),
     station: parseStation(raw.station, now),
     fetched: t(raw.fetched) ?? now,
     trains: true,

@@ -9,7 +9,7 @@ import { MEDIA_CAPS, TV_CAPS, nowPlaying, tvRemote, type MediaCap, type NowPlayi
 import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
 import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } from './warnings';
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
-import { parseCommute, type Commute, type RawCommute } from './commute';
+import { parseCommute, parseRoad, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
@@ -453,4 +453,42 @@ export async function loadUsage(days = 60): Promise<Map<string, number>> {
     out.set(key, (out.get(key) ?? 0) + 1);
   }
   return out;
+}
+
+/** Vägärenden inom en ruta [minLon, minLat, maxLon, maxLat] (helgtrafik och resor från kalendern), med position. */
+export async function loadArea(box: [number, number, number, number]): Promise<RoadEvent[]> {
+  const keep = (d: RawDeviation) => !!d.Geometry?.Point?.WGS84;
+  if (DEMO) {
+    const dev = (Id: string, WGS84: string, RoadNumber: string, MessageType: string, MessageTypeValue: string, SeverityCode: number, LocationDescriptor: string) =>
+      ({ Deviation: [{ Id, Geometry: { Point: { WGS84 } }, RoadNumber, MessageType, MessageTypeValue, SeverityCode, LocationDescriptor }] });
+    return parseRoad([
+      dev('d1', 'POINT (16.95 59.31)', 'E20', 'Vägarbete', 'RoadMaintenance', 4, 'E20 vid Strängnäs i riktning mot Stockholm'),
+      dev('d2', 'POINT (16.47 59.42)', 'Väg 230', 'Olycka', 'Accident', 3, 'Väg 230 vid Torshälla'),
+    ], Date.now(), keep);
+  }
+  const sb = await createClient();
+  const { data, error } = await sb.functions.invoke('trafik', { body: { area: box } });
+  if (error || !data || data.error) return [];
+  return parseRoad((data as { situations: RawCommute['situations'] }).situations, Date.now(), keep);
+}
+
+/**
+ * Ort → koordinater via OpenStreetMap Nominatim. Bara platsnamnet skickas (aldrig titel eller annat från kalendern),
+ * svaret cachas 30 dagar. Null om platsen inte hittas.
+ */
+export async function geocode(q: string): Promise<{ lat: number; lon: number } | null> {
+  const place = q.trim().slice(0, 120);
+  if (!place) return null;
+  if (DEMO) return /mariefred/i.test(place) ? { lat: 59.2597, lon: 17.2207 } : null;
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=se&q=${encodeURIComponent(place)}`, {
+      headers: { 'User-Agent': 'home-dashboard/1.0', 'Accept-Language': 'sv' },
+      next: { revalidate: 30 * 86400 },
+      signal: AbortSignal.timeout(5000),
+    });
+    const [hit] = res.ok ? ((await res.json()) as { lat: string; lon: string }[]) : [];
+    return hit ? { lat: Number(hit.lat), lon: Number(hit.lon) } : null;
+  } catch {
+    return null;
+  }
 }

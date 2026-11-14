@@ -198,3 +198,7 @@ svg.ico {
 @keyframes trend-up { 0%, 55% { transform: translateY(0); opacity: 1; } 75% { transform: translateY(-120%); opacity: 0; } 76% { transform: translateY(120%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 @keyframes trend-down { 0%, 55% { transform: translateY(0); opacity: 1; } 75% { transform: translateY(120%); opacity: 0; } 76% { transform: translateY(-120%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .trend-up, .trend-down { animation: none; } }
+
+/* SOS: ringen fylls medan knappen hålls inne (2 s). */
+.sos-ring { stroke-dashoffset: 125.7; animation: sos-fill 2s linear forwards; }
+@keyframes sos-fill { to { stroke-dashoffset: 0; } }

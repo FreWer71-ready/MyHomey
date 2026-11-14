@@ -5,6 +5,8 @@ import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles } from '@/components/ActionTiles';
 import { quickActions, type QuickItem } from '@/lib/quick';
+import { alongRoute, boxFor, isWeekend, km, nearHome, nextTrip, type Trip } from '@/lib/trip';
+import { loadCalendarServer } from '@/lib/calendar-source';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { MinutesTo } from '@/components/MinutesTo';
 import { tvAppLabel } from '@/lib/media';
@@ -12,10 +14,10 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadCommute, loadFlows, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { geocode, loadArea, loadCommute, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
-import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
+import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
 import { dayOf } from '@/lib/calendar-view';
@@ -33,6 +35,8 @@ const C = { ok: '#3FB950', warn: '#E3A008', bad: '#F85149', mute: '#8B98A5' } as
 const num = (v: number, d = 1) => v.toLocaleString('sv-SE', { maximumFractionDigits: d });
 /** Rum utanför det här spannet räknas som avvikelse och lyfts fram. */
 const COMFORT = { low: 18, high: 26 };
+/** Pendling och helgtrafik delar plats: samma höjd på plattan oavsett innehåll. */
+const COMMUTE_H = 'lg:h-[272px]';
 
 /** Kort: helt kort (#131A22), ingen gradient, samma inre marginal överallt. */
 function Card({ title, icon, href, className = '', children }: { title?: string; icon?: IconName; href?: string; className?: string; children: React.ReactNode }) {
@@ -166,6 +170,23 @@ export default async function HomePage() {
   const roads = commute ? groupRoad(commute.road) : [];
   const trafficAlerts = commute ? commuteAlerts(commute, now, hhmm) : [];
   const hasCal = !!(process.env.CALENDAR_ICAL_URL || process.env.ULRIKA_ICAL_URL);
+  // Helg: ingen tågpendling. Visa i stället vägläget mot nästa kalenderhändelse med plats (t.ex. Mariefred),
+  // annars trafikläget i närområdet. Samma kortstorlek som pendlingen.
+  const weekend = !!commute?.trains && isWeekend(now);
+  let trip: (Trip & { km: number }) | null = null;
+  let weekendRoads: RoadGroup[] = [];
+  if (weekend) {
+    const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
+    const t = cal ? nextTrip(cal.days, now) : null;
+    const dest = t ? await geocode(t.location) : null;
+    const dist = dest ? km(PLACE, dest) : 0;
+    if (t && dest && dist > 3 && dist < 250) {
+      trip = { ...t, km: dist };
+      weekendRoads = groupRoad(alongRoute(await loadArea(boxFor([PLACE, dest], 8)), PLACE, dest), now);
+    } else {
+      weekendRoads = groupRoad(nearHome(await loadArea(boxFor([PLACE], 20)), PLACE), now);
+    }
+  }
 
   // ---- Hemmet ----
   const tempRooms = h.rooms.filter((r) => r.temp != null);
@@ -189,7 +210,7 @@ export default async function HomePage() {
   // Alla varningar i samma format; nivån (gul/orange/röd) styr bara färgen.
   const alerts: Alert[] = [
     ...weatherAlerts(wx),
-    ...trafficAlerts.map((a): Alert => ({
+    ...trafficAlerts.filter((a) => !(weekend && a.kind === 'train')).map((a): Alert => ({
       id: a.id, icon: a.kind === 'train' ? 'train' : 'road', text: a.label, href: '/pendling',
       level: a.kind === 'road' ? 'orange' : a.tone === 'bad' ? 'red' : 'yellow',
     })),
@@ -305,8 +326,38 @@ export default async function HomePage() {
 
         {/* HÄRNÄST: pendling och kalender. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6">
-          {commute?.trains && (
-            <Card title={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`} icon="train" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
+          {weekend && (
+            <Card title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
+              <p className="truncate text-[16px] text-dim">
+                {trip
+                  ? <>{trip.start != null ? <span className="font-semibold text-fg">{dayOf(trip.start) === dayOf(now) ? hhmm(trip.start) : `imorgon ${hhmm(trip.start)}`}</span> : <span className="font-semibold text-fg">Idag</span>} · {trip.title} · {Math.round(trip.km)} km</>
+                  : 'Vägar inom 2 mil hemifrån'}
+              </p>
+              <ul className="flex flex-col gap-2 border-t border-line pt-3">
+                {weekendRoads.length === 0 && (
+                  <li className="flex items-center gap-3 text-[18px]">
+                    <Icon name="road" size={24} /><span className="grow text-dim">{trip ? 'Längs vägen' : 'I närområdet'}</span>
+                    <span className="font-semibold" style={{ color: C.ok }}>Inga störningar</span>
+                  </li>
+                )}
+                {weekendRoads.slice(0, 3).map((g) => (
+                  <li key={g.id} className="flex min-w-0 items-center gap-3">
+                    <Icon name="road" size={22} />
+                    <span className="flex min-w-0 grow flex-col leading-tight">
+                      <span className="truncate text-[16px] font-semibold">{g.road} · {g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
+                      <span className="truncate text-[15px] text-dim">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
+                    </span>
+                    <span className="shrink-0 text-[16px] font-semibold" style={{ color: TONE_COLOR[g.tone] }}>
+                      {g.tone === 'bad' ? 'Stor påverkan' : g.tone === 'warn' ? 'Påverkan' : 'Liten'}
+                    </span>
+                  </li>
+                ))}
+                {weekendRoads.length > 3 && <li className="pl-[34px] text-[15px] text-dim">+ {weekendRoads.length - 3} till</li>}
+              </ul>
+            </Card>
+          )}
+          {commute?.trains && !weekend && (
+            <Card title={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[18px] text-dim">Inga tåg de närmaste timmarna</p>}
               {/* Fyra avgångar: lista i mobil, 2×2 på plattan så att kalendern under får plats. */}
               <ul className="grid grid-cols-1 gap-x-5 gap-y-2.5 lg:grid-cols-2">

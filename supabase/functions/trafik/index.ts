@@ -1,5 +1,6 @@
 // Pendling via Trafikverkets öppna API: tåg Eskilstuna C <-> Stockholm C, händelser på bilvägen (väg 56 + E18 till Västerås)
 // och vägväderstationen Eskilstuna Ö.
+// Med { area: [minLon, minLat, maxLon, maxLat] }: vägärenden inom rutan (helgtrafik och resor från kalendern).
 // Anropas av webben med användarens JWT (eller x-cron-secret vid test). Nyckeln ligger i Vault (trafikverket_api_key).
 // Svarar med Trafikverkets rådata i nedbantad form; tolkningen görs i webben (lib/commute.ts).
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -17,6 +18,7 @@ const json = (body: unknown, status = 200) =>
 
 let key: string | null = null;
 let cache: { at: number; body: unknown } | null = null;
+const areas = new Map<string, { at: number; body: unknown }>();
 
 async function query(xml: string) {
   if (!key) key = (await db.rpc("get_secret", { secret_name: "trafikverket_api_key" })).data as string;
@@ -56,6 +58,24 @@ Deno.serve(async (req) => {
     // Felsökning (bara med x-cron-secret): skicka en egen QUERY rakt till Trafikverket.
     const p = await req.json().catch(() => ({}));
     if (p.query && req.headers.get("x-cron-secret")) return json(await query(p.query));
+    // Område (helgtrafik/kalenderresa): vägärenden inom en ruta [minLon, minLat, maxLon, maxLat], cache 5 min per ruta.
+    if (Array.isArray(p.area)) {
+      const box = p.area.map(Number);
+      if (box.length !== 4 || box.some((x: number) => !Number.isFinite(x)) || box[0] >= box[2] || box[1] >= box[3]
+        || box[2] - box[0] > 4 || box[3] - box[1] > 3) return json({ error: "ogiltigt område" }, 400);
+      const k = box.map((x: number) => x.toFixed(2)).join(",");
+      const hit = areas.get(k);
+      if (hit && Date.now() - hit.at < 300_000) return json(hit.body);
+      const [r] = await query(`
+<QUERY objecttype="Situation" namespace="road.trafficinfo" schemaversion="1.6" limit="200">
+  <FILTER><WITHIN name="Deviation.Geometry.Point.WGS84" shape="box" value="${box[0]} ${box[1]}, ${box[2]} ${box[3]}"/></FILTER>
+  <INCLUDE>Deviation</INCLUDE>
+</QUERY>`);
+      const body = { situations: r.Situation ?? [], fetched: new Date().toISOString() };
+      if (areas.size > 50) areas.clear();
+      areas.set(k, { at: Date.now(), body });
+      return json(body);
+    }
     if (cache && Date.now() - cache.at < 60_000) return json(cache.body);
     const [out, home, road, ws] = await query(departures(A, B) + departures(B, A) + `
 <QUERY objecttype="Situation" namespace="road.trafficinfo" schemaversion="1.6" limit="80">
