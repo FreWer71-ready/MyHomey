@@ -3,7 +3,7 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
-import { TvBar, type TvView } from '@/components/TvBar';
+import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { MinutesTo } from '@/components/MinutesTo';
 import { tvAppLabel } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
@@ -57,7 +57,7 @@ function Row({ icon, label, value, unit, detail, color, href, extra }: {
   const Box = href ? (href.startsWith('http') ? 'a' : Link) : 'div';
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <Box href={href!} {...ext} className="flex h-[var(--row-h,60px)] min-w-0 shrink-0 items-center gap-3 border-b border-line last:border-b-0">
+    <Box href={href!} {...ext} className="flex h-[var(--row-h,60px)] min-w-0 shrink-0 lg:h-auto lg:max-h-[72px] lg:min-h-[var(--row-h,60px)] lg:flex-1 items-center gap-3 border-b border-line last:border-b-0">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
       <span className="flex min-w-0 grow flex-col gap-0.5 leading-tight">
         <span className="truncate text-[17px] font-semibold text-fg">{label}</span>
@@ -118,6 +118,17 @@ export default async function HomePage() {
     : frame?.is_on ? { source: 'Samsung TV', app: null, title: null, subtitle: null, status: 'on' }
     : { source: 'TV', app: null, title: null, subtitle: null, status: frame || tvs2 ? 'off' : 'unknown' };
   const speaker = castPlaying.find((p) => p.kind === 'music');
+  // Spelas nu: TV och högtalare i samma rad överst (bara det som faktiskt spelar).
+  const playing: PlayingItem[] = [];
+  if (tvView.status === 'playing' || tvView.status === 'paused') {
+    const t = tvView.title ?? tvView.app;
+    playing.push({
+      key: 'tv', kind: 'tv',
+      label: tvView.title && tvView.app ? `${tvView.source} · ${tvView.app}` : tvView.source,
+      title: t ?? 'Spelar', subtitle: tvView.title ? tvView.subtitle : null, paused: tvView.status === 'paused',
+    });
+  }
+  if (speaker) playing.push({ key: 'music', kind: 'music', label: speaker.device, title: speaker.title, subtitle: speaker.subtitle ?? null });
   const now = Date.now();
   const names = joinNames(nameDay);
 
@@ -165,7 +176,7 @@ export default async function HomePage() {
 
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:items-stretch lg:gap-6">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-6">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
         <header className="order-1 flex items-end gap-4 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-1">
           <h1 className="sr-only">Hemma</h1>
@@ -178,15 +189,7 @@ export default async function HomePage() {
 
         {/* STATUS: närvaro och läget. Lugnt = dämpad rad; något händer = färgade rader. */}
         <section aria-label="Status" className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 lg:order-none lg:col-span-8 lg:self-end">
-          {/* Spelas nu (högtalare): kompakt rad överst till höger, bara när något spelar. */}
-          {speaker && (
-            <p className="-mb-1 flex min-w-0 items-center gap-2.5 text-[16px] leading-6 lg:justify-end">
-              <span className="np-card np-music flex size-6 shrink-0 items-center justify-center rounded-[8px]"><Icon name="music" size={15} /></span>
-              <span className="shrink-0 text-dim">Spelas nu · {speaker.device}</span>
-              <span className="min-w-0 truncate font-semibold">{speaker.title}{speaker.subtitle && <span className="font-normal text-dim"> · {speaker.subtitle}</span>}</span>
-              <span className="eq flex h-4 shrink-0 items-end gap-[2px]" aria-hidden="true"><span /><span /><span /></span>
-            </p>
-          )}
+          <NowPlayingStrip items={playing} />
           {people.length > 0 && (
             <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-x-5 gap-y-1 lg:justify-end">
               {people.map((p) => (
@@ -352,13 +355,13 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[96px] lg:grow"><CalendarWidget /></div>}
+          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow"><CalendarWidget /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
         <Card className="order-6 lg:order-none lg:col-span-4 lg:py-3">
           <h2 className="sr-only">Hemmet</h2>
-          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto" style={{ '--row-h': rowCount > 6 ? '51px' : '58px' } as React.CSSProperties}>
+          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto lg:grow" style={{ '--row-h': rowCount > 6 ? '51px' : '58px' } as React.CSSProperties}>
             {tempAvg != null && (
               <Row
                 icon="thermo" label="Inomhus" href="/rum" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt"
@@ -412,12 +415,6 @@ export default async function HomePage() {
           </div>
         </Card>
 
-        {/* TV och ljud: alltid samma plats längst ner (mitten + höger). Spelar något visas titeln, annars en lugn rad. */}
-        {/* TV och ljud längst ner: TV-rutan bred och tydlig (2/3), högtalaren vid sidan. */}
-        {/* TV längst ner i hela bredden (mitten + höger). */}
-        <section aria-label="TV" className="order-7 md:col-span-2 lg:order-none lg:col-span-8">
-          <TvBar v={tvView} />
-        </section>
       </div>
     </HomeShell>
   );
