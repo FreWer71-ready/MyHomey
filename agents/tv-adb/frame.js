@@ -14,6 +14,7 @@ export const TIZEN_APPS = {
   '3201910019365': 'Prime Video',
   '3201807016597': 'Apple TV',
   '3201606009684': 'Spotify',
+  '3202301029760': 'HBO Max',
 };
 
 /** PowerState ur /api/v2/: "on" eller "standby". Saknas fältet men TV:n svarar räknas den som på. */
@@ -74,10 +75,18 @@ let appCache = { at: 0, apps: null };
 async function installedApps(host, tokenFile, log) {
   if (appCache.apps && Date.now() - appCache.at < 3600_000) return appCache.apps;
   const list = await channelCall(host, 'samsung.remote.control', tokenFile,
-    { method: 'ms.channel.emit', params: { event: 'ed.installedApp.get', to: 'host' } },
+    { method: 'ms.channel.emit', params: { event: 'ed.installedApp.get', to: 'host', data: '' } },
     (m) => (m.event === 'ed.installedApp.get' ? (m.data?.data ?? []) : undefined), log);
   if (Array.isArray(list) && list.length) {
-    appCache = { at: Date.now(), apps: list.filter((a) => a.appId && a.name).map((a) => ({ id: String(a.appId), name: String(a.name) })) };
+    // Installerade appar plus reservlistan (om någon app saknas i TV:ns lista).
+    const apps = list.filter((a) => a.appId && a.name).map((a) => ({ id: String(a.appId), name: String(a.name) }));
+    for (const [id, name] of Object.entries(TIZEN_APPS)) if (!apps.some((a) => a.id === id)) apps.push({ id, name });
+    appCache = { at: Date.now(), apps };
+    log?.(`The Frame: ${apps.length} appar att bevaka.`);
+  } else {
+    // Ingen lista: försök igen om 10 min, använd reservlistan så länge.
+    appCache = { at: Date.now() - 3000_000, apps: null };
+    log?.('The Frame: fick ingen applista från TV:n, använder reservlistan.');
   }
   return appCache.apps;
 }
