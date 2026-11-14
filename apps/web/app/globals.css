@@ -191,3 +191,10 @@ svg.ico {
 .alert-pulse { animation: alert-pulse 2.4s ease-in-out infinite; }
 @keyframes alert-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(248 81 73 / 0.0); } 50% { box-shadow: 0 0 0 4px rgb(248 81 73 / 0.35); } }
 @media (prefers-reduced-motion: reduce) { .alert-pulse { animation: none; } }
+
+/* Trendpil: glider åt sitt håll och kommer in från andra sidan (lugnt, var 3:e sekund). */
+.trend-up { animation: trend-up 3s ease-in-out infinite; }
+.trend-down { animation: trend-down 3s ease-in-out infinite; }
+@keyframes trend-up { 0%, 55% { transform: translateY(0); opacity: 1; } 75% { transform: translateY(-120%); opacity: 0; } 76% { transform: translateY(120%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes trend-down { 0%, 55% { transform: translateY(0); opacity: 1; } 75% { transform: translateY(120%); opacity: 0; } 76% { transform: translateY(-120%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .trend-up, .trend-down { animation: none; } }
