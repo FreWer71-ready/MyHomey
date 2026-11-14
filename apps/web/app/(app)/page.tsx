@@ -353,7 +353,7 @@ export default async function HomePage() {
           <div className="scroll-x flex min-h-0 flex-col overflow-y-auto lg:grow" style={{ '--row-h': rowCount > 6 ? '51px' : '58px' } as React.CSSProperties}>
             {tempAvg != null && (
               <Row
-                icon="thermo" label="Inomhus" href="/rum" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt"
+                icon="thermo" label="Inomhus" href="/temperatur" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt"
                 detail={odd.length ? (
                   <span className="font-semibold">
                     {odd.slice(0, 3).map((r, i) => (
