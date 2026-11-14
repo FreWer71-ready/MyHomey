@@ -36,4 +36,12 @@ port=$(grep '^TV_PORT=' .env | cut -d= -f2); port=${port:-5555}
 adb connect "$host:$port" || true
 
 echo "Startar agenten (stoppa med Ctrl+C)…"
-exec node --env-file=.env index.js
+# Agenten hämtar själv nya versioner från GitHub och avslutar sig då; loopen startar om den med den nya koden.
+while true; do
+  git -C "$(dirname "$0")/../.." pull --ff-only -q 2>/dev/null || true
+  node --env-file=.env index.js
+  code=$?
+  [ "$code" -eq 130 ] && break
+  [ "$code" -eq 75 ] && { echo "Startar om agenten med ny version…"; sleep 3; continue; }
+  echo "Agenten avslutades ($code), försöker igen om 30 s…"; sleep 30
+done

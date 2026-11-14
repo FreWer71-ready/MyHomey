@@ -109,8 +109,10 @@ export function appName(pkg) {
  * Vissa appar (t.ex. Telia Play) rapporterar sin mediasession som pausad fast de spelar; ljudet avslöjar sanningen.
  */
 export function parseAudioPlaying(out = '') {
-  return out.split('\n').some((l) => /AudioPlaybackConfiguration/.test(l) && /state:started/.test(l)
-    && /usage=(USAGE_MEDIA|USAGE_GAME|USAGE_UNKNOWN|1\b|0\b|14\b)/.test(l));
+  // Spelaren kan stå på en rad och dess attribut på nästa (olika Android-versioner): titta på raden + nästa.
+  const lines = out.split('\n');
+  return lines.some((l, i) => /state:started/.test(l) && /AudioPlaybackConfiguration|piid:/.test(l)
+    && !/USAGE_(NOTIFICATION|ASSISTANCE|VOICE|ALARM)/.test(`${l} ${lines[i + 1] ?? ''}`));
 }
 
 export function buildState({ power, window, media, audio = '' }) {

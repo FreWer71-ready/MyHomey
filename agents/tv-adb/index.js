@@ -27,6 +27,7 @@ for (const k of ['host', 'url', 'secret']) {
   if (!CFG[k]) { console.error(`Saknar ${k === 'host' ? 'TV_HOST' : k === 'url' ? 'INGEST_URL' : 'TV_SECRET'} i .env`); process.exit(1); }
 }
 const serial = `${CFG.host}:${CFG.port}`;
+let lastKey = '';
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
 let connected = false;
@@ -104,12 +105,32 @@ async function poll() {
       // Spelare som faktiskt spelar ljud (rättar appar som rapporterar fel mediastatus).
       shell('dumpsys', 'audio').catch(() => ''),
     ]);
-    await send(buildState({ power, window, media, audio }));
+    const st = buildState({ power, window, media, audio });
+    const key = `${st.current_app}|${st.media_status}`;
+    if (key !== lastKey) {
+      lastKey = key;
+      const started = audio.split('\n').filter((l) => /state:started/.test(l)).length;
+      log(`${st.app_name ?? 'ingen app'}: ${st.media_status} (ljudspelare igång: ${started})`);
+    }
+    await send(st);
     return CFG.pollMs;
   } catch (e) {
     log(`ADB-kommandot misslyckades (${(e.stderr || e.message || '').toString().trim().split('\n')[0]}), återansluter.`);
     connected = false;
     return 2_000;
+  }
+}
+
+/** Ny version på GitHub? Avsluta med kod 75 så att start.sh hämtar den och startar om (kollas var 30:e minut). */
+const repo = new URL('../..', import.meta.url).pathname;
+async function selfUpdate() {
+  while (!stopping) {
+    await new Promise((r) => setTimeout(r, 30 * 60_000));
+    try {
+      await run('git', ['-C', repo, 'fetch', '-q', 'origin', 'main'], { timeout: 60_000 });
+      const { stdout } = await run('git', ['-C', repo, 'rev-list', '--count', 'HEAD..origin/main', '--', 'agents/tv-adb'], { timeout: 10_000 });
+      if (Number(stdout.trim()) > 0) { log('Ny version av agenten finns, startar om.'); process.exit(75); }
+    } catch { /* git saknas eller inget nät: försök igen senare */ }
   }
 }
 
@@ -134,7 +155,7 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
     stopping = true;
     log('Avslutar.');
     await adb(['disconnect', serial], 3_000).catch(() => {});
-    process.exit(0);
+    process.exit(130); // start.sh: 130 = stoppad av användaren, starta inte om
   });
 }
 
@@ -142,3 +163,4 @@ log(`TV-agent startar: ${serial}, var ${CFG.pollMs / 1000} s, hushåll ${CFG.hou
 if (CFG.frame) log(`The Frame: ${CFG.frame} var ${CFG.frameMs / 1000} s`);
 loop();
 frameLoop();
+selfUpdate();
