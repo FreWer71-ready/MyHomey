@@ -74,7 +74,7 @@ const FLAT = {
       </g>
     </>
   ),
-  // Väg i perspektiv: mittlinjen rullar mot betraktaren och en bil (bakifrån) åker på vägen.
+  // Väg i perspektiv: mittlinjen rullar mot betraktaren och en bil (bakifrån, röda bakljus) åker på vägen.
   road: (
     <>
       <path d="M10 2.5h4l7.5 20h-19z" fill={C.dark} />
@@ -84,11 +84,11 @@ const FLAT = {
       <g className="wx-rock">
         <rect x={7.6} y={19.2} width={2.2} height={2.4} rx={0.6} fill="#1B2230" />
         <rect x={14.2} y={19.2} width={2.2} height={2.4} rx={0.6} fill="#1B2230" />
-        <path d="M8.8 14l1.3-3.3h3.8l1.3 3.3z" fill={C.red} />
+        <path d="M8.8 14l1.3-3.3h3.8l1.3 3.3z" fill={C.blue} />
         <path d="M9.9 13.6l.8-2.3h2.6l.8 2.3z" fill={C.cloud} opacity={0.85} />
-        <rect x={6.4} y={13.6} width={11.2} height={6} rx={1.8} fill={C.red} />
-        <rect x={7.4} y={15.2} width={2.4} height={1.3} rx={0.5} fill={C.sun} />
-        <rect x={14.2} y={15.2} width={2.4} height={1.3} rx={0.5} fill={C.sun} />
+        <rect x={6.4} y={13.6} width={11.2} height={6} rx={1.8} fill={C.blue} />
+        <rect x={7.4} y={15.2} width={2.4} height={1.3} rx={0.5} fill="#FF2D2D" />
+        <rect x={14.2} y={15.2} width={2.4} height={1.3} rx={0.5} fill="#FF2D2D" />
         <rect x={10.6} y={17.4} width={2.8} height={1} rx={0.3} fill={C.cloud} opacity={0.7} />
       </g>
     </>
