@@ -365,7 +365,7 @@ export default async function HomePage() {
             )}
             {h.openings.length > 0 && (
               <Row
-                icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/larm#oppet"
+                icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/dorrar"
                 detail={open.length ? open.map((o) => o.name).join(', ') : 'Alla stängda'}
                 value={open.length} unit="öppna" color={open.length ? C.warn : C.ok}
               />

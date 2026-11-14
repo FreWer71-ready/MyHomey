@@ -407,3 +407,35 @@ export async function loadTvStatuses(): Promise<TvStatus[]> {
   const { data } = await sb.from('tv_status').select('device_id,is_on,current_app,app_name,media_title,media_artist,media_status,updated_at,changed_at').order('updated_at', { ascending: false });
   return ((data ?? []) as TvStatus[]).filter((r) => Date.now() - Date.parse(r.updated_at) <= 3 * 60_000);
 }
+
+/** Dörr/fönster-händelser: open = true när kontakten bröts. Nyast först. */
+export type ContactEvent = { device: string; ts: number; open: boolean };
+
+/** Logg för dörr- och fönstersensorer (alarm_contact) de senaste `days` dagarna. Upprepade värden slås ihop. */
+export async function loadContactLog(ids: string[], days = 7): Promise<ContactEvent[]> {
+  if (!ids.length) return [];
+  let rows: { device_id: string; ts: string; value: number }[];
+  if (DEMO) {
+    const now = Date.now();
+    rows = ids.flatMap((id, i) => Array.from({ length: 6 }, (_, k) => [
+      { device_id: id, ts: new Date(now - (k * 9 + i * 3 + 1) * 3600_000).toISOString(), value: 1 },
+      { device_id: id, ts: new Date(now - (k * 9 + i * 3 + 1) * 3600_000 + (4 + i * 7) * 60_000).toISOString(), value: 0 },
+    ]).flat());
+  } else {
+    const sb = await createClient();
+    const { data } = await sb.from('readings').select('device_id,ts,value')
+      .eq('capability_id', 'alarm_contact').in('device_id', ids)
+      .gte('ts', new Date(Date.now() - days * 86400_000).toISOString()).order('ts', { ascending: true }).limit(2000);
+    rows = data ?? [];
+  }
+  rows.sort((a, b) => a.ts.localeCompare(b.ts));
+  const last = new Map<string, boolean>();
+  const out: ContactEvent[] = [];
+  for (const r of rows) {
+    const open = r.value > 0;
+    if (last.get(r.device_id) === open) continue;
+    last.set(r.device_id, open);
+    out.push({ device: r.device_id, ts: Date.parse(r.ts), open });
+  }
+  return out.reverse();
+}
