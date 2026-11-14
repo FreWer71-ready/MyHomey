@@ -120,3 +120,11 @@ export async function runDevice(deviceId: string, cap: string, value: boolean | 
   const v = kind === 'level' ? String(Math.round((value as number) * 100) / 100) : String(value);
   return command({ device: deviceId, cap, value: v }, { type: 'device', device_id: deviceId, payload: { cap, value } });
 }
+
+/** Släck alla tända lampor (en order per lampa, parallellt). */
+export async function allLightsOff(ids: string[]): Promise<Result> {
+  if (!Array.isArray(ids) || ids.length > 200) return { ok: false, error: 'Ogiltig lista' };
+  const res = await Promise.all(ids.map((id) => runLight(id, { on: false })));
+  const failed = res.filter((r) => !r.ok).length;
+  return failed ? { ok: false, error: `${failed} av ${ids.length} lampor svarade inte` } : { ok: true };
+}

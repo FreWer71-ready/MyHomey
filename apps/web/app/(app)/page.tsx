@@ -383,7 +383,7 @@ export default async function HomePage() {
                 ].filter(Boolean).join(' · ') || undefined}
               />
             )}
-            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" href="/rum" value={h.lightsOn} unit="tända" detail={`av ${h.lightsTotal} lampor`} />}
+            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" href="/lampor" value={h.lightsOn} unit="tända" detail={`av ${h.lightsTotal} lampor`} />}
             {h.powerMeters + h.powerEstimated > 0 && (
               <Row icon="bolt" label="Effekt" href="/energi?vy=forbrukning"
                 value={h.powerW >= 1000 ? num(h.powerW / 1000, 2) : num(h.powerW, h.powerW < 100 ? 1 : 0)} unit={h.powerW >= 1000 ? 'kW' : 'W'}

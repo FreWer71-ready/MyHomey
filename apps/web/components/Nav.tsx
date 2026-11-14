@@ -40,30 +40,14 @@ function useNewAlarms(alarms: string[], onLarm: boolean) {
   return fresh;
 }
 
-/** Platta: menyn tonas bort efter 10 s utan aktivitet (mot inbränning) och kommer tillbaka vid tryck. */
-function useIdle(ms = 10_000) {
-  const [idle, setIdle] = useState(false);
-  useEffect(() => {
-    let t: ReturnType<typeof setTimeout>;
-    const wake = () => { setIdle(false); clearTimeout(t); t = setTimeout(() => setIdle(true), ms); };
-    wake();
-    const ev = ['pointerdown', 'pointermove', 'keydown', 'touchstart'] as const;
-    ev.forEach((e) => window.addEventListener(e, wake, { passive: true }));
-    return () => { clearTimeout(t); ev.forEach((e) => window.removeEventListener(e, wake)); };
-  }, [ms]);
-  return idle;
-}
-
 export function Nav({ alarms = [] }: { alarms?: string[] }) {
   const path = usePathname();
-  const idle = useIdle();
   const fresh = useNewAlarms(alarms, path.startsWith('/larm'));
   const active = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
   return (
     <nav
       aria-label="Huvudmeny"
-      className={`fixed inset-x-0 bottom-0 z-20 flex gap-1 border-t border-line bg-ground p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:top-0 md:h-dvh md:w-16 md:shrink-0 md:flex-col md:gap-1 md:overflow-y-auto md:border-t-0 md:border-r md:bg-transparent md:px-2 md:py-4 md:transition-opacity md:duration-700 ${
-        idle ? 'lg:pointer-events-none lg:opacity-0' : ''}`}
+      className={`fixed inset-x-0 bottom-0 z-20 flex gap-1 border-t border-line bg-ground p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:top-0 md:h-dvh md:w-16 md:shrink-0 md:flex-col md:gap-1 md:overflow-y-auto md:border-t-0 md:border-r md:bg-transparent md:px-2 md:py-4`}
     >
       {ITEMS.filter((it) => it.href !== '/pendling' || process.env.NEXT_PUBLIC_COMMUTE !== 'off')
         // Bara väg (utan tåg): sidan heter Trafik.
