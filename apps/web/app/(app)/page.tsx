@@ -5,7 +5,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
 import { MinutesTo } from '@/components/MinutesTo';
-import type { NowPlaying } from '@/lib/media';
+import { tvAppLabel, type NowPlaying } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
@@ -93,7 +93,9 @@ export default async function HomePage() {
   ]);
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
   const tvRows = await loadTvStatuses().catch(() => []);
-  const tvs2 = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
+  const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
+  // Råa appnamn översätts (t.ex. Playplus → Telia Play).
+  const tvs2 = tvRaw ? { ...tvRaw, app_name: tvAppLabel(tvRaw.app_name) } : null;
   const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
   const wx = await loadWarnings(weather);
   const tvAgent: NowPlaying | null = tvs2?.is_on && tvs2.app_name && tvs2.media_status !== 'none'

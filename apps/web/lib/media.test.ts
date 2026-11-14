@@ -47,3 +47,10 @@ test('tv-fjärr: TV, Google TV och soundbar i samma rum', () => {
   });
   assert.equal(tvRemote(devices.slice(1), []), null);
 });
+
+import { tvAppLabel } from './media.ts';
+test('tv-appnamn: Playplus blir Telia Play', () => {
+  assert.equal(tvAppLabel('Playplus'), 'Telia Play');
+  assert.equal(tvAppLabel('Netflix'), 'Netflix');
+  assert.equal(tvAppLabel(null), null);
+});

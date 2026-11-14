@@ -60,3 +60,15 @@ export function tvRemote(devices: TvDevice[], caps: TvCap[]): TvRemote | null {
     bar: bar ? { id: bar.id, volume: val(bar.id, 'volume_set')?.value_num ?? null, muted: val(bar.id, 'volume_mute')?.value_bool === true } : null,
   };
 }
+
+/** Appnamn som TV-agenten kan skicka i rå form (package-namnets sista del) → namnet folk känner igen. */
+const TV_APP_NAMES: Record<string, string> = {
+  playplus: 'Telia Play',
+  'com.teliasonera.telia.playplus': 'Telia Play',
+  ninja: 'Netflix',
+  tv4play: 'TV4 Play',
+  svtplay: 'SVT Play',
+  disneyplus: 'Disney+',
+  livingroom: 'Prime Video',
+};
+export const tvAppLabel = (name: string | null | undefined) => (name ? TV_APP_NAMES[name.trim().toLowerCase()] ?? name : name ?? null);
