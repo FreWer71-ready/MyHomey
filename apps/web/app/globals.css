@@ -127,6 +127,8 @@ body {
 /* Tåget: sliprar som rusar mot betraktaren och en lätt vaggning. */
 .wx-track { animation: wx-track 0.9s linear infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes wx-track { from { transform: translateY(-2.5px) scaleX(0.55); opacity: 0; } 30% { opacity: 1; } to { transform: translateY(3.5px) scaleX(1.45); opacity: 0; } }
+.wx-lane { animation: wx-lane 0.9s linear infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes wx-lane { from { transform: translateY(0) scale(0.6); opacity: 0; } 25% { opacity: 1; } to { transform: translateY(8px) scale(1.5); opacity: 0; } }
 .wx-rock { animation: wx-rock 0.45s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes wx-rock { from { transform: rotate(-1.2deg) translateY(0.25px); } to { transform: rotate(1.2deg) translateY(-0.35px); } }
 @keyframes wx-drift { from { transform: translateX(-1.5px); } to { transform: translateX(2px); } }
@@ -137,7 +139,7 @@ body {
 @keyframes wx-twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sort-wiggle, .backdrop-img, .backdrop-in, .backdrop-fadein, .wx-spin, .wx-beam, .wx-glow, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle, .wx-swing, .wx-slosh, .wx-pop, .wx-grow, .wx-glint, .wx-shake, .wx-blink, .wx-rise, .wx-bob, .wx-ripple, .wx-track, .wx-rock { animation: none; }
+  .sort-wiggle, .backdrop-img, .backdrop-in, .backdrop-fadein, .wx-spin, .wx-beam, .wx-glow, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle, .wx-swing, .wx-slosh, .wx-pop, .wx-grow, .wx-glint, .wx-shake, .wx-blink, .wx-rise, .wx-bob, .wx-ripple, .wx-track, .wx-lane, .wx-rock { animation: none; }
 }
 
 svg.ico {
