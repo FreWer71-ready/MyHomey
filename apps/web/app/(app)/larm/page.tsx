@@ -1,6 +1,6 @@
 import { Icon, type IconName } from '@/components/Icon';
 import { HUMIDITY_LIMIT, humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadNet, loadOpeningsToday, loadWarnings, loadWeather } from '@/lib/data';
+import { loadHome, loadNet, loadOpeningsToday, loadPolice, loadWarnings, loadWeather, POLICE_AREAS } from '@/lib/data';
 import { when } from '@/components/WarningBanners';
 import { NET_LABEL } from '@/lib/net';
 import { HistoryChart } from '@/components/HistoryChart';
@@ -36,7 +36,7 @@ function Section({ id, icon, title, count, tone, children }: {
 const Empty = ({ text }: { text: string }) => <p className="rounded-2xl bg-glass-2 p-3 font-bold text-dim">{text}</p>;
 
 export default async function AlarmPage() {
-  const [h, weather, openedToday, net] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday(), loadNet()]);
+  const [h, weather, openedToday, net, police] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday(), loadNet(), loadPolice().catch(() => [])]);
   const warning = rainWarning(weather, h.openings);
   // Lampor som är otillgängliga får en egen lista; övriga enheter ligger kvar under Svarar inte.
   const deadLights = h.silent.filter((x) => x.light && x.reason === 'offline');
@@ -88,6 +88,27 @@ export default async function AlarmPage() {
           </ul>
         )}
       </Section>}
+
+      {/* Polisens händelser i närheten senaste dygnet (POLICE_AREAS). */}
+      <Section id="narhet" icon="bellAlert" title={`I närheten · ${POLICE_AREAS.join(', ')}`} count={police.length} tone={police.some((e) => e.level !== 'yellow') ? 'warn' : 'ok'}>
+        {police.length ? (
+          <ul className="flex flex-col gap-2">
+            {police.slice(0, 12).map((e) => (
+              <li key={e.id}>
+                <a href={e.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 rounded-2xl bg-glass-2 px-3 py-2">
+                  <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ background: e.level === 'red' ? '#F85149' : e.level === 'orange' ? '#F0883E' : '#E3A008' }} />
+                  <span className="min-w-0 grow">
+                    <span className="block font-extrabold">{e.type}</span>
+                    <span className="block text-sm font-bold text-dim">{e.summary}</span>
+                  </span>
+                  <span className="shrink-0 text-sm font-bold text-dim tabular-nums">{when(e.at)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : <Empty text="Inga händelser senaste dygnet" />}
+        <p className="mt-2 px-1 text-[13px] font-bold text-dim">Källa: Polisen (polisen.se), uppdateras var 10:e minut.</p>
+      </Section>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Section id="batteri" icon="battery" title="Lågt batteri" count={h.lowBatteryList.length} tone={h.lowBatteryList.length ? 'warn' : 'ok'}>

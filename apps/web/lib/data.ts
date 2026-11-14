@@ -10,6 +10,7 @@ import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow 
 import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } from './warnings';
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { parseCommute, parseRoad, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
+import { parsePolice, type PoliceEvent, type RawPolice } from './police';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
@@ -490,5 +491,27 @@ export async function geocode(q: string): Promise<{ lat: number; lon: number } |
     return hit ? { lat: Number(hit.lat), lon: Number(hit.lon) } : null;
   } catch {
     return null;
+  }
+}
+
+/** Orter för "i närheten" (POLICE_AREAS, kommaseparerade; standard Eskilstuna). */
+export const POLICE_AREAS = (process.env.POLICE_AREAS ?? 'Eskilstuna').split(',').map((s) => s.trim()).filter(Boolean);
+
+/** Polisens händelser i närheten senaste dygnet (öppet API, cachas 10 min). Tom lista vid fel. */
+export async function loadPolice(): Promise<PoliceEvent[]> {
+  if (DEMO) {
+    const t = (min: number) => { const d = new Date(Date.now() - min * 60_000); return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 19)} +00:00`; };
+    return parsePolice([
+      { id: 1, datetime: t(40), name: 'x, Brand, Eskilstuna', summary: 'Brand i flerbostadshus, räddningstjänsten på plats.', url: '/a/', type: 'Brand' },
+      { id: 2, datetime: t(300), name: 'x, Stöld, Eskilstuna', summary: 'Stöld i butik.', url: '/b/', type: 'Stöld' },
+    ], POLICE_AREAS);
+  }
+  try {
+    const res = await fetch(`https://polisen.se/api/events?locationname=${encodeURIComponent(POLICE_AREAS.join(';'))}`, {
+      headers: { 'User-Agent': 'home-dashboard/1.0' }, next: { revalidate: 600 }, signal: AbortSignal.timeout(6000),
+    });
+    return res.ok ? parsePolice((await res.json()) as RawPolice[], POLICE_AREAS) : [];
+  } catch {
+    return [];
   }
 }

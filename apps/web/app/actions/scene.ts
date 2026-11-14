@@ -128,15 +128,3 @@ export async function allLightsOff(ids: string[]): Promise<Result> {
   const failed = res.filter((r) => !r.ok).length;
   return failed ? { ok: false, error: `${failed} av ${ids.length} lampor svarade inte` } : { ok: true };
 }
-
-/**
- * SOS: kör Homey-flowet som heter "SOS" (måste vara favorit i Homey för att synas här).
- * Flowet bestämmer vad som händer (t.ex. alla lampor blinkar, siren, push till telefonerna).
- */
-export async function runSos(): Promise<Result> {
-  if (process.env.CONTROL === 'hue') return { ok: false, error: 'SOS kräver Homey' };
-  const { loadFlows } = await import('@/lib/data');
-  const sos = (await loadFlows().catch(() => [])).find((f) => /^\W*sos\b/i.test(f.name.trim()));
-  if (!sos) return { ok: false, error: 'Skapa ett favoritflow i Homey som heter SOS' };
-  return runFlow(sos.id, sos.advanced);
-}

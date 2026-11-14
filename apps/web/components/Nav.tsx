@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { FullscreenButton } from './FullscreenButton';
 import { LegendButton } from './LegendButton';
 import { RefreshButton } from './RefreshButton';
-import { SosButton } from './SosButton';
 import { Icon, type IconName } from './Icon';
 
 const ITEMS: { href: string; label: string; icon: IconName; ready: boolean }[] = [
@@ -88,7 +87,6 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
         ),
       )}
       <div className="flex flex-1 md:mt-auto md:flex-none md:flex-col md:gap-1">
-        <SosButton />
         <span className="hidden md:block">
           <LegendButton />
         </span>

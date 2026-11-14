@@ -7,6 +7,7 @@ import { ActionTiles } from '@/components/ActionTiles';
 import { quickActions, type QuickItem } from '@/lib/quick';
 import { alongRoute, boxFor, isWeekend, km, nearHome, nextTrip, type Trip } from '@/lib/trip';
 import { loadCalendarServer } from '@/lib/calendar-source';
+import { policeAlerts } from '@/lib/police';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { MinutesTo } from '@/components/MinutesTo';
 import { tvAppLabel } from '@/lib/media';
@@ -14,7 +15,7 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { geocode, loadArea, loadCommute, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { geocode, loadArea, loadCommute, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
@@ -112,7 +113,7 @@ export default async function HomePage() {
   // Råa appnamn översätts (t.ex. Playplus → Telia Play).
   const tvs2 = tvRaw ? { ...tvRaw, app_name: tvAppLabel(tvRaw.app_name) } : null;
   const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
-  const wx = await loadWarnings(weather);
+  const [wx, police] = await Promise.all([loadWarnings(weather), loadPolice().catch(() => [])]);
   // TV-rutan visar det som syns på skärmen, det senaste först:
   // - The Frame i konstläge eller avstängd: det gäller oavsett vad Google TV rapporterar.
   // - Annars den källa vars innehåll ändrades senast: en app direkt på The Frame (Tizen) eller Google TV.
@@ -216,6 +217,11 @@ export default async function HomePage() {
     })),
     ...(net?.state === 'down' ? [{ id: 'net', level: 'red', icon: 'wifi', text: `Internet nere${net.isp ? ` · ${net.isp}` : ''}`, href: '/larm#natverk' } as Alert] : []),
     ...(rain ? [{ id: 'rain', level: 'orange', icon: 'rain', text: `Regn kl ${hhmm(rain.at)} – stäng ${rain.windows.map((w) => w.name).join(', ')}`, href: '/larm' } as Alert] : []),
+    // Polisen i närheten: allvarligt och färskt (senaste 3 h), högst en platta.
+    ...policeAlerts(police, now).slice(0, 1).map((e): Alert => ({
+      id: `polis-${e.id}`, level: e.level === 'red' ? 'red' : 'orange', icon: e.type.toLowerCase().includes('brand') ? 'bellAlert' : '!',
+      text: `${e.type} · ${e.place} ${hhmm(e.at)}`, href: '/larm#narhet',
+    })),
     ...(damp.length ? [{ id: 'damp', level: 'yellow', icon: 'drop', text: `Fukt ${damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')}`, href: '/larm#fukt' } as Alert] : []),
   ];
   const issues = alerts.length;
