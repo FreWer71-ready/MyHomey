@@ -178,11 +178,11 @@ const FLAT = {
   ),
   sun: (
     <>
-      <g className="wx-spin" style={{ transformOrigin: '12px 12px' }}>
-        {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
-          <rect key={a} x={11} y={1.5} width={2} height={3.5} rx={1} fill={C.ray} transform={`rotate(${a} 12 12)`} />
-        ))}
-      </g>
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a, i) => (
+        <g key={a} transform={`rotate(${a} 12 12)`}>
+          <rect className={`wx-beam${i % 2 ? ' wx-beam-alt' : ''}`} style={{ transformOrigin: '12px 12px' }} x={11} y={1.5} width={2} height={3.5} rx={1} fill={C.ray} />
+        </g>
+      ))}
       <circle cx={12} cy={12} r={5} fill={C.sun} />
     </>
   ),

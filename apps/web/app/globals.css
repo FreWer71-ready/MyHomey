@@ -95,6 +95,10 @@ body {
 .wx-slide { animation: wx-slide 5s ease-in-out infinite alternate; }
 .wx-twinkle { animation: wx-twinkle 3s ease-in-out infinite; }
 @keyframes wx-spin { to { transform: rotate(360deg); } }
+/* Solen strålar: strålarna växer utåt och tonar, varannan i otakt. */
+.wx-beam { animation: wx-beam 2.8s ease-in-out infinite; transform-box: view-box; }
+.wx-beam-alt { animation-delay: -1.4s; }
+@keyframes wx-beam { 0%, 100% { transform: scale(0.92); opacity: 0.55; } 50% { transform: scale(1.12); opacity: 1; } }
 .wx-rise { animation: wx-rise 2.6s ease-out infinite; }
 .wx-bob { animation: wx-bob 3s ease-in-out infinite alternate; }
 .wx-ripple { animation: wx-ripple 3s ease-out infinite; transform-origin: 12px 22.3px; transform-box: view-box; }
@@ -130,7 +134,7 @@ body {
 @keyframes wx-twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sort-wiggle, .backdrop-img, .backdrop-in, .backdrop-fadein, .wx-spin, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle, .wx-swing, .wx-slosh, .wx-pop, .wx-grow, .wx-glint, .wx-shake, .wx-blink, .wx-rise, .wx-bob, .wx-ripple, .wx-track, .wx-rock { animation: none; }
+  .sort-wiggle, .backdrop-img, .backdrop-in, .backdrop-fadein, .wx-spin, .wx-beam, .wx-drift, .wx-fall, .wx-flake, .wx-flash, .wx-slide, .wx-twinkle, .wx-swing, .wx-slosh, .wx-pop, .wx-grow, .wx-glint, .wx-shake, .wx-blink, .wx-rise, .wx-bob, .wx-ripple, .wx-track, .wx-rock { animation: none; }
 }
 
 svg.ico {

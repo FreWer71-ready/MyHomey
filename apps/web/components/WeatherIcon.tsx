@@ -14,16 +14,16 @@ const cloudPath = 'M18 48h28a11 11 0 0 0 1.5-21.9A15 15 0 0 0 18.6 24 12 12 0 0 
 function Sun({ x = 32, y = 32, r = 11 }: { x?: number; y?: number; r?: number }) {
   return (
     <g>
-      <g className="wx-spin" style={{ transformOrigin: `${x}px ${y}px` }}>
-        {Array.from({ length: 8 }, (_, i) => (
+      {/* Strålarna pulserar utåt, varannan i otakt. */}
+      {Array.from({ length: 8 }, (_, i) => (
+        <g key={i} transform={`rotate(${i * 45} ${x} ${y})`}>
           <line
-            key={i}
+            className={`wx-beam${i % 2 ? ' wx-beam-alt' : ''}`} style={{ transformOrigin: `${x}px ${y}px` }}
             x1={x} y1={y - r - 5} x2={x} y2={y - r - 10}
             stroke={RAY} strokeWidth={3.5} strokeLinecap="round"
-            transform={`rotate(${i * 45} ${x} ${y})`}
           />
-        ))}
-      </g>
+        </g>
+      ))}
       <circle cx={x} cy={y} r={r} fill={SUN} />
     </g>
   );
