@@ -439,3 +439,18 @@ export async function loadContactLog(ids: string[], days = 7): Promise<ContactEv
   }
   return out.reverse();
 }
+
+/** Hur ofta varje mood/flow körts från dashboarden de senaste `days` dagarna (nyckel "mood:id" / "flow:id"). */
+export async function loadUsage(days = 60): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (DEMO) { out.set('flow:f2', 5); out.set('flow:f1', 3); return out; }
+  const sb = await createClient();
+  const { data } = await sb.from('commands').select('type,mood_id,flow_id')
+    .in('type', ['mood', 'flow']).eq('ok', true)
+    .gte('created_at', new Date(Date.now() - days * 86400_000).toISOString()).limit(5000);
+  for (const c of data ?? []) {
+    const key = c.type === 'mood' ? `mood:${c.mood_id}` : `flow:${c.flow_id}`;
+    out.set(key, (out.get(key) ?? 0) + 1);
+  }
+  return out;
+}

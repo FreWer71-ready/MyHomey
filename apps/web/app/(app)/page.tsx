@@ -3,6 +3,8 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
+import { ActionTiles } from '@/components/ActionTiles';
+import { quickActions, type QuickItem } from '@/lib/quick';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { MinutesTo } from '@/components/MinutesTo';
 import { tvAppLabel } from '@/lib/media';
@@ -10,7 +12,7 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadCommute, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { loadCommute, loadFlows, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
@@ -92,6 +94,14 @@ export default async function HomePage() {
     loadHome(), loadPrices(), loadWeather(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
     loadHistory('power', '12h').catch(() => []), loadHistory('energy', '24h').catch(() => []),
   ]);
+  // Snabbval: fasta val (QUICK_ACTIONS) + mest använda moods/flows från dashboarden.
+  const [flows, usage] = await Promise.all([loadFlows().catch(() => []), loadUsage().catch(() => new Map<string, number>())]);
+  const quickAll: QuickItem[] = [
+    ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced })),
+    ...h.homeMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const })),
+    ...h.rooms.flatMap((r) => r.moods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const }))),
+  ];
+  const quick = quickActions(quickAll, (process.env.QUICK_ACTIONS ?? '').split(','), usage);
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
   const tvRows = await loadTvStatuses().catch(() => []);
   const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
@@ -139,6 +149,13 @@ export default async function HomePage() {
   const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
   const outTemp = h.outdoorTemp ?? tvs?.air ?? smhiTemp;
   const sky = weather ? symbolInfo(weather.current.symbol) : null;
+  // Vad vädret betyder för hemmet (en rad, bara när det är relevant).
+  const nightMin = weather ? Math.min(...weather.hours.slice(0, 12).map((x) => x.temp).filter(Number.isFinite)) : Infinity;
+  const hint: { icon: IconName; text: string } | null =
+    station?.road != null && station.road <= 0.5 ? { icon: 'road', text: 'Halt ute – skrapa bilen' }
+    : station?.gust != null && station.gust >= 12 ? { icon: 'wind', text: `Byiga vindar ${num(station.gust, 0)} m/s – säkra utemöblerna` }
+    : outTemp != null && outTemp > 0 && nightMin <= 0 ? { icon: 'snow', text: `Frost inatt (${num(nightMin, 0)}°)` }
+    : null;
 
   // ---- Härnäst: pendling ----
   const dir = direction();
@@ -224,63 +241,64 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* NU: väder med timmar och 5 dygn sammanslaget. */}
-        <Card title={`Ute${weather?.source ? ` · ${weather.source}` : ''}`} icon="thermo" className="order-4 lg:order-none lg:col-span-4 lg:row-span-2">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              {outTemp != null ? (
-                <span className="text-[64px] leading-none font-bold tracking-tight tabular-nums lg:text-[72px]">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
-              ) : (
-                <span className="text-[28px] font-semibold text-dim">{h.outdoorStale ? 'Stationen tyst i 4 tim' : 'Ej tillgänglig'}</span>
-              )}
-              {sky && weather && (
-                <span className="text-[18px] font-semibold">
-                  {weather.nextPrecip && weather.nextPrecip.time > weather.current.time
-                    ? `${sky.label} · ${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} ${hhmm(weather.nextPrecip.time)}`
-                    : sky.label}
-                </span>
-              )}
-              {station && (
-                <span className="flex flex-wrap gap-x-4 text-[16px] text-dim">
-                  {station.wind != null && <span className="flex items-center gap-1"><Icon name="wind" size={18} />{num(station.wind)}{station.gust != null && station.gust > station.wind ? `–${num(station.gust)}` : ''} m/s {station.dir ?? ''}</span>}
-                  {station.road != null && (
-                    <span className="flex items-center gap-1" style={{ color: station.road <= 0.5 ? C.bad : undefined }}>
-                      <Icon name="road" size={18} />Väg {fmtTemp(station.road)}{station.road <= 0.5 ? ' halka' : ''}
-                    </span>
-                  )}
+        {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
+        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6">
+          <Card title={`Ute${weather?.source ? ` · ${weather.source}` : ''}`} icon="thermo" href="/vader" className="order-4 lg:order-none lg:shrink-0">
+            <div className="flex items-center gap-3">
+              {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={60} label={sky.label} />}
+              <div className="flex min-w-0 grow flex-col">
+                {outTemp != null ? (
+                  <span className="text-[48px] leading-none font-bold tracking-tight tabular-nums">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
+                ) : (
+                  <span className="text-[20px] font-semibold text-dim">{h.outdoorStale ? 'Stationen tyst' : 'Ej tillgänglig'}</span>
+                )}
+                {sky && weather && (
+                  <span className="truncate text-[16px] font-semibold">
+                    {weather.nextPrecip && weather.nextPrecip.time > weather.current.time
+                      ? `${sky.label} · ${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} ${hhmm(weather.nextPrecip.time)}`
+                      : sky.label}
+                  </span>
+                )}
+              </div>
+              {station?.wind != null && (
+                <span className="flex shrink-0 flex-col items-end text-[15px] text-dim">
+                  <span className="flex items-center gap-1"><Icon name="wind" size={16} />{num(station.wind, 0)}{station.gust != null && station.gust > station.wind ? `–${num(station.gust, 0)}` : ''} m/s</span>
+                  {station.road != null && <span style={{ color: station.road <= 0.5 ? C.bad : undefined }}>Väg {fmtTemp(station.road)}</span>}
                 </span>
               )}
             </div>
-            {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={96} label={sky.label} />}
-          </div>
-          {weather && (
-            <ol aria-label="Kommande timmar" className="grid grid-cols-6 gap-1 border-y border-line py-2">
-              {weather.hours.slice(1, 7).map((w) => (
-                <li key={w.time} className="flex flex-col items-center">
-                  <span className="text-[16px] text-dim tabular-nums">{hhmm(w.time).slice(0, 2)}</span>
-                  <WeatherIcon kind={weatherKind(w.symbol)} size={30} label={symbolInfo(w.symbol).label} />
-                  <span className="text-[17px] font-semibold tabular-nums">{Number.isFinite(w.temp) ? `${Math.round(w.temp)}°` : '–'}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-          {weather?.days && weather.days.length > 0 && (
-            <ol aria-label="Kommande dagar" className="flex min-h-0 flex-col gap-0.5">
-              {weather.days.slice(0, 5).map((d) => {
-                const day = new Intl.DateTimeFormat('sv-SE', { weekday: 'short', timeZone: 'Europe/Stockholm' }).format(Date.parse(`${d.date}T12:00:00Z`)).replace('.', '');
-                return (
-                  <li key={d.date} className="flex h-7 items-center gap-3 text-[17px]">
-                    <span className="w-10 text-dim capitalize">{day}</span>
-                    <WeatherIcon kind={weatherKind(d.symbol)} size={28} label={symbolInfo(d.symbol).label} />
-                    <span className="grow text-[16px] text-dim">{d.precip >= 0.5 ? `${num(d.precip)} mm` : ''}</span>
-                    <span className="font-semibold tabular-nums">{Math.round(d.max)}°</span>
-                    <span className="w-9 text-right text-dim tabular-nums">{Math.round(d.min)}°</span>
+            {weather && (
+              <ol aria-label="Kommande timmar" className="grid grid-cols-6 gap-1 border-t border-line pt-2">
+                {weather.hours.slice(1, 7).map((w) => (
+                  <li key={w.time} className="flex flex-col items-center">
+                    <span className="text-[14px] text-dim tabular-nums">{hhmm(w.time).slice(0, 2)}</span>
+                    <WeatherIcon kind={weatherKind(w.symbol)} size={26} label={symbolInfo(w.symbol).label} />
+                    <span className="text-[15px] font-semibold tabular-nums">{Number.isFinite(w.temp) ? `${Math.round(w.temp)}°` : '–'}</span>
                   </li>
-                );
-              })}
-            </ol>
+                ))}
+              </ol>
+            )}
+            {hint && (
+              <p className="flex items-center gap-2 text-[15px] font-semibold" style={{ color: C.warn }}>
+                <Icon name={hint.icon} size={18} /><span className="truncate">{hint.text}</span>
+              </p>
+            )}
+          </Card>
+
+          {(quick.pinned.length > 0 || quick.most.length > 0) && (
+            <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0 lg:grow">
+              <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
+                {quick.pinned.length > 0 && <ActionTiles items={quick.pinned} layout="compact" />}
+                {quick.most.length > 0 && (
+                  <>
+                    <h3 className="text-[14px] font-semibold text-dim">Mest använda</h3>
+                    <ActionTiles items={quick.most} layout="compact" />
+                  </>
+                )}
+              </div>
+            </Card>
           )}
-        </Card>
+        </div>
 
         {/* HÄRNÄST: pendling och kalender. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6">
