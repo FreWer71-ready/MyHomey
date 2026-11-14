@@ -4,8 +4,9 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { NowPlayingCard } from '@/components/NowPlayingCard';
+import { TvBar, type TvView } from '@/components/TvBar';
 import { MinutesTo } from '@/components/MinutesTo';
-import { tvAppLabel, type NowPlaying } from '@/lib/media';
+import { tvAppLabel } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
@@ -107,16 +108,17 @@ export default async function HomePage() {
   const frameApp = frame?.is_on && frame.current_app?.startsWith('tizen:') ? frame : null;
   const googleShows = !!tvs2?.is_on && !!tvs2.app_name && tvs2.media_status !== 'none';
   const useFrame = !!frameApp && (!googleShows || changed(frameApp) >= changed(tvs2));
-  const tvAgent: NowPlaying | null = frameArt || frameOff ? null
-    : useFrame ? { id: frameApp!.device_id, device: 'Samsung TV', kind: 'tv', playing: true, title: tvAppLabel(frameApp!.app_name) ?? 'App', subtitle: null }
-    : googleShows ? { id: tvs2!.device_id, device: tvs2!.app_name!, kind: 'tv', playing: tvs2!.media_status === 'playing',
-        title: tvs2!.media_title ?? tvs2!.app_name!, subtitle: [tvs2!.media_artist, tvs2!.media_status === 'paused' ? 'pausad' : null].filter(Boolean).join(' · ') || null }
-    : null;
-  // Konstläge/av: TV-rutan visar det, även om Homeys cast-data säger något annat.
-  const playing = tvAgent || frameArt || frameOff ? [...(tvAgent ? [tvAgent] : []), ...castPlaying.filter((p) => p.kind !== 'tv')] : castPlaying;
-  // TV på men inget spelas: visa appen (t.ex. "Netflix · startsida").
-  // Ingen titel att visa: konstläge, av, eller vilken app som är öppen.
-  const tvIdle = !tvAgent ? (frameArt ? 'konstläge' : frameOff ? 'av' : tvs2?.is_on && tvs2.app_name ? `på · ${tvs2.app_name}` : frame?.is_on ? 'på' : null) : null;
+  // TV-rutan: det som syns nu, i ett enhetligt format.
+  const castTv = !frameArt && !frameOff ? castPlaying.find((p) => p.kind === 'tv') : undefined;
+  const tvView: TvView = frameArt ? { source: 'Samsung TV', app: null, title: null, subtitle: null, status: 'art' }
+    : frameOff ? { source: 'Samsung TV', app: null, title: null, subtitle: null, status: 'off' }
+    : useFrame ? { source: 'Samsung TV', app: tvAppLabel(frameApp!.app_name), title: null, subtitle: null, status: 'playing' }
+    : googleShows ? { source: 'Google TV', app: tvs2!.app_name, title: tvs2!.media_title, subtitle: tvs2!.media_artist, status: tvs2!.media_status === 'paused' ? 'paused' : 'playing' }
+    : castTv ? { source: 'Google TV', app: null, title: castTv.title, subtitle: castTv.subtitle, status: 'playing' }
+    : tvs2?.is_on ? { source: 'Google TV', app: tvs2.app_name, title: null, subtitle: null, status: 'on' }
+    : frame?.is_on ? { source: 'Samsung TV', app: null, title: null, subtitle: null, status: 'on' }
+    : { source: 'TV', app: null, title: null, subtitle: null, status: frame || tvs2 ? 'off' : 'unknown' };
+  const speaker = castPlaying.find((p) => p.kind === 'music');
   const now = Date.now();
   const names = joinNames(nameDay);
 
@@ -348,7 +350,7 @@ export default async function HomePage() {
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
         <Card className="order-6 lg:order-none lg:col-span-4 lg:py-3">
           <h2 className="sr-only">Hemmet</h2>
-          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto" style={{ '--row-h': rowCount > 6 ? '54px' : '60px' } as React.CSSProperties}>
+          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto" style={{ '--row-h': rowCount > 6 ? '51px' : '58px' } as React.CSSProperties}>
             {tempAvg != null && (
               <Row
                 icon="thermo" label="Inomhus" href="/rum" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt"
@@ -403,17 +405,15 @@ export default async function HomePage() {
         </Card>
 
         {/* TV och ljud: alltid samma plats längst ner (mitten + höger). Spelar något visas titeln, annars en lugn rad. */}
-        <section aria-label="TV och ljud" className="order-7 grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2 lg:order-none lg:col-span-8 lg:gap-6">
-          {(['tv', 'music'] as const).map((kind) => {
-            const p = playing.find((x) => x.kind === kind);
-            return p ? <NowPlayingCard key={kind} p={p} /> : (
-              <div key={kind} className="flex min-h-16 items-center gap-3 rounded-[20px] bg-card px-5 text-[17px] text-dim">
-                <Icon name={kind === 'tv' ? 'tv' : 'music'} size={26} />
-                <span className="font-semibold text-fg">{kind === 'tv' ? 'TV' : 'Högtalare'}</span>
-                <span>· {kind === 'tv' ? (tvIdle ?? 'inget spelas') : 'tyst'}</span>
-              </div>
-            );
-          })}
+        {/* TV och ljud längst ner: TV-rutan bred och tydlig (2/3), högtalaren vid sidan. */}
+        <section aria-label="TV och ljud" className="order-7 grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[2fr_1fr] lg:order-none lg:col-span-8 lg:gap-6">
+          <TvBar v={tvView} />
+          {speaker ? <NowPlayingCard p={speaker} /> : (
+            <div className="flex h-20 items-center gap-3 rounded-[20px] bg-card px-5 text-[17px] text-dim">
+              <Icon name="music" size={26} />
+              <span className="font-semibold text-fg">Högtalare</span><span>· tyst</span>
+            </div>
+          )}
         </section>
       </div>
     </HomeShell>
