@@ -38,6 +38,9 @@ const Empty = ({ text }: { text: string }) => <p className="rounded-2xl bg-glass
 export default async function AlarmPage() {
   const [h, weather, openedToday, net] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday(), loadNet()]);
   const warning = rainWarning(weather, h.openings);
+  // Lampor som är otillgängliga får en egen lista; övriga enheter ligger kvar under Svarar inte.
+  const deadLights = h.silent.filter((x) => x.light && x.reason === 'offline');
+  const otherSilent = h.silent.filter((x) => !(x.light && x.reason === 'offline'));
   const open = h.openings.filter((o) => o.open);
   const wet = h.rooms.filter((r) => r.humidity != null);
   const damp = humidityWarnings(h.rooms);
@@ -108,10 +111,29 @@ export default async function AlarmPage() {
           )}
         </Section>
 
-        <Section id="enheter" icon="wifi" title="Svarar inte" count={h.silent.length} tone={h.silent.length ? 'warn' : 'ok'}>
-          {h.silent.length ? (
+        {/* Lampor som inte går att nå (otillgängliga i Homey, t.ex. strömbrytaren avslagen). */}
+        <Section id="lampor" icon="bulb" title="Lampor som inte nås" count={deadLights.length} tone={deadLights.length ? 'warn' : 'ok'}>
+          {deadLights.length ? (
             <ul className="flex flex-col gap-2">
-              {h.silent.map((s) => (
+              {deadLights.map((s) => (
+                <li key={s.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
+                  <span className="min-w-0 grow">
+                    <span className="block truncate font-extrabold">{s.name}</span>
+                    <span className="block text-sm font-bold text-dim">{s.room || 'Inget rum'}</span>
+                  </span>
+                  <span className="text-right text-sm font-extrabold text-danger">Kan inte nås</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Empty text="Alla lampor går att nå." />
+          )}
+        </Section>
+
+        <Section id="enheter" icon="wifi" title="Svarar inte" count={otherSilent.length} tone={otherSilent.length ? 'warn' : 'ok'}>
+          {otherSilent.length ? (
+            <ul className="flex flex-col gap-2">
+              {otherSilent.map((s) => (
                 <li key={s.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
                   <span className="min-w-0 grow">
                     <span className="block truncate font-extrabold">{s.name}</span>

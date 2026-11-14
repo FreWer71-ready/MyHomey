@@ -39,7 +39,7 @@ export type Room = {
 };
 export type BatteryItem = { id: string; name: string; room: string; level: number | null };
 export type Opening = { id: string; name: string; room: string; open: boolean; kind: 'door' | 'window' };
-export type Silent = { id: string; name: string; room: string; lastSeen: string | null; reason: 'offline' | 'stale' };
+export type Silent = { id: string; name: string; room: string; lastSeen: string | null; reason: 'offline' | 'stale'; light: boolean };
 
 /** Väderstation (Trafikverket): vind i m/s, riktning som kompasstext, vägytans temperatur. */
 export type Trend = 'up' | 'down' | null;
@@ -212,7 +212,8 @@ export function buildHome(
   });
   // Inte svarar: otillgänglig i Homey, eller sensor som inte rapporterat på STALE_HOURS.
   const silent: Silent[] = devices.flatMap((d): Silent[] => {
-    const base = { id: d.id, name: d.name.trim(), room: roomOf(d) };
+    // Lampor (klass light, även uttag med virtuell klass) visas i en egen lista i Larm.
+    const base = { id: d.id, name: d.name.trim(), room: roomOf(d), light: d.class === 'light' };
     if (!d.available || cap(d, 'alarm_connectivity')?.value_bool === true) return [{ ...base, lastSeen: null, reason: 'offline' as const }];
     const seen = REPORTING.map((id) => cap(d, id)?.last_updated).filter((x): x is string => !!x).sort().at(-1);
     if (seen && now - Date.parse(seen) > STALE_HOURS * 3600_000) return [{ ...base, lastSeen: seen, reason: 'stale' as const }];
