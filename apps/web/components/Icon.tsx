@@ -188,7 +188,7 @@ const FLAT = {
   ),
   moon: (
     <>
-      <path d="M14 3a9 9 0 1 0 7 13.5A7.2 7.2 0 0 1 14 3z" fill={C.moon} />
+      <path className="wx-glow" style={{ '--g': '2px' } as React.CSSProperties} d="M14 3a9 9 0 1 0 7 13.5A7.2 7.2 0 0 1 14 3z" fill={C.moon} />
       <circle className="wx-twinkle" cx={19.5} cy={5} r={1.1} fill={C.moon} />
     </>
   ),

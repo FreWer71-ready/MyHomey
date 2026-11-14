@@ -32,7 +32,7 @@ function Sun({ x = 32, y = 32, r = 11 }: { x?: number; y?: number; r?: number })
 function Moon({ x = 30, y = 30 }: { x?: number; y?: number }) {
   return (
     <g>
-      <path d={`M${x + 6} ${y - 14}a14 14 0 1 0 10 22 11 11 0 0 1-10-22z`} fill={MOON} />
+      <path className="wx-glow" style={{ '--g': '5px' } as React.CSSProperties} d={`M${x + 6} ${y - 14}a14 14 0 1 0 10 22 11 11 0 0 1-10-22z`} fill={MOON} />
       <circle className="wx-twinkle" cx={x + 18} cy={y - 10} r={1.6} fill={MOON} />
       <circle className="wx-twinkle" cx={x + 22} cy={y + 2} r={1.2} fill={MOON} style={{ animationDelay: '1.2s' }} />
     </g>
