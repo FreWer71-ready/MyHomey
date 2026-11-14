@@ -6,6 +6,7 @@
   "type": "module",
   "main": "index.js",
   "engines": { "node": ">=20" },
+  "optionalDependencies": { "ws": "^8.18.0" },
   "scripts": {
     "start": "node --env-file=.env index.js",
     "test": "node --test parse.test.js"

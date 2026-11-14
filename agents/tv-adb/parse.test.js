@@ -85,3 +85,16 @@ test('riktig utskrift från Google TV (Android 14)', () => {
   assert.equal(pickSession(all, 'com.teliasonera.telia.playplus').package, 'com.teliasonera.telia.playplus');
   assert.equal(appName('com.teliasonera.telia.playplus'), 'Telia Play');
 });
+
+import { frameToStatus, parseArtMessage, parseDeviceInfo } from './frame.js';
+
+test('The Frame: ström, konstläge och status', () => {
+  assert.deepEqual(parseDeviceInfo({ device: { PowerState: 'standby', modelName: 'QE75LS03' } }), { power: 'standby', model: 'QE75LS03', name: null });
+  assert.equal(parseDeviceInfo({ device: {} }).power, 'on');
+  assert.deepEqual(parseArtMessage('{"event":"ms.channel.connect","data":{"token":"123"}}'), { token: '123' });
+  assert.deepEqual(parseArtMessage({ event: 'd2d_service_message', data: '{"event":"artmode_status","value":"on"}' }), { artMode: true });
+  assert.equal(parseArtMessage('nonsens'), null);
+  assert.deepEqual(frameToStatus({ power: 'on', artMode: true, app: null }), { is_on: false, current_app: 'art-mode', app_name: 'Konstläge', media_title: null, media_artist: null, media_status: 'none' });
+  assert.equal(frameToStatus({ power: 'on', artMode: false, app: 'Netflix' }).app_name, 'Netflix');
+  assert.equal(frameToStatus({ power: 'off', artMode: null, app: null }).is_on, false);
+});

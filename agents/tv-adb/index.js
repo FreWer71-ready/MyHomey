@@ -4,6 +4,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { buildState } from './parse.js';
+import { frameState, frameToStatus } from './frame.js';
 
 const run = promisify(execFile);
 const env = (k, d) => process.env[k] ?? d;
@@ -17,6 +18,10 @@ const CFG = {
   device: env('DEVICE_ID', 'google-tv-vardagsrum'),
   pollMs: Number(env('POLL_MS', '10000')),
   heartbeatMs: Number(env('HEARTBEAT_MS', '60000')),
+  // Samsung The Frame (valfritt): IP i hemnätet. Skickas som en egen enhet.
+  frame: env('FRAME_HOST'),
+  frameDevice: env('FRAME_DEVICE_ID', 'the-frame'),
+  frameMs: Number(env('FRAME_POLL_MS', '20000')),
 };
 for (const k of ['host', 'url', 'secret']) {
   if (!CFG[k]) { console.error(`Saknar ${k === 'host' ? 'TV_HOST' : k === 'url' ? 'INGEST_URL' : 'TV_SECRET'} i .env`); process.exit(1); }
@@ -26,7 +31,8 @@ const log = (...a) => console.log(new Date().toISOString(), ...a);
 
 let connected = false;
 let backoff = 5_000;
-let last = { json: '', at: 0 };
+/** Senast skickat per enhet (skicka bara vid ändring, plus hjärtslag). */
+const last = new Map();
 let stopping = false;
 
 async function adb(args, timeout = 8_000) {
@@ -60,19 +66,20 @@ async function connect() {
 }
 
 /** Skicka bara vid ändring, plus ett hjärtslag så att dashboarden ser att agenten lever. */
-async function send(state) {
+async function send(state, device = CFG.device) {
   const json = JSON.stringify(state);
-  if (json === last.json && Date.now() - last.at < CFG.heartbeatMs) return;
+  const prev = last.get(device) ?? { json: '', at: 0 };
+  if (json === prev.json && Date.now() - prev.at < CFG.heartbeatMs) return;
   try {
     const res = await fetch(CFG.url, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-tv-secret': CFG.secret },
-      body: JSON.stringify({ ...state, household: CFG.household, device_id: CFG.device }),
+      body: JSON.stringify({ ...state, household: CFG.household, device_id: device }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) { log(`Dashboarden svarade ${res.status}: ${(await res.text()).slice(0, 200)}`); return; }
-    if (json !== last.json) log('Ny status:', state.is_on ? `${state.app_name ?? '–'} · ${state.media_title ?? 'ingen titel'} (${state.media_status})` : 'av/viloläge');
-    last = { json, at: Date.now() };
+    if (json !== prev.json) log(`Ny status (${device}):`, state.is_on ? `${state.app_name ?? '–'} · ${state.media_title ?? 'ingen titel'} (${state.media_status})` : state.app_name ?? 'av/viloläge');
+    last.set(device, { json, at: Date.now() });
   } catch (e) {
     log(`Kunde inte skicka: ${e.name}`);
   }
@@ -111,6 +118,15 @@ async function loop() {
   }
 }
 
+/** The Frame: egen loop, oberoende av ADB mot Google TV. */
+async function frameLoop() {
+  while (!stopping && CFG.frame) {
+    const f = await frameState(CFG.frame, { log }).catch(() => null);
+    if (f) await send(frameToStatus(f), CFG.frameDevice);
+    await new Promise((r) => setTimeout(r, CFG.frameMs));
+  }
+}
+
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, async () => {
     stopping = true;
@@ -121,4 +137,6 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
 }
 
 log(`TV-agent startar: ${serial}, var ${CFG.pollMs / 1000} s, hushåll ${CFG.household}`);
+if (CFG.frame) log(`The Frame: ${CFG.frame} var ${CFG.frameMs / 1000} s`);
 loop();
+frameLoop();

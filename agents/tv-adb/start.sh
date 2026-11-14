@@ -26,6 +26,9 @@ if [ ! -f .env ]; then
   chmod 600 .env
 fi
 
+# Valfritt paket för The Frames konstläge (ws). Installeras en gång.
+[ -d node_modules/ws ] || npm install --omit=dev --no-audit --no-fund >/dev/null 2>&1 || true
+
 # Håll Termux vaket och anslut till TV:n (första gången: välj "Tillåt alltid" på TV:n)
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock || true
 host=$(grep '^TV_HOST=' .env | cut -d= -f2)

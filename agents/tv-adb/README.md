@@ -78,6 +78,15 @@ sudo systemctl daemon-reload && sudo systemctl enable --now tv-agent
 journalctl -u tv-agent -f
 ```
 
+## Samsung The Frame (valfritt)
+
+Lägg till `FRAME_HOST=<TV:ns IP>` i `.env`. Agenten läser då också:
+- **ström** (på eller viloläge) från TV:ns öppna REST-gränssnitt,
+- **konstläge** (på eller av). Första gången visar TV:n en ruta, och du väljer **Tillåt**. Token sparas i `.frame-token`.
+- **Tizen-app som körs** (Netflix, YouTube, Disney+, Prime Video, Apple TV, Spotify).
+
+Det skickas som en egen enhet (`the-frame`). Konstläget kräver paketet `ws`, som `start.sh` installerar automatiskt.
+
 ## Flera hushåll
 
 Varje hushåll har en egen hemlighet i Vault: `tv_secret` för fredrik och `tv_secret_<hushåll>` för övriga, till exempel

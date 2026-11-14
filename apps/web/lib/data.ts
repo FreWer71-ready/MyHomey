@@ -395,13 +395,15 @@ export async function loadTv(): Promise<TvRemote | null> {
 export type TvStatus = { device_id: string; is_on: boolean; app_name: string | null; media_title: string | null; media_artist: string | null; media_status: string; updated_at: string };
 
 /**
- * TV-status från den lokala ADB-agenten (agents/tv-adb). Bara färsk data (agenten skickar minst varje minut);
- * annars null så att Homeys cast-data används.
+ * TV-status från den lokala TV-agenten (agents/tv-adb): en rad per enhet (Google TV, The Frame).
+ * Bara färsk data (agenten skickar minst varje minut); äldre rader räknas inte.
  */
-export async function loadTvStatus(): Promise<TvStatus | null> {
-  if (DEMO) return { device_id: 'google-tv', is_on: true, app_name: 'Netflix', media_title: 'Stranger Things', media_artist: 'S4:E1 Chapter One', media_status: 'playing', updated_at: new Date().toISOString() };
+export async function loadTvStatuses(): Promise<TvStatus[]> {
+  if (DEMO) return [
+    { device_id: 'google-tv', is_on: true, app_name: 'Netflix', media_title: 'Stranger Things', media_artist: 'S4:E1 Chapter One', media_status: 'playing', updated_at: new Date().toISOString() },
+    { device_id: 'the-frame', is_on: false, app_name: 'Konstläge', media_title: null, media_artist: null, media_status: 'none', updated_at: new Date().toISOString() },
+  ];
   const sb = await createClient();
-  const { data } = await sb.from('tv_status').select('device_id,is_on,app_name,media_title,media_artist,media_status,updated_at').order('updated_at', { ascending: false }).limit(1).maybeSingle();
-  if (!data || Date.now() - Date.parse(data.updated_at) > 3 * 60_000) return null;
-  return data as TvStatus;
+  const { data } = await sb.from('tv_status').select('device_id,is_on,app_name,media_title,media_artist,media_status,updated_at').order('updated_at', { ascending: false });
+  return ((data ?? []) as TvStatus[]).filter((r) => Date.now() - Date.parse(r.updated_at) <= 3 * 60_000);
 }

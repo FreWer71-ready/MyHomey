@@ -9,7 +9,7 @@ import type { NowPlaying } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
 import { warningBanners } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadCommute, loadHistory, loadHome, loadTvStatus, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { loadCommute, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
@@ -92,15 +92,22 @@ export default async function HomePage() {
     loadHistory('power', '12h').catch(() => []), loadHistory('energy', '24h').catch(() => []),
   ]);
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
-  const tvs2 = await loadTvStatus().catch(() => null);
+  const tvRows = await loadTvStatuses().catch(() => []);
+  const tvs2 = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
+  const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
   const wx = await loadWarnings(weather);
   const tvAgent: NowPlaying | null = tvs2?.is_on && tvs2.app_name && tvs2.media_status !== 'none'
     ? { id: tvs2.device_id, device: tvs2.app_name, kind: 'tv', playing: tvs2.media_status === 'playing',
         title: tvs2.media_title ?? tvs2.app_name, subtitle: [tvs2.media_artist, tvs2.media_status === 'paused' ? 'pausad' : null].filter(Boolean).join(' · ') || null }
-    : null;
+    // Annars: app som körs direkt på The Frame (Tizen).
+    : frame?.is_on && frame.media_status === 'playing' && frame.app_name
+      ? { id: frame.device_id, device: 'Samsung TV', kind: 'tv', playing: true, title: frame.app_name, subtitle: null }
+      : null;
   const playing = tvAgent ? [tvAgent, ...castPlaying.filter((p) => p.kind !== 'tv')] : castPlaying;
   // TV på men inget spelas: visa appen (t.ex. "Netflix · startsida").
-  const tvIdle = tvs2?.is_on && !tvAgent ? tvs2.app_name : null;
+  // The Frame: konstläge, Tizen-app eller av. Visas när Google TV inte spelar något.
+  const frameNote = frame ? (frame.app_name === 'Konstläge' ? 'konstläge' : frame.is_on ? `på · ${frame.app_name ?? 'Samsung TV'}` : 'av') : null;
+  const tvIdle = !tvAgent ? (tvs2?.is_on && tvs2.app_name ? `på · ${tvs2.app_name}` : frameNote) : null;
   const now = Date.now();
   const names = joinNames(nameDay);
 
@@ -394,7 +401,7 @@ export default async function HomePage() {
               <div key={kind} className="flex min-h-16 items-center gap-3 rounded-[20px] bg-card px-5 text-[17px] text-dim">
                 <Icon name={kind === 'tv' ? 'tv' : 'music'} size={26} />
                 <span className="font-semibold text-fg">{kind === 'tv' ? 'TV' : 'Högtalare'}</span>
-                <span>· {kind === 'tv' ? (tvIdle ? `på · ${tvIdle}` : 'inget spelas') : 'tyst'}</span>
+                <span>· {kind === 'tv' ? (tvIdle ?? 'inget spelas') : 'tyst'}</span>
               </div>
             );
           })}
