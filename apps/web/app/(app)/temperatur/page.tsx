@@ -54,12 +54,12 @@ export default async function TemperaturePage() {
   ]);
   const humOf = new Map(hums.map((x) => [x.id, x.latest]));
 
-  // Ute: egen väderstation i Homey, annars Trafikverkets station, annars SMHI (samma ordning som Hem).
+  // Ute: Trafikverkets API direkt (färskast), annars stationen via Homey-appen, annars SMHI (samma ordning som Hem).
   const tvs = commute?.station ?? null;
   const smhi = weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
-  const out = h.outdoorTemp ?? tvs?.air ?? smhi;
-  const source = h.outdoorTemp != null ? (h.outdoorSource ?? 'Väderstation') : tvs?.air != null ? `Trafikverket · ${tvs.name}` : smhi != null ? (weather?.source ?? 'Prognos') : null;
-  const station = h.station ?? (tvs ? { wind: tvs.wind, gust: tvs.gust, dir: tvs.deg != null ? compass(tvs.deg) : null, road: tvs.road } : null);
+  const out = tvs?.air ?? h.outdoorTemp ?? smhi;
+  const source = tvs?.air != null ? `Trafikverket · ${tvs.name}` : h.outdoorTemp != null ? (h.outdoorSource ?? 'Väderstation') : smhi != null ? (weather?.source ?? 'Prognos') : null;
+  const station = (tvs ? { wind: tvs.wind, gust: tvs.gust, dir: tvs.deg != null ? compass(tvs.deg) : null, road: tvs.road } : null) ?? h.station;
   const outSeries = temps.find((x) => x.label === 'Ute');
   const fc = weather?.hours.map((x) => x.temp).filter(Number.isFinite) ?? [];
 

@@ -145,12 +145,13 @@ export default async function HomePage() {
 
   // ---- Nu: väder ----
   const tvs = commute?.station ?? null;
-  const station = h.station ?? (tvs ? { wind: tvs.wind, gust: tvs.gust, dir: tvs.deg != null ? compass(tvs.deg) : null, road: tvs.road } : null);
-  const smhiTemp = !h.outdoorStale && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
-  const outTemp = h.outdoorTemp ?? tvs?.air ?? smhiTemp;
+  // Trafikverkets API direkt först (färskast); Homey-appens station som reserv.
+  const station = (tvs ? { wind: tvs.wind, gust: tvs.gust, dir: tvs.deg != null ? compass(tvs.deg) : null, road: tvs.road } : null) ?? h.station;
+  const smhiTemp = tvs?.air == null && h.outdoorTemp == null && weather && Number.isFinite(weather.current.temp) ? Math.round(weather.current.temp * 10) / 10 : null;
+  const outTemp = tvs?.air ?? h.outdoorTemp ?? smhiTemp;
   const sky = weather ? symbolInfo(weather.current.symbol) : null;
-  // Källan för temperaturen som visas (inte prognosens): station i Homey, Trafikverket direkt eller prognosen.
-  const outSource = h.outdoorTemp != null ? h.outdoorSource : tvs?.air != null ? `Trafikverket · ${tvs.name}` : weather?.source ?? null;
+  // Källan för temperaturen som visas (inte prognosens): Trafikverket direkt, Homey-stationen eller prognosen.
+  const outSource = tvs?.air != null ? `Trafikverket · ${tvs.name}` : h.outdoorTemp != null ? h.outdoorSource : weather?.source ?? null;
   // Vad vädret betyder för hemmet (en rad, bara när det är relevant).
   const nightMin = weather ? Math.min(...weather.hours.slice(0, 12).map((x) => x.temp).filter(Number.isFinite)) : Infinity;
   const hint: { icon: IconName; text: string } | null =
