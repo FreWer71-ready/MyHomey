@@ -8,18 +8,30 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 /** Vanliga Tizen-appar (app-id -> namn). */
 export const TIZEN_APPS = {
-  '3201907018807': 'Netflix',
-  '111299001912': 'YouTube',
-  '3201901017640': 'Disney+',
-  '3201910019365': 'Prime Video',
+  // Strömning (id enligt samsung-tv-ws-api m.fl.; flera id per app för olika TV-årsmodeller)
+  '3201907018807': 'Netflix', '11101200001': 'Netflix',
+  '111299001912': 'YouTube', '3201611010983': 'YouTube Kids',
+  '3201901017640': 'Disney+', '3202009021709': 'Disney+', '3202204027038': 'Disney+',
+  '3202208028071': 'SkyShowtime',
   '3201807016597': 'Apple TV',
-  '3201606009684': 'Spotify',
-  '3202301029760': 'HBO Max',
-  // Svenska tjänster (id enligt community-listor; kan skilja mellan TV-årsmodeller).
+  '3201910019365': 'Prime Video', '3201512006785': 'Prime Video',
+  '3202301029760': 'HBO Max', '3201601007230': 'HBO Max',
+  '3201710014981': 'Paramount+', '3202110025305': 'Paramount+',
+  '3201803015944': 'Discovery+',
+  '3201511006428': 'Rakuten TV',
+  '3201808016802': 'Pluto TV',
+  '3202203026841': 'Twitch',
+  '3201512006963': 'Plex',
+  // Svenska tjänster
   '5exPmCT0nz.svtplay': 'SVT Play',
   'cczN3dzcl6.TV4': 'TV4 Play',
-  'niYSnzL6h1.Viaplay': 'Viaplay',
-  '11111300404': 'Viaplay',
+  'niYSnzL6h1.Viaplay': 'Viaplay', '11111300404': 'Viaplay',
+  // Musik
+  '3201606009684': 'Spotify',
+  '3201908019041': 'Apple Music',
+  // Övrigt
+  'org.tizen.browser': 'Webbläsare', '3201907018784': 'Webbläsare', '3202010022079': 'Webbläsare',
+  '3201710015037': 'Galleri',
 };
 
 /** PowerState ur /api/v2/: "on" eller "standby". Saknas fältet men TV:n svarar räknas den som på. */
