@@ -98,18 +98,25 @@ export default async function HomePage() {
   const tvs2 = tvRaw ? { ...tvRaw, app_name: tvAppLabel(tvRaw.app_name) } : null;
   const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
   const wx = await loadWarnings(weather);
-  const tvAgent: NowPlaying | null = tvs2?.is_on && tvs2.app_name && tvs2.media_status !== 'none'
-    ? { id: tvs2.device_id, device: tvs2.app_name, kind: 'tv', playing: tvs2.media_status === 'playing',
-        title: tvs2.media_title ?? tvs2.app_name, subtitle: [tvs2.media_artist, tvs2.media_status === 'paused' ? 'pausad' : null].filter(Boolean).join(' · ') || null }
-    // Annars: app som körs direkt på The Frame (Tizen).
-    : frame?.is_on && frame.media_status === 'playing' && frame.app_name
-      ? { id: frame.device_id, device: 'Samsung TV', kind: 'tv', playing: true, title: frame.app_name, subtitle: null }
-      : null;
-  const playing = tvAgent ? [tvAgent, ...castPlaying.filter((p) => p.kind !== 'tv')] : castPlaying;
+  // TV-rutan visar det som syns på skärmen, det senaste först:
+  // - The Frame i konstläge eller avstängd: det gäller oavsett vad Google TV rapporterar.
+  // - Annars den källa vars innehåll ändrades senast: en app direkt på The Frame (Tizen) eller Google TV.
+  const changed = (r: { changed_at?: string; updated_at: string } | null) => (r ? Date.parse(r.changed_at ?? r.updated_at) : 0);
+  const frameArt = frame?.app_name === 'Konstläge';
+  const frameOff = !!frame && !frame.is_on && !frameArt;
+  const frameApp = frame?.is_on && frame.current_app?.startsWith('tizen:') ? frame : null;
+  const googleShows = !!tvs2?.is_on && !!tvs2.app_name && tvs2.media_status !== 'none';
+  const useFrame = !!frameApp && (!googleShows || changed(frameApp) >= changed(tvs2));
+  const tvAgent: NowPlaying | null = frameArt || frameOff ? null
+    : useFrame ? { id: frameApp!.device_id, device: 'Samsung TV', kind: 'tv', playing: true, title: tvAppLabel(frameApp!.app_name) ?? 'App', subtitle: null }
+    : googleShows ? { id: tvs2!.device_id, device: tvs2!.app_name!, kind: 'tv', playing: tvs2!.media_status === 'playing',
+        title: tvs2!.media_title ?? tvs2!.app_name!, subtitle: [tvs2!.media_artist, tvs2!.media_status === 'paused' ? 'pausad' : null].filter(Boolean).join(' · ') || null }
+    : null;
+  // Konstläge/av: TV-rutan visar det, även om Homeys cast-data säger något annat.
+  const playing = tvAgent || frameArt || frameOff ? [...(tvAgent ? [tvAgent] : []), ...castPlaying.filter((p) => p.kind !== 'tv')] : castPlaying;
   // TV på men inget spelas: visa appen (t.ex. "Netflix · startsida").
-  // The Frame: konstläge, Tizen-app eller av. Visas när Google TV inte spelar något.
-  const frameNote = frame ? (frame.app_name === 'Konstläge' ? 'konstläge' : frame.is_on ? `på · ${frame.app_name ?? 'Samsung TV'}` : 'av') : null;
-  const tvIdle = !tvAgent ? (tvs2?.is_on && tvs2.app_name ? `på · ${tvs2.app_name}` : frameNote) : null;
+  // Ingen titel att visa: konstläge, av, eller vilken app som är öppen.
+  const tvIdle = !tvAgent ? (frameArt ? 'konstläge' : frameOff ? 'av' : tvs2?.is_on && tvs2.app_name ? `på · ${tvs2.app_name}` : frame?.is_on ? 'på' : null) : null;
   const now = Date.now();
   const names = joinNames(nameDay);
 

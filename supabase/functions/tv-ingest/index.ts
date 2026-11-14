@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
   const device = str(p.device_id, 64);
   if (!device || !/^[\w.:-]+$/.test(device)) return json({ error: "device_id krävs" }, 400);
 
-  const { error } = await db.from("tv_status").upsert({
+  const row = {
     household_id: household,
     device_id: device,
     is_on: p.is_on === true,
@@ -30,6 +30,11 @@ Deno.serve(async (req) => {
     media_artist: str(p.media_artist),
     media_status: STATUS.includes(String(p.media_status)) ? String(p.media_status) : "none",
     updated_at: new Date().toISOString(),
-  });
+  };
+  // changed_at flyttas bara när innehållet ändras, så att dashboarden kan visa det senaste först.
+  const { data: prev } = await db.from("tv_status").select("is_on,current_app,media_title,media_status,changed_at")
+    .eq("household_id", household).eq("device_id", device).maybeSingle();
+  const same = prev && prev.is_on === row.is_on && prev.current_app === row.current_app && prev.media_title === row.media_title && prev.media_status === row.media_status;
+  const { error } = await db.from("tv_status").upsert({ ...row, changed_at: same ? prev.changed_at : row.updated_at });
   return error ? json({ error: error.message }, 500) : json({ ok: true });
 });

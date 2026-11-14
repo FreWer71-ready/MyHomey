@@ -2,7 +2,8 @@
 // - Ström: REST http://<ip>:8001/api/v2/ (PowerState), inget godkännande.
 // - Konstläge: WebSocket wss://<ip>:8002 kanal com.samsung.art-app. Första gången visar TV:n en ruta
 //   ("Tillåt"); token sparas i .frame-token. Kräver paketet `ws` (npm install), annars hoppas konstläget över.
-// - Appar: REST /api/v2/applications/<id> (visible=true) för några vanliga Tizen-appar.
+// - Appar: listan över installerade appar hämtas via fjärrkontrollkanalen (samma token), sedan kollas
+//   REST /api/v2/applications/<id> (visible=true). Utan lista används några vanliga Tizen-appar.
 import { readFile, writeFile } from 'node:fs/promises';
 
 /** Vanliga Tizen-appar (app-id -> namn). */
@@ -41,6 +42,46 @@ const get = async (url, ms = 3000) => {
   return res.json();
 };
 
+/** Ett WebSocket-anrop mot en kanal på TV:n: skickar `request` när kanalen är redo och väntar på svar som `pick` godtar. */
+async function channelCall(host, channel, tokenFile, request, pick, log, ms = 6000) {
+  let WebSocket;
+  try { ({ default: WebSocket } = await import('ws')); } catch { return null; } // paketet saknas
+  const token = (await readFile(tokenFile, 'utf8').catch(() => '')).trim();
+  const name = Buffer.from('MyHomey TV-agent').toString('base64');
+  const url = `wss://${host}:8002/api/v2/channels/${channel}?name=${name}${token ? `&token=${token}` : ''}`;
+  return new Promise((resolve) => {
+    const ws = new WebSocket(url, { rejectUnauthorized: false, handshakeTimeout: 4000 });
+    const done = (v) => { clearTimeout(t); try { ws.close(); } catch { /* stängd */ } resolve(v); };
+    const t = setTimeout(() => done(null), ms);
+    ws.on('message', async (raw) => {
+      let msg; try { msg = JSON.parse(raw.toString()); } catch { return; }
+      if (msg.event === 'ms.channel.connect') {
+        const tok = msg.data?.token;
+        if (tok && tok !== token) { await writeFile(tokenFile, tok).catch(() => {}); log?.('The Frame: godkänd, token sparad.'); }
+        ws.send(JSON.stringify(request));
+        return;
+      }
+      const v = pick(msg);
+      if (v !== undefined) done(v);
+    });
+    ws.on('error', () => done(null));
+    ws.on('close', () => done(null));
+  });
+}
+
+let appCache = { at: 0, apps: null };
+/** Installerade appar ([{ id, name }]), cachas en timme. */
+async function installedApps(host, tokenFile, log) {
+  if (appCache.apps && Date.now() - appCache.at < 3600_000) return appCache.apps;
+  const list = await channelCall(host, 'samsung.remote.control', tokenFile,
+    { method: 'ms.channel.emit', params: { event: 'ed.installedApp.get', to: 'host' } },
+    (m) => (m.event === 'ed.installedApp.get' ? (m.data?.data ?? []) : undefined), log);
+  if (Array.isArray(list) && list.length) {
+    appCache = { at: Date.now(), apps: list.filter((a) => a.appId && a.name).map((a) => ({ id: String(a.appId), name: String(a.name) })) };
+  }
+  return appCache.apps;
+}
+
 async function artMode(host, tokenFile, log) {
   let WebSocket;
   try { ({ default: WebSocket } = await import('ws')); } catch { return null; } // paketet saknas
@@ -75,11 +116,13 @@ export async function frameState(host, { tokenFile = '.frame-token', log } = {})
   const [art, app] = await Promise.all([
     artMode(host, tokenFile, log).catch(() => null),
     (async () => {
-      for (const [id, name] of Object.entries(TIZEN_APPS)) {
-        const a = await get(`http://${host}:8001/api/v2/applications/${id}`, 1500).catch(() => null);
-        if (a?.visible) return name;
-      }
-      return null;
+      // Alla installerade appar (eller reservlistan) kollas parallellt; den som syns är den som körs.
+      const apps = (await installedApps(host, tokenFile, log).catch(() => null)) ?? Object.entries(TIZEN_APPS).map(([id, name]) => ({ id, name }));
+      const hits = await Promise.all(apps.slice(0, 60).map(async (a) => {
+        const r = await get(`http://${host}:8001/api/v2/applications/${a.id}`, 2000).catch(() => null);
+        return r?.visible ? a.name : null;
+      }));
+      return hits.find(Boolean) ?? null;
     })(),
   ]);
   return { reachable: true, power: 'on', artMode: art, app };

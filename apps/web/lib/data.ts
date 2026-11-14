@@ -392,7 +392,7 @@ export async function loadTv(): Promise<TvRemote | null> {
   return tvRemote(devices as TvDevice[], (caps ?? []) as TvCap[]);
 }
 
-export type TvStatus = { device_id: string; is_on: boolean; app_name: string | null; media_title: string | null; media_artist: string | null; media_status: string; updated_at: string };
+export type TvStatus = { device_id: string; is_on: boolean; app_name: string | null; media_title: string | null; media_artist: string | null; media_status: string; updated_at: string; changed_at?: string; current_app?: string | null };
 
 /**
  * TV-status från den lokala TV-agenten (agents/tv-adb): en rad per enhet (Google TV, The Frame).
@@ -404,6 +404,6 @@ export async function loadTvStatuses(): Promise<TvStatus[]> {
     { device_id: 'the-frame', is_on: false, app_name: 'Konstläge', media_title: null, media_artist: null, media_status: 'none', updated_at: new Date().toISOString() },
   ];
   const sb = await createClient();
-  const { data } = await sb.from('tv_status').select('device_id,is_on,app_name,media_title,media_artist,media_status,updated_at').order('updated_at', { ascending: false });
+  const { data } = await sb.from('tv_status').select('device_id,is_on,current_app,app_name,media_title,media_artist,media_status,updated_at,changed_at').order('updated_at', { ascending: false });
   return ((data ?? []) as TvStatus[]).filter((r) => Date.now() - Date.parse(r.updated_at) <= 3 * 60_000);
 }
