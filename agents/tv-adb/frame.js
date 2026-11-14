@@ -15,6 +15,11 @@ export const TIZEN_APPS = {
   '3201807016597': 'Apple TV',
   '3201606009684': 'Spotify',
   '3202301029760': 'HBO Max',
+  // Svenska tjänster (id enligt community-listor; kan skilja mellan TV-årsmodeller).
+  '5exPmCT0nz.svtplay': 'SVT Play',
+  'cczN3dzcl6.TV4': 'TV4 Play',
+  'niYSnzL6h1.Viaplay': 'Viaplay',
+  '11111300404': 'Viaplay',
 };
 
 /** PowerState ur /api/v2/: "on" eller "standby". Saknas fältet men TV:n svarar räknas den som på. */
