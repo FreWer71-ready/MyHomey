@@ -12,6 +12,7 @@ import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './t
 import { parseCommute, parseRoad, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
 import { parsePolice, type PoliceEvent, type RawPolice } from './police';
 import { buildLocate, type Item, type Member } from './locate';
+import { extractHits, toItems, type MuniItem } from './municipal';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
@@ -543,4 +544,32 @@ export async function loadLocate(): Promise<{ members: Member[]; items: Item[] }
   const { data: caps } = await sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,value_text,last_updated')
     .in('device_id', devices.map((d) => d.id));
   return buildLocate(devices, caps ?? []);
+}
+
+/**
+ * Kommunens driftinformation (Eskilstuna). KOMMUN_AREA = områdestagg (t.ex. munktellstaden-norr),
+ * KOMMUN_WORDS = ord i titeln som räknas som "ditt område" (t.ex. Slagsta,Cellovägen). Cachas 30 min.
+ */
+export async function loadMunicipal(): Promise<MuniItem[]> {
+  const area = process.env.KOMMUN_AREA?.trim() || null;
+  const words = (process.env.KOMMUN_WORDS ?? '').split(',').map((w) => w.trim()).filter(Boolean);
+  if (DEMO) {
+    return toItems([
+      { id: 'b', url: '/d/b', startDate: '14 oktober 2026', endDate: '31 december 2026', title: 'Avstängning av Klostergatan, Axenborgsgatan och S:t Johannesgatan', tags: [{ name: 'munktellstaden-norr', title: 'Munktellstaden / Norr' }] },
+      { id: 'a', url: '/d/a', startDate: '10 november 2026', endDate: '24 november 2026', title: 'Avstängning av Storgatan i korsningen med Klostergatan', tags: [{ name: 'torshälla', title: 'Torshälla' }] },
+    ], area ?? 'munktellstaden-norr', words);
+  }
+  const page = async (q: string) => {
+    try {
+      const res = await fetch(`https://www.eskilstuna.se/driftinformation${q}`, {
+        headers: { 'User-Agent': 'home-dashboard/1.0' }, next: { revalidate: 1800 }, signal: AbortSignal.timeout(8000),
+      });
+      return res.ok ? extractHits(await res.text()) : [];
+    } catch {
+      return [];
+    }
+  };
+  // Hela listan visar bara de 10 senaste; det egna området hämtas separat så att inget eget missas.
+  const [all, mine] = await Promise.all([page(''), area ? page(`?tags=${encodeURIComponent(area)}`) : Promise.resolve([])]);
+  return toItems([...mine, ...all], area, words);
 }

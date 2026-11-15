@@ -1,6 +1,6 @@
 import { Icon, type IconName } from '@/components/Icon';
 import { HUMIDITY_LIMIT, humidityWarnings, rainWarning } from '@/lib/alerts';
-import { loadHome, loadNet, loadOpeningsToday, loadPolice, loadWarnings, loadWeather, POLICE_AREAS } from '@/lib/data';
+import { loadHome, loadMunicipal, loadNet, loadOpeningsToday, loadPolice, loadWarnings, loadWeather, POLICE_AREAS } from '@/lib/data';
 import { when } from '@/components/WarningBanners';
 import { NET_LABEL } from '@/lib/net';
 import { HistoryChart } from '@/components/HistoryChart';
@@ -36,7 +36,7 @@ function Section({ id, icon, title, count, tone, children }: {
 const Empty = ({ text }: { text: string }) => <p className="rounded-2xl bg-glass-2 p-3 font-bold text-dim">{text}</p>;
 
 export default async function AlarmPage() {
-  const [h, weather, openedToday, net, police] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday(), loadNet(), loadPolice().catch(() => [])]);
+  const [h, weather, openedToday, net, police, muni] = await Promise.all([loadHome(), loadWeather(), loadOpeningsToday(), loadNet(), loadPolice().catch(() => []), loadMunicipal().catch(() => [])]);
   const warning = rainWarning(weather, h.openings);
   // Lampor som är otillgängliga får en egen lista; övriga enheter ligger kvar under Svarar inte.
   const deadLights = h.silent.filter((x) => x.light && x.reason === 'offline');
@@ -108,6 +108,28 @@ export default async function AlarmPage() {
           </ul>
         ) : <Empty text="Inga händelser senaste dygnet" />}
         <p className="mt-2 px-1 text-[13px] font-bold text-dim">Källa: Polisen (polisen.se), uppdateras var 10:e minut.</p>
+      </Section>
+
+      {/* Kommunens driftinformation: pågående avstängningar och arbeten, ditt område först. */}
+      <Section id="kommunen" icon="road" title="Kommunen · driftinformation" count={muni.length} tone={muni.some((m) => m.mine) ? 'warn' : 'ok'}>
+        {muni.length ? (
+          <ul className="flex flex-col gap-2">
+            {muni.slice(0, 12).map((m) => (
+              <li key={m.id}>
+                <a href={m.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 rounded-2xl bg-glass-2 px-3 py-2">
+                  <span className="min-w-0 grow">
+                    <span className="block font-extrabold">{m.title}</span>
+                    <span className="block text-sm font-bold text-dim">
+                      {m.area ?? 'Hela kommunen'}{m.start ? ` · ${new Date(m.start + 3600_000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}` : ''}{m.end ? `–${new Date(m.end + 3600_000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                    </span>
+                  </span>
+                  {m.mine && <span className="shrink-0 rounded-full bg-warn-soft px-2.5 py-0.5 text-sm font-bold text-warn">Ditt område</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : <Empty text="Inga pågående ärenden" />}
+        <p className="mt-2 px-1 text-[13px] font-bold text-dim">Källa: Eskilstuna kommun (eskilstuna.se/driftinformation), uppdateras var 30:e minut.</p>
       </Section>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

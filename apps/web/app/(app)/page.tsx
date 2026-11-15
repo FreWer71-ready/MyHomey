@@ -16,7 +16,7 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { geocode, loadArea, loadCommute, loadLocate, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
@@ -114,7 +114,7 @@ export default async function HomePage() {
   // Råa appnamn översätts (t.ex. Playplus → Telia Play).
   const tvs2 = tvRaw ? { ...tvRaw, app_name: tvAppLabel(tvRaw.app_name) } : null;
   const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
-  const [wx, police, locate] = await Promise.all([loadWarnings(weather), loadPolice().catch(() => []), loadLocate().catch(() => ({ members: [], items: [] }))]);
+  const [wx, police, locate, muni] = await Promise.all([loadWarnings(weather), loadPolice().catch(() => []), loadLocate().catch(() => ({ members: [], items: [] })), loadMunicipal().catch(() => [])]);
   // Life360 berikar närvaron: var den som är borta befinner sig (plats, "kör 70 km/h" eller gatan).
   const where = (name: string) => locate.members.find((m) => m.first.toLowerCase() === name.split(/\s+/)[0].toLowerCase());
   // TV-rutan visar det som syns på skärmen, det senaste först:
@@ -224,6 +224,10 @@ export default async function HomePage() {
     ...policeAlerts(police, now).slice(0, 1).map((e): Alert => ({
       id: `polis-${e.id}`, level: e.level === 'red' ? 'red' : 'orange', icon: e.type.toLowerCase().includes('brand') ? 'bellAlert' : '!',
       text: `${e.type} · ${e.place} ${hhmm(e.at)}`, href: '/larm#narhet',
+    })),
+    // Kommunen: nytt ärende i ditt område (startat senaste 3 dygnen), högst en platta.
+    ...muni.filter((m) => m.mine && m.start != null && m.start <= now && now - m.start < 3 * 86400_000).slice(0, 1).map((m): Alert => ({
+      id: `kommun-${m.id}`, level: 'yellow', icon: 'road', text: `Kommunen: ${m.title}`, href: '/larm#kommunen',
     })),
     ...(damp.length ? [{ id: 'damp', level: 'yellow', icon: 'drop', text: `Fukt ${damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')}`, href: '/larm#fukt' } as Alert] : []),
   ];
