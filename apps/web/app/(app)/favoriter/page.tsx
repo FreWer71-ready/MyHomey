@@ -60,7 +60,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
       {routines.length > 0 && (
         <section className="flex flex-col gap-3 rounded-[20px] bg-card p-5 lg:p-6">
           <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim"><Icon name="home" size={22} />Rutiner</h2>
-          <ActionTiles items={routines} layout="grid" />
+          <ActionTiles items={routines} cols={2} />
         </section>
       )}
 

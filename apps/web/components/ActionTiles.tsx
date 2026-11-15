@@ -30,7 +30,7 @@ export function iconFor(name: string): IconName {
  * Knappar för moods, flows och Hue-scener i samma stil: ikon (eller Hue-färger), namn och typ.
  * layout="grid" för Rutiner (rutor), "list" för rummens kort (rader). Status visas direkt på knappen.
  */
-export function ActionTiles({ items, layout = 'list' }: { items: Action[]; layout?: 'grid' | 'list' | 'compact' }) {
+export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Action[]; layout?: 'grid' | 'list' | 'compact'; cols?: 1 | 2 }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [state, setState] = useState<{ id: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null>(null);
@@ -47,11 +47,11 @@ export function ActionTiles({ items, layout = 'list' }: { items: Action[]; layou
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className={layout === 'grid' ? 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4' : layout === 'compact' ? 'grid grid-cols-2 gap-2' : 'flex flex-col'}>
+      <ul className={layout === 'grid' ? 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4' : layout === 'compact' ? 'grid grid-cols-2 gap-2' : cols === 2 ? 'grid grid-cols-1 gap-x-8 md:grid-cols-2' : 'flex flex-col'}>
         {items.map((a) => {
           const st = state?.id === a.id ? state.status : null;
           return (
-            <li key={`${a.kind}-${a.id}`} className={layout === 'list' ? 'border-b border-line last:border-b-0' : ''}>
+            <li key={`${a.kind}-${a.id}`} className={layout === 'list' ? `border-b border-line last:border-b-0 ${cols === 2 ? 'md:[&:nth-last-child(2):nth-child(odd)]:border-b-0' : ''}` : ''}>
               <button
                 type="button" onClick={() => run(a)} disabled={state?.status === 'busy'}
                 className={`relative flex w-full min-w-0 gap-3 text-left transition-colors ${
