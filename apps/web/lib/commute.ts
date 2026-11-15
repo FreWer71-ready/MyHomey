@@ -135,7 +135,8 @@ export function parseRoad(raw: RawCommute['situations'], now: number, keep: (d: 
   return out.sort((a, b) => rank[roadTone(a, now)] - rank[roadTone(b, now)] || Number(b.incident) - Number(a.incident) || b.severity - a.severity);
 }
 
-export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Date.now(), max = 4): Commute {
+/** max = antal avgångar per riktning som sparas (vyerna visar själva färre: Hem 4, Pendling 4 eller fler). */
+export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Date.now(), max = 30): Commute {
   return {
     out: trains(raw.out ?? [], raw.arrivals ?? [], to, now, max),
     home: trains(raw.home ?? [], raw.arrivals ?? [], from, now, max),

@@ -105,8 +105,8 @@ export default async function CommutePage() {
         <>
           {c.trains && (
             <div className={`grid grid-cols-1 gap-3 lg:grid-cols-2 ${dir === 'home' ? '[&>*:first-child]:order-2' : ''}`}>
-              <Trains title="Eskilstuna → Stockholm" icon="train" list={c.out} active={dir === 'out'} />
-              <Trains title="Stockholm → Eskilstuna" icon="train" list={c.home} active={dir === 'home'} />
+              <Trains title="Eskilstuna → Stockholm" icon="train" list={c.out.slice(0, 4)} active={dir === 'out'} />
+              <Trains title="Stockholm → Eskilstuna" icon="train" list={c.home.slice(0, 4)} active={dir === 'home'} />
             </div>
           )}
           <Road list={c.road} />
