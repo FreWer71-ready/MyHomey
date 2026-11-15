@@ -116,6 +116,12 @@ export default async function HomePage() {
   const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
   const [wx, police, locate, muni] = await Promise.all([loadWarnings(weather), loadPolice().catch(() => []), loadLocate().catch(() => ({ members: [], items: [] })), loadMunicipal().catch(() => [])]);
   // Life360 berikar närvaron: var den som är borta befinner sig (plats, "kör 70 km/h" eller gatan).
+  // Avstånd hemifrån (fågelväg) för den som är borta enligt Life360; under 1 km visas inte.
+  const awayKm = (m: { lat: number | null; lon: number | null }) => {
+    if (m.lat == null || m.lon == null) return null;
+    const d = km(PLACE, { lat: m.lat, lon: m.lon });
+    return d >= 1 ? `${d < 10 ? num(d, 1) : Math.round(d)} km` : null;
+  };
   const where = (name: string) => locate.members.find((m) => m.first.toLowerCase() === name.split(/\s+/)[0].toLowerCase());
   // TV-rutan visar det som syns på skärmen, det senaste först:
   // - The Frame i konstläge eller avstängd: det gäller oavsett vad Google TV rapporterar.
@@ -270,7 +276,7 @@ export default async function HomePage() {
                   <span className="size-3 rounded-full" style={{ background: p.present ? C.ok : 'transparent', boxShadow: p.present ? undefined : `inset 0 0 0 2px ${C.mute}` }} />
                   <span className={p.present ? 'font-semibold' : 'text-dim'}>{p.name}</span>
                   <span className="-ml-1 text-[13px] text-dim" title={p.src === 'L360' ? 'Life360' : 'Smart Presence'}>({p.src})</span>
-                  {!p.present && (() => { const m = where(p.name); const w = m && !m.home ? whereText(m) : null; return w ? <span className="text-[16px] text-dim">{w}</span> : p.since ? <span className="text-[16px] text-dim">{seenAgo(p.since)}</span> : null; })()}
+                  {!p.present && (() => { const m = where(p.name); const w = m && !m.home ? [whereText(m), awayKm(m)].filter(Boolean).join(' · ') || null : null; return w ? <span className="text-[16px] text-dim">{w}</span> : p.since ? <span className="text-[16px] text-dim">{seenAgo(p.since)}</span> : null; })()}
                 </li>
               ))}
             </ul>

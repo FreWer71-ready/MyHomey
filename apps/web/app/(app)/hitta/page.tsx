@@ -1,6 +1,7 @@
 import { Icon } from '@/components/Icon';
 import { SoundButton } from '@/components/SoundButton';
-import { loadLocate } from '@/lib/data';
+import { loadLocate, PLACE } from '@/lib/data';
+import { km } from '@/lib/trip';
 import { whereText } from '@/lib/locate';
 import { seenAgo } from '@/lib/time';
 
@@ -33,7 +34,7 @@ export default async function LocatePage() {
                 <span className="flex min-w-0 grow flex-col leading-tight">
                   <span className="truncate text-[17px] font-semibold">{m.first}{m.driving && <span className="ml-2 rounded-full bg-[#F0883E]/20 px-2 py-0.5 text-[13px] text-[#F0883E]">Kör</span>}</span>
                   <span className="truncate text-[15px] text-dim">
-                    {m.home ? 'Hemma' : where ?? 'Borta'}{m.stay ? ` · ${m.stay}` : ''}{!m.home && m.address && where !== m.address.split(',')[0] ? ` · ${m.address}` : ''}
+                    {m.home ? 'Hemma' : where ?? 'Borta'}{!m.home && m.lat != null && m.lon != null && km(PLACE, { lat: m.lat, lon: m.lon }) >= 1 ? ` · ${Math.round(km(PLACE, { lat: m.lat, lon: m.lon }) * 10) / 10} km`.replace('.', ',') : ''}{m.stay ? ` · ${m.stay}` : ''}{!m.home && m.address && where !== m.address.split(',')[0] ? ` · ${m.address}` : ''}
                   </span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-0.5 text-[15px]">
