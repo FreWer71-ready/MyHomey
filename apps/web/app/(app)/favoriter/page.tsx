@@ -25,6 +25,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     ...favMoods.filter((m) => !m.room).map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
   ].sort(byName);
 
+  // Rumskorten visas som murverk (CSS-kolumner): de staplas tätt under varandra oavsett längd.
   // Rum: favoritmoods + Hue-scener (Homey-hushåll med anslutet Hue) i samma kort.
   const rooms = new Map<string, Action[]>();
   const add = (room: string, a: Action) => rooms.set(room, [...(rooms.get(room) ?? []), a]);
@@ -64,9 +65,9 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
       )}
 
       {roomList.length > 0 ? (
-        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:gap-6 xl:grid-cols-3">
+        <div className="columns-1 gap-4 md:columns-2 lg:gap-6 xl:columns-3">
           {roomList.map((r) => (
-            <section key={r.name} className="flex flex-col gap-1 rounded-[20px] bg-card p-5 lg:p-6">
+            <section key={r.name} className="mb-4 flex break-inside-avoid flex-col gap-1 rounded-[20px] bg-card p-5 lg:mb-6 lg:p-6">
               <h2 className="text-[18px] font-semibold text-dim">{r.name}</h2>
               <ActionTiles items={r.items} />
             </section>
