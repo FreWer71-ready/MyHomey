@@ -5,7 +5,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles } from '@/components/ActionTiles';
 import { quickActions, type QuickItem } from '@/lib/quick';
-import { alongRoute, boxFor, isWeekend, km, nearHome, nextTrip, type Trip } from '@/lib/trip';
+import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type Trip } from '@/lib/trip';
 import { loadCalendarServer } from '@/lib/calendar-source';
 import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
@@ -22,7 +22,8 @@ import { compass } from '@/lib/home';
 import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
-import { dayOf } from '@/lib/calendar-view';
+import { addDays, dayOf } from '@/lib/calendar-view';
+import { zoned } from '@/lib/calendar';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { hhmm, hourly, summarize } from '@/lib/prices';
@@ -176,7 +177,10 @@ export default async function HomePage() {
 
   // ---- Härnäst: pendling ----
   const dir = direction();
-  const trains = commute?.[dir] ?? [];
+  // Söndag: bara måndagens tåg från 06:00 på Hem (alla avgångar finns under Pendling).
+  const sunday = stockholm(now).day === 0;
+  const monday6 = sunday ? (([y, m, d]) => zoned(y, m, d, 6, 0, 0))(addDays(dayOf(now), 1).split('-').map(Number)) : 0;
+  const trains = (commute?.[dir] ?? []).filter((t) => !sunday || t.dep >= monday6);
   const roads = commute ? groupRoad(commute.road) : [];
   const trafficAlerts = commute ? commuteAlerts(commute, now, hhmm) : [];
   const hasCal = !!(process.env.CALENDAR_ICAL_URL || process.env.ULRIKA_ICAL_URL);
@@ -220,7 +224,7 @@ export default async function HomePage() {
   // Alla varningar i samma format; nivån (gul/orange/röd) styr bara färgen.
   const alerts: Alert[] = [
     ...weatherAlerts(wx),
-    ...trafficAlerts.filter((a) => !(weekend && a.kind === 'train')).map((a): Alert => ({
+    ...trafficAlerts.filter((a) => !((weekend || sunday) && a.kind === 'train')).map((a): Alert => ({
       id: a.id, icon: a.kind === 'train' ? 'train' : 'road', text: a.label, href: '/pendling',
       level: a.kind === 'road' ? 'orange' : a.tone === 'bad' ? 'red' : 'yellow',
     })),
@@ -387,7 +391,7 @@ export default async function HomePage() {
           )}
           {commute?.trains && !weekend && (
             <Card title={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
-              {trains.length === 0 && <p className="text-[18px] text-dim">Inga tåg de närmaste timmarna</p>}
+              {trains.length === 0 && <p className="text-[18px] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar: lista i mobil, 2×2 på plattan så att kalendern under får plats. */}
               <ul className="grid grid-cols-1 gap-x-5 gap-y-2.5 lg:grid-cols-2">
                 {trains.slice(0, 4).map((t) => {
