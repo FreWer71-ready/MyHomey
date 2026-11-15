@@ -241,9 +241,9 @@ export default async function HomePage() {
   const first = (n: string) => n.split(/\s+/)[0].toLowerCase();
   // Life360 går före Smart Presence: matchad person får Life360:s hemma/borta.
   const people = [
-    ...h.people.map((p) => { const m = locate.members.find((x) => x.first.toLowerCase() === first(p.name)); return m ? { ...p, present: m.home } : p; }),
+    ...h.people.map((p) => { const m = locate.members.find((x) => x.first.toLowerCase() === first(p.name)); return m ? { ...p, present: m.home, src: 'L360' } : { ...p, src: 'SP' }; }),
     ...locate.members.filter((m) => !h.people.some((p) => first(p.name) === m.first.toLowerCase()))
-      .map((m) => ({ id: m.id, name: m.first, present: m.home, since: null as string | null })),
+      .map((m) => ({ id: m.id, name: m.first, present: m.home, since: null as string | null, src: 'L360' })),
   ].sort((x, y) => Number(y.present) - Number(x.present));
 
   return (
@@ -269,6 +269,7 @@ export default async function HomePage() {
                 <li key={p.id} className="flex items-center gap-2 text-[18px]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
                   <span className="size-3 rounded-full" style={{ background: p.present ? C.ok : 'transparent', boxShadow: p.present ? undefined : `inset 0 0 0 2px ${C.mute}` }} />
                   <span className={p.present ? 'font-semibold' : 'text-dim'}>{p.name}</span>
+                  <span className="-ml-1 text-[13px] text-dim" title={p.src === 'L360' ? 'Life360' : 'Smart Presence'}>({p.src})</span>
                   {!p.present && (() => { const m = where(p.name); const w = m && !m.home ? whereText(m) : null; return w ? <span className="text-[16px] text-dim">{w}</span> : p.since ? <span className="text-[16px] text-dim">{seenAgo(p.since)}</span> : null; })()}
                 </li>
               ))}
