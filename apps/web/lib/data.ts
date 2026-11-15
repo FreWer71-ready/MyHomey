@@ -11,6 +11,7 @@ import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } fr
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { parseCommute, parseRoad, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
 import { parsePolice, type PoliceEvent, type RawPolice } from './police';
+import { buildLocate, type Item, type Member } from './locate';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
@@ -514,4 +515,32 @@ export async function loadPolice(): Promise<PoliceEvent[]> {
   } catch {
     return [];
   }
+}
+
+/** Personer (Life360) och prylar (Apple Hitta) via Homey-apparna. */
+export async function loadLocate(): Promise<{ members: Member[]; items: Item[] }> {
+  if (DEMO) {
+    const t = new Date().toISOString();
+    const c = (device_id: string, capability_id: string, v: number | boolean | string) => ({ device_id, capability_id, last_updated: t,
+      value_num: typeof v === 'number' ? v : null, value_bool: typeof v === 'boolean' ? v : null, value_text: typeof v === 'string' ? v : null });
+    return buildLocate(
+      [
+        { id: 'l1', name: 'Fredrik Demo', driver_id: 'life360' }, { id: 'l2', name: 'Ulrika Demo', driver_id: 'life360' },
+        { id: 'f1', name: 'Apple Watch - Apple Watch för Fredrik', driver_id: 'findmy' }, { id: 'f2', name: 'AirPods - Fredriks AirPods', driver_id: 'findmy' },
+      ],
+      [
+        c('l1', 'life360_place', 'Hem'), c('l1', 'measure_battery', 90), c('l1', 'life360_stay', '1 h 4 min'), c('l1', 'life360_latitude', 59.376), c('l1', 'life360_longitude', 16.5097),
+        c('l2', 'life360_place', ''), c('l2', 'life360_address', 'Kungsgatan 3, Eskilstuna'), c('l2', 'measure_battery', 41), c('l2', 'life360_latitude', 59.37), c('l2', 'life360_longitude', 16.51),
+        c('f1', 'alarm_is_home', true), c('f1', 'measure_battery', 3), c('f1', 'alarm_battery', true), c('f1', 'send_sound', false),
+        c('f2', 'alarm_is_home', false), c('f2', 'measure_distance', 16.05), c('f2', 'send_sound', false), c('f2', 'measure_latitude', 59.3777), c('f2', 'measure_longitude', 16.7927),
+      ],
+    );
+  }
+  const sb = await createClient();
+  const { data: devices } = await sb.from('devices').select('id,name,driver_id').eq('available', true)
+    .or('driver_id.ilike.%life360%,driver_id.ilike.%findmy%');
+  if (!devices?.length) return { members: [], items: [] };
+  const { data: caps } = await sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,value_text,last_updated')
+    .in('device_id', devices.map((d) => d.id));
+  return buildLocate(devices, caps ?? []);
 }

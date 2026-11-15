@@ -108,6 +108,8 @@ const DEVICE_CAPS: Record<string, 'bool' | 'button' | 'level'> = {
   onoff: 'bool', volume_mute: 'bool', speaker_playing: 'bool',
   volume_up: 'button', volume_down: 'button', channel_up: 'button', channel_down: 'button', speaker_next: 'button', speaker_prev: 'button',
   volume_set: 'level',
+  // Apple Hitta: spela ljud på prylen.
+  send_sound: 'button',
 };
 
 /** Sätter en capability på en enhet i Homey (t.ex. volym upp på TV:n). */

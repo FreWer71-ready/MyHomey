@@ -8,6 +8,7 @@ import { quickActions, type QuickItem } from '@/lib/quick';
 import { alongRoute, boxFor, isWeekend, km, nearHome, nextTrip, type Trip } from '@/lib/trip';
 import { loadCalendarServer } from '@/lib/calendar-source';
 import { policeAlerts } from '@/lib/police';
+import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { MinutesTo } from '@/components/MinutesTo';
 import { tvAppLabel } from '@/lib/media';
@@ -15,7 +16,7 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { geocode, loadArea, loadCommute, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { geocode, loadArea, loadCommute, loadLocate, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
@@ -113,7 +114,9 @@ export default async function HomePage() {
   // Råa appnamn översätts (t.ex. Playplus → Telia Play).
   const tvs2 = tvRaw ? { ...tvRaw, app_name: tvAppLabel(tvRaw.app_name) } : null;
   const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
-  const [wx, police] = await Promise.all([loadWarnings(weather), loadPolice().catch(() => [])]);
+  const [wx, police, locate] = await Promise.all([loadWarnings(weather), loadPolice().catch(() => []), loadLocate().catch(() => ({ members: [], items: [] }))]);
+  // Life360 berikar närvaron: var den som är borta befinner sig (plats, "kör 70 km/h" eller gatan).
+  const where = (name: string) => locate.members.find((m) => m.first.toLowerCase() === name.split(/\s+/)[0].toLowerCase());
   // TV-rutan visar det som syns på skärmen, det senaste först:
   // - The Frame i konstläge eller avstängd: det gäller oavsett vad Google TV rapporterar.
   // - Annars den källa vars innehåll ändrades senast: en app direkt på The Frame (Tizen) eller Google TV.
@@ -230,7 +233,13 @@ export default async function HomePage() {
 
   // Antal rader i Hemmet: fler än sex ger lite lägre rader så att allt ryms på plattan.
   const rowCount = [tempAvg != null, h.openings.length > 0, !!net, h.lightsTotal > 0, h.powerMeters + h.powerEstimated > 0, !!price.now, !!wine].filter(Boolean).length;
-  const people = [...h.people].sort((x, y) => Number(y.present) - Number(x.present));
+  // Närvaro: Homeys närvaroappar plus Life360-medlemmar som inte redan finns med (matchas på förnamn).
+  const first = (n: string) => n.split(/\s+/)[0].toLowerCase();
+  const people = [
+    ...h.people,
+    ...locate.members.filter((m) => !h.people.some((p) => first(p.name) === m.first.toLowerCase()))
+      .map((m) => ({ id: m.id, name: m.first, present: m.home, since: null as string | null })),
+  ].sort((x, y) => Number(y.present) - Number(x.present));
 
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
@@ -249,15 +258,17 @@ export default async function HomePage() {
         <section aria-label="Status" className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 lg:order-none lg:col-span-8 lg:self-end">
           <NowPlayingStrip items={playing} />
           {people.length > 0 && (
+            <Link href="/hitta" aria-label="Närvaro – visa var alla är">
             <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-x-5 gap-y-1 lg:justify-end">
               {people.map((p) => (
                 <li key={p.id} className="flex items-center gap-2 text-[18px]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
                   <span className="size-3 rounded-full" style={{ background: p.present ? C.ok : 'transparent', boxShadow: p.present ? undefined : `inset 0 0 0 2px ${C.mute}` }} />
                   <span className={p.present ? 'font-semibold' : 'text-dim'}>{p.name}</span>
-                  {!p.present && p.since && <span className="text-[16px] text-dim">{seenAgo(p.since)}</span>}
+                  {!p.present && (() => { const m = where(p.name); const w = m && !m.home ? whereText(m) : null; return w ? <span className="text-[16px] text-dim">{w}</span> : p.since ? <span className="text-[16px] text-dim">{seenAgo(p.since)}</span> : null; })()}
                 </li>
               ))}
             </ul>
+            </Link>
           )}
           {issues > 0 ? (
             <AlertChips alerts={alerts} />

@@ -30,7 +30,7 @@ if (a.flow) {
 }
 
 // TV-fjärren: en enda capability (knappar som volym upp får värdet true).
-const REMOTE = ['onoff', 'volume_mute', 'speaker_playing', 'volume_up', 'volume_down', 'channel_up', 'channel_down', 'speaker_next', 'speaker_prev', 'volume_set'];
+const REMOTE = ['onoff', 'volume_mute', 'speaker_playing', 'volume_up', 'volume_down', 'channel_up', 'channel_down', 'speaker_next', 'speaker_prev', 'volume_set', 'send_sound'];
 if (a.device && a.cap) {
   if (!REMOTE.includes(a.cap)) throw new Error(`Otillåten capability: ${a.cap}`);
   const d = await Homey.devices.getDevice({ id: a.device });
