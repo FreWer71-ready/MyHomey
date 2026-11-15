@@ -239,8 +239,9 @@ export default async function HomePage() {
   const rowCount = [tempAvg != null, h.openings.length > 0, !!net, h.lightsTotal > 0, h.powerMeters + h.powerEstimated > 0, !!price.now, !!wine].filter(Boolean).length;
   // Närvaro: Homeys närvaroappar plus Life360-medlemmar som inte redan finns med (matchas på förnamn).
   const first = (n: string) => n.split(/\s+/)[0].toLowerCase();
+  // Life360 går före Smart Presence: matchad person får Life360:s hemma/borta.
   const people = [
-    ...h.people,
+    ...h.people.map((p) => { const m = locate.members.find((x) => x.first.toLowerCase() === first(p.name)); return m ? { ...p, present: m.home } : p; }),
     ...locate.members.filter((m) => !h.people.some((p) => first(p.name) === m.first.toLowerCase()))
       .map((m) => ({ id: m.id, name: m.first, present: m.home, since: null as string | null })),
   ].sort((x, y) => Number(y.present) - Number(x.present));
