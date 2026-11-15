@@ -6,9 +6,18 @@ import type { RoadEvent } from './commute.ts';
 export type LatLon = { lat: number; lon: number };
 export type Trip = { title: string; location: string; place: string; start: number | null };
 
-/** Lördag eller söndag i Stockholm. */
-export const isWeekend = (now = Date.now()) =>
-  ['Sat', 'Sun'].includes(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Stockholm', weekday: 'short' }).format(now));
+/** Veckodag (0 = söndag) och timme i Stockholm. */
+export function stockholm(now = Date.now()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Stockholm', weekday: 'short', hour: '2-digit', hourCycle: 'h23' })
+    .formatToParts(now).map((x) => [x.type, x.value]));
+  return { day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday), hour: Number(p.hour) };
+}
+
+/** Helgläge (ingen tågpendling): fredag 20:00 – söndag 12:00. Söndag eftermiddag visas pendlingen igen inför måndagen. */
+export function isWeekend(now = Date.now()) {
+  const { day, hour } = stockholm(now);
+  return (day === 5 && hour >= 20) || day === 6 || (day === 0 && hour < 12);
+}
 
 /** Ortnamnet ur en adress: "Storgatan 5, 647 30 Mariefred, Sverige" → "Mariefred". */
 export function placeLabel(location: string): string {

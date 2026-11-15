@@ -146,9 +146,12 @@ export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Dat
   };
 }
 
-/** Morgon (före 12 svensk tid): mot Stockholm. Annars hemåt. */
+/** Morgon (före 12 svensk tid) och söndagar: mot Stockholm. Annars hemåt. */
 export function direction(now = Date.now()): 'out' | 'home' {
-  const h = Number(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', hourCycle: 'h23' }).format(now));
+  const f = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Stockholm', weekday: 'short', hour: '2-digit', hourCycle: 'h23' }).formatToParts(now);
+  const h = Number(f.find((x) => x.type === 'hour')?.value);
+  // Söndag: inga resor hem från jobbet, visa morgondagens tåg mot Stockholm.
+  if (f.find((x) => x.type === 'weekday')?.value === 'Sun') return 'out';
   return h < 12 ? 'out' : 'home';
 }
 

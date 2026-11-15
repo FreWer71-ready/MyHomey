@@ -7,10 +7,14 @@ const home = { lat: 59.371, lon: 16.51 }; // Eskilstuna
 const mariefred = { lat: 59.26, lon: 17.22 };
 const ev = (id: string, lat: number, lon: number): RoadEvent => ({ id, road: 'Väg', type: 'Vägarbete', code: '', incident: false, text: null, place: null, severity: 3, severityText: null, start: null, end: null, lat, lon });
 
-test('helg i Stockholmstid', () => {
-  assert.equal(isWeekend(Date.parse('2026-11-14T12:00:00Z')), true); // lördag
-  assert.equal(isWeekend(Date.parse('2026-11-16T12:00:00Z')), false); // måndag
-  assert.equal(isWeekend(Date.parse('2026-11-15T23:30:00Z')), false); // söndag 23:30 UTC = måndag 00:30 i Sverige
+test('helgläge fredag 20:00 – söndag 12:00 (Stockholmstid)', () => {
+  const at = (iso: string) => isWeekend(Date.parse(iso));
+  assert.equal(at('2026-11-13T18:59:00Z'), false); // fredag 19:59
+  assert.equal(at('2026-11-13T19:00:00Z'), true); // fredag 20:00
+  assert.equal(at('2026-11-14T12:00:00Z'), true); // lördag
+  assert.equal(at('2026-11-15T10:59:00Z'), true); // söndag 11:59
+  assert.equal(at('2026-11-15T11:00:00Z'), false); // söndag 12:00
+  assert.equal(at('2026-11-16T12:00:00Z'), false); // måndag
 });
 
 test('ortnamn ur adress', () => {
