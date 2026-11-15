@@ -46,7 +46,7 @@ export default async function LocatePage() {
         </ul>
       </section>
 
-      <section aria-label="Prylar" className={`${card} lg:col-span-6`}>
+      {(items.length > 0 || process.env.CONTROL !== 'hue') && <section aria-label="Prylar" className={`${card} lg:col-span-6`}>
         <h2 className={h2}><Icon name="star" size={22} />Prylar · Apple Hitta</h2>
         {items.length === 0 && <p className="text-[16px] text-dim">Inga Hitta-prylar i Homey.</p>}
         <ul>
@@ -68,7 +68,7 @@ export default async function LocatePage() {
             );
           })}
         </ul>
-      </section>
+      </section>}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } fr
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { parseCommute, parseRoad, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
 import { parsePolice, type PoliceEvent, type RawPolice } from './police';
-import { buildLocate, type Item, type Member } from './locate';
+import { buildLocate, type Item, type LocCap, type Member } from './locate';
 import { extractHits, toItems, type MuniItem } from './municipal';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
@@ -538,12 +538,18 @@ export async function loadLocate(): Promise<{ members: Member[]; items: Item[] }
     );
   }
   const sb = await createClient();
-  const { data: devices } = await sb.from('devices').select('id,name,driver_id').eq('available', true)
-    .or('driver_id.ilike.%life360%,driver_id.ilike.%findmy%');
-  if (!devices?.length) return { members: [], items: [] };
-  const { data: caps } = await sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,value_text,last_updated')
-    .in('device_id', devices.map((d) => d.id));
-  return buildLocate(devices, caps ?? []);
+  // Life360 via shared_locate(): eget hushåll + hushåll som delar (household_shares). Hitta-prylar bara egna.
+  const [shared, own] = await Promise.all([
+    sb.rpc('shared_locate'),
+    sb.from('devices').select('id,name,driver_id').eq('available', true).ilike('driver_id', '%findmy%'),
+  ]);
+  const rows = (shared.data ?? []) as (LocCap & { name: string; driver_id: string })[];
+  const lifeDevices = [...new Map(rows.map((r) => [r.device_id, { id: r.device_id, name: r.name, driver_id: r.driver_id }])).values()];
+  const items = own.data ?? [];
+  const { data: caps } = items.length
+    ? await sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,value_text,last_updated').in('device_id', items.map((d) => d.id))
+    : { data: [] };
+  return buildLocate([...lifeDevices, ...items], [...rows, ...(caps ?? [])]);
 }
 
 /**
