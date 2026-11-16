@@ -100,13 +100,13 @@ export default async function HomePage() {
     loadHome(), loadPrices(), loadWeather(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
     loadHistory('power', '12h').catch(() => []), loadHistory('energy', '24h').catch(() => []),
   ]);
-  // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), flows först.
+  // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), i bokstavsordning.
   const flows = await loadFlows().catch(() => []);
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
   const quick: Action[] = [
-    ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced })).sort(byName),
-    ...h.favoriteMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const })).sort(byName),
-  ];
+    ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced })),
+    ...h.favoriteMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const })),
+  ].sort(byName);
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
   const tvRows = await loadTvStatuses().catch(() => []);
   const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
