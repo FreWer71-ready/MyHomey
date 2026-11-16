@@ -208,6 +208,37 @@ export function trainStatus(t: Train) {
   return { text: t.canceled ? 'Inställt' : t.delay >= 3 ? `+${t.delay} min` : 'I tid', cls: 'bg-black/25 text-white' };
 }
 
+// ---- Fokus på nästa avgång -------------------------------------------------
+/** Ett tåg som går inom så här många minuter lyfts fram med större text och nedräkning. */
+export const FOCUS_MIN = 45;
+
+/** Tiden att räkna mot: beräknad avgång om den finns, annars tidtabellen. */
+export const departsAt = (t: Train) => t.est ?? t.dep;
+
+/**
+ * Nästa tåg som inte är inställt och går inom FOCUS_MIN minuter. Ett tåg som just har gått
+ * (mer än 30 s sedan) räknas inte, eftersom listan bara hämtas om med några minuters mellanrum.
+ */
+export function focusTrain(list: Train[], now = Date.now(), windowMin = FOCUS_MIN): Train | null {
+  return list.find((t) => !t.canceled && departsAt(t) >= now - 30_000 && departsAt(t) - now <= windowMin * 60_000) ?? null;
+}
+
+/** Nedräkning till avgång: "42 min", under 10 minuter "9:05" (min:sek), vid avgång "Nu". */
+export function countdown(ms: number): string {
+  if (ms <= 0) return 'Nu';
+  if (ms < 10 * 60_000) {
+    const s = Math.floor(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  return `${Math.floor(ms / 60_000)} min`;
+}
+
+/** Färg på nedräkningen: lugn över 10 min, gul 3–10 min, röd under 3 min. */
+export function countdownTone(ms: number): Tone {
+  if (ms < 3 * 60_000) return 'bad';
+  return ms < 10 * 60_000 ? 'warn' : 'ok';
+}
+
 export type RoadGroup = { id: string; road: string; type: string; tone: Tone; count: number; severityText: string | null; places: string[]; texts: string[]; start: number | null; end: number | null };
 
 /**

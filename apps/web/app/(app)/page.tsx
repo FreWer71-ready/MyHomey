@@ -10,7 +10,7 @@ import { loadCalendarServer } from '@/lib/calendar-source';
 import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
-import { MinutesTo } from '@/components/MinutesTo';
+import { HomeTrains } from '@/components/TrainFocus';
 import { tvAppLabel } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
@@ -19,7 +19,7 @@ import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
-import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainStatus, trainTone } from '@/lib/commute';
+import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
 import { addDays, dayOf } from '@/lib/calendar-view';
@@ -392,24 +392,8 @@ export default async function HomePage() {
           {commute?.trains && !weekend && (
             <Card title={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[18px] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
-              {/* Fyra avgångar: lista i mobil, 2×2 på plattan så att kalendern under får plats. */}
-              <ul className="grid grid-cols-1 gap-x-5 gap-y-2.5 lg:grid-cols-2">
-                {trains.slice(0, 4).map((t) => {
-                  const tone = trainTone(t);
-                  return (
-                    <li key={t.id} className="flex min-w-0 flex-col leading-tight">
-                      <span className="flex items-baseline gap-2">
-                        <span className={`text-[28px] font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : t.est ?? t.dep)}</span>
-                        <span className="ml-auto shrink-0 text-[15px] font-semibold" style={{ color: tone === 'ok' ? C.mute : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
-                      </span>
-                      <span className="truncate text-[15px] text-dim">
-                        {!t.canceled && (dayOf(t.dep) !== dayOf(now) ? <span className="font-semibold text-fg">imorgon</span> : <MinutesTo at={t.est ?? t.dep} className="font-semibold text-fg tabular-nums" />)}
-                        {t.canceled ? '' : ' · '}{t.track ? `spår ${t.track}` : t.dest}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+              {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
+              <HomeTrains trains={trains} serverNow={now} />
               {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). */}
               <ul className="flex flex-col gap-1.5 border-t border-line pt-3">
                 {roads.length === 0 && (

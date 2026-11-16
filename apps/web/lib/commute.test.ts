@@ -94,3 +94,22 @@ test('pendling: vägväderstation, gamla mätningar ignoreras', () => {
   assert.equal(parseStation(raw, now + 5 * 3600_000), null);
   assert.equal(parseStation(null, now), null);
 });
+
+test('pendling: fokus på nästa avgång inom 45 min', async () => {
+  const { focusTrain, countdown, countdownTone, departsAt } = await import('./commute.ts');
+  const t0 = Date.parse('2026-11-16T07:00:00+01:00');
+  const tag = (id: string, minFram: number, extra: object = {}) => ({ id, ident: id, dep: t0 + minFram * 60_000, est: null, delay: 0, canceled: false, track: '1', dest: 'Stockholm C', arr: null, notes: [], product: null, ...extra });
+  const lista = [tag('a', -2), tag('b', 10, { canceled: true }), tag('c', 20, { est: t0 + 26 * 60_000, delay: 6 }), tag('d', 50)];
+  // Avgånget och inställt hoppas över, beräknad tid gäller.
+  assert.equal(focusTrain(lista, t0)?.id, 'c');
+  assert.equal(departsAt(focusTrain(lista, t0)!), t0 + 26 * 60_000);
+  // Nästa tåg om 50 min är utanför fönstret.
+  assert.equal(focusTrain([tag('d', 50)], t0), null);
+  assert.equal(focusTrain([tag('d', 45)], t0)?.id, 'd');
+  // Just avgånget (under 30 s) är fortfarande i fokus.
+  assert.equal(focusTrain([tag('e', -0.25)], t0)?.id, 'e');
+  assert.equal(countdown(42 * 60_000 + 30_000), '42 min');
+  assert.equal(countdown(9 * 60_000 + 5_000), '9:05');
+  assert.equal(countdown(0), 'Nu');
+  assert.deepEqual([countdownTone(20 * 60_000), countdownTone(5 * 60_000), countdownTone(60_000)], ['ok', 'warn', 'bad']);
+});
