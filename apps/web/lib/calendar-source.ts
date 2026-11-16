@@ -1,5 +1,5 @@
 import 'server-only';
-import { mergeCalendars, parseCalendar, type Calendar } from './calendar';
+import { isBusyOnly, mergeCalendars, parseCalendar, summarizeBusy, type Calendar } from './calendar';
 
 // Hämtar och tolkar installationens kalendrar. Bara på servern.
 // CALENDAR_ICAL_URL (privat) plus valfria CALENDAR_ICAL_URL_<NAMN> (t.ex. _WORK för jobbets Outlook); för Ulrika ULRIKA_ICAL_URL.
@@ -26,7 +26,11 @@ export async function loadCalendarServer(): Promise<Calendar | null> {
       // Next cachar varje flöde i 10 min (delas mellan serverinstanser), minnet ovan sparar tolkningen.
       const res = await fetch(u, { next: { revalidate: CAL_TTL }, signal: AbortSignal.timeout(10_000) });
       const text = res.ok ? await res.text() : '';
-      if (text.trimStart().startsWith('BEGIN:VCALENDAR')) return parseCalendar(text);
+      if (text.trimStart().startsWith('BEGIN:VCALENDAR')) {
+        // Kalendrar som bara visar ledig/upptagen (t.ex. jobbets Outlook) slås ihop till "Möten på jobbet" per dag.
+        const cal = parseCalendar(text);
+        return isBusyOnly(cal) ? summarizeBusy(cal) : cal;
+      }
       console.error(`Kalender ${i + 1}: oväntat svar (status ${res.status})`);
     } catch (e) {
       // Bara feltypen loggas: meddelandet kan innehålla adressen.

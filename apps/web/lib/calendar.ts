@@ -149,3 +149,41 @@ export function mergeCalendars(cals: Calendar[]): Calendar {
   });
   return { days, generated: Math.max(...cals.map((c) => c.generated)) };
 }
+
+// ---- Kalendrar som bara visar ledig/upptagen (t.ex. publicerad jobbkalender i Outlook) ----
+
+const BUSY = /^(upptagen|busy|preliminärt|preliminär|tentative|arbetar på annan plats|working elsewhere)$/i;
+const FREE = /^(tillgänglig|ledig|free|available)$/i;
+const OOF = /^(inte vid datorn|out of office|away|frånvarande|borta)$/i;
+const isStatus = (t: string) => BUSY.test(t) || FREE.test(t) || OOF.test(t);
+
+/** Sant om kalendern nästan bara har statusrubriker (ingen riktig mötestitel). */
+export function isBusyOnly(cal: Calendar): boolean {
+  const all = cal.days.flatMap((d) => [...d.allDay, ...d.timed]);
+  return all.length > 0 && all.filter((e) => isStatus(e.title)).length / all.length >= 0.9;
+}
+
+/**
+ * Slår ihop statushändelser till ett objekt per dag: "Möten på jobbet" från första till sista mötet.
+ * Möten med riktig titel behålls. Lediga tider tas bort; heldag "Inte vid datorn" blir "Ledig från jobbet",
+ * heldag "Arbetar på annan plats" blir "Jobbar på annan plats".
+ */
+export function summarizeBusy(cal: Calendar, label = 'Möten på jobbet'): Calendar {
+  return {
+    ...cal,
+    days: cal.days.map((d) => {
+      const meetings = d.timed.filter((e) => BUSY.test(e.title));
+      const keep = d.timed.filter((e) => !isStatus(e.title));
+      const merged: CalEvent[] = meetings.length ? [{
+        id: `jobb@${d.date}`, title: label, location: meetings.length > 1 ? `${meetings.length} möten` : null,
+        start: Math.min(...meetings.map((e) => e.start!)), end: Math.max(...meetings.map((e) => e.end ?? e.start!)),
+        allDay: false, firstDay: d.date, lastDay: d.date,
+      }] : [];
+      const allDay = d.allDay.flatMap((e): CalEvent[] =>
+        OOF.test(e.title) ? [{ ...e, title: 'Ledig från jobbet' }]
+          : /annan plats|elsewhere/i.test(e.title) ? [{ ...e, title: 'Jobbar på annan plats' }]
+            : isStatus(e.title) ? [] : [e]);
+      return { date: d.date, allDay, timed: [...keep, ...merged].sort((a, b) => a.start! - b.start!) };
+    }),
+  };
+}

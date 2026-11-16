@@ -85,3 +85,19 @@ test('kalender: flera kalendrar slås ihop, märks per källa och dubbletter tas
   assert.deepEqual(today, [['Promenad', 0], ['Möte', 1], ['Tandläkare', 0]]);
   assert.equal(m.days.length, 8);
 });
+
+test('ledig/upptagen-kalender: ett objekt per dag, riktiga möten behålls', async () => {
+  const { isBusyOnly, summarizeBusy } = await import('./calendar.ts');
+  const ev = (id: string, title: string, h0: number, h1: number) => ({ id, title, location: null, start: Date.parse(`2026-11-17T${String(h0).padStart(2, '0')}:00:00Z`), end: Date.parse(`2026-11-17T${String(h1).padStart(2, '0')}:00:00Z`), allDay: false, firstDay: '2026-11-17', lastDay: '2026-11-17' });
+  const cal = { generated: 0, days: [{ date: '2026-11-17', allDay: [{ ...ev('x', 'Inte vid datorn', 0, 0), allDay: true, start: null, end: null }], timed: [
+    ev('a', 'Upptagen', 8, 9), ev('b', 'Preliminärt', 13, 14), ev('c', 'Tillgänglig', 10, 11), ev('d', 'Upptagen', 15, 16),
+  ] }] };
+  assert.equal(isBusyOnly(cal), true);
+  const d = summarizeBusy(cal).days[0];
+  assert.equal(d.timed.length, 1);
+  assert.equal(d.timed[0].title, 'Möten på jobbet');
+  assert.equal(d.timed[0].location, '3 möten');
+  assert.equal(d.timed[0].start, Date.parse('2026-11-17T08:00:00Z'));
+  assert.equal(d.timed[0].end, Date.parse('2026-11-17T16:00:00Z'));
+  assert.deepEqual(d.allDay.map((e) => e.title), ['Ledig från jobbet']);
+});
