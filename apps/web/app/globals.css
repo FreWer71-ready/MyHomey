@@ -136,6 +136,15 @@ body {
 @keyframes wx-flake { from { transform: translate(0, -3px); opacity: 0; } 20% { opacity: 1; } 50% { transform: translate(2px, 4px); } to { transform: translate(-1px, 11px); opacity: 0; } }
 @keyframes wx-flash { 0%, 86%, 92% { opacity: 1; } 88%, 95% { opacity: 0.25; } }
 @keyframes wx-slide { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
+/* Blåljus: strålarna växlar sida, kupolen blinkar och en ljusreflex sveper runt (roterande ljus). */
+.siren-l { animation: siren-side 0.9s steps(1) infinite; }
+.siren-r { animation: siren-side 0.9s steps(1) infinite; animation-delay: -0.45s; }
+.siren-dome { animation: siren-dome 0.45s ease-in-out infinite alternate; }
+.siren-sweep { animation: siren-sweep 0.9s linear infinite; transform-box: view-box; transform-origin: 12px 14px; }
+@keyframes siren-side { 0% { opacity: 1; } 50% { opacity: 0.1; } }
+@keyframes siren-dome { from { opacity: 1; filter: drop-shadow(0 0 2px #4FA3FF); } to { opacity: 0.55; filter: none; } }
+@keyframes siren-sweep { from { transform: scaleX(1); } 50% { transform: scaleX(-1); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .siren-l, .siren-r, .siren-dome, .siren-sweep { animation: none; } }
 @keyframes wx-twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {

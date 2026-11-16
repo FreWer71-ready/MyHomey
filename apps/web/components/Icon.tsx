@@ -110,6 +110,23 @@ const FLAT = {
       <path className="wx-twinkle" d="M20 2.5v3M18.5 4h3" stroke={C.cloud} strokeWidth={1.4} strokeLinecap="round" />
     </>
   ),
+  // Polisen: blåljus. siren = roterar (strålar växlar höger/vänster, kupolen pulserar); sirenOff = släckt.
+  siren: (
+    <>
+      <path className="siren-l" d="M4.5 9.5 1.5 8M4 13H1M4.5 16.5l-3 1.5" stroke={C.blue} strokeWidth={1.8} strokeLinecap="round" />
+      <path className="siren-r" d="M19.5 9.5l3-1.5M20 13h3M19.5 16.5l3 1.5" stroke={C.blue} strokeWidth={1.8} strokeLinecap="round" />
+      <path className="siren-dome" d="M6 17v-4a6 6 0 0 1 12 0v4z" fill={C.blue} />
+      <path className="siren-sweep" d="M9 16v-3.5a3 3 0 0 1 1.5-2.6" fill="none" stroke="#DCEBFF" strokeWidth={1.6} strokeLinecap="round" />
+      <rect x={4} y={17} width={16} height={3.5} rx={1.2} fill={C.dark} />
+    </>
+  ),
+  sirenOff: (
+    <>
+      <path d="M6 17v-4a6 6 0 0 1 12 0v4z" fill={C.grey} opacity={0.55} />
+      <path d="M9 16v-3.5a3 3 0 0 1 1.5-2.6" fill="none" stroke={C.cloud} strokeWidth={1.6} strokeLinecap="round" opacity={0.6} />
+      <rect x={4} y={17} width={16} height={3.5} rx={1.2} fill={C.dark} />
+    </>
+  ),
   // Larm med nytt att se: röd klocka som skakar ivrigt, ljudvågor blinkar.
   bellAlert: (
     <>

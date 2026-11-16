@@ -93,7 +93,7 @@ export default async function AlarmPage() {
       </Section>}
 
       {/* Polisens händelser i närheten senaste dygnet (POLICE_AREAS). */}
-      <Section id="narhet" icon="bellAlert" title={`I närheten · ${POLICE_AREAS.join(', ')}`} count={police.length} tone={police.some((e) => e.level !== 'yellow') ? 'warn' : 'ok'}>
+      <Section id="narhet" icon={police.length ? 'siren' : 'sirenOff'} title={`I närheten · ${POLICE_AREAS.join(', ')}`} count={police.length} tone={police.some((e) => e.level !== 'yellow') ? 'warn' : 'ok'}>
         {police.length ? (
           <ul className="flex flex-col gap-2">
             {police.slice(0, 12).map((e) => (

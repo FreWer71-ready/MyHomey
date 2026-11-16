@@ -230,7 +230,7 @@ export default async function HomePage() {
     ...(rain ? [{ id: 'rain', level: 'orange', icon: 'rain', text: `Regn kl ${hhmm(rain.at)} – stäng ${rain.windows.map((w) => w.name).join(', ')}`, href: '/larm' } as Alert] : []),
     // Polisen i närheten: allvarligt och färskt (senaste 3 h), högst en platta.
     ...policeAlerts(police, now).slice(0, 1).map((e): Alert => ({
-      id: `polis-${e.id}`, level: e.level === 'red' ? 'red' : 'orange', icon: e.type.toLowerCase().includes('brand') ? 'bellAlert' : '!',
+      id: `polis-${e.id}`, level: e.level === 'red' ? 'red' : 'orange', icon: 'siren',
       text: `${e.type} · ${e.place} ${hhmm(e.at)}`, href: '/larm#narhet',
     })),
     // Kommunen: nytt ärende i ditt område (startat senaste 3 dygnen), högst en platta.
