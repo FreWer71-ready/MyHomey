@@ -110,27 +110,38 @@ export default async function AlarmPage() {
         <p className="mt-2 px-1 text-[13px] font-bold text-dim">Källa: Polisen (polisen.se), uppdateras var 10:e minut.</p>
       </Section>
 
-      {/* Kommunens driftinformation: pågående avstängningar och arbeten, ditt område först. */}
-      <Section id="kommunen" icon="road" title="Kommunen · driftinformation" count={muni.length} tone={muni.some((m) => m.mine) ? 'warn' : 'ok'}>
-        {muni.length ? (
-          <ul className="flex flex-col gap-2">
-            {muni.slice(0, 12).map((m) => (
-              <li key={m.id}>
-                <a href={m.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 rounded-2xl bg-glass-2 px-3 py-2">
-                  <span className="min-w-0 grow">
-                    <span className="block font-extrabold">{m.title}</span>
-                    <span className="block text-sm font-bold text-dim">
-                      {m.area ?? 'Hela kommunen'}{m.start ? ` · ${new Date(m.start + 3600_000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}` : ''}{m.end ? `–${new Date(m.end + 3600_000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
-                    </span>
-                  </span>
-                  {m.mine && <span className="shrink-0 rounded-full bg-warn-soft px-2.5 py-0.5 text-sm font-bold text-warn">Ditt område</span>}
-                </a>
-              </li>
-            ))}
-          </ul>
-        ) : <Empty text="Inga pågående ärenden" />}
-        <p className="mt-2 px-1 text-[13px] font-bold text-dim">Källa: Eskilstuna kommun (eskilstuna.se/driftinformation), uppdateras var 30:e minut.</p>
-      </Section>
+      {/* Kommunens driftinformation: bara ditt område syns, övriga Eskilstuna ligger hopfällt. */}
+      {(() => {
+        const mine = muni.filter((m) => m.mine);
+        const rest = muni.filter((m) => !m.mine).slice(0, 20);
+        const item = (m: (typeof muni)[number]) => (
+          <li key={m.id}>
+            <a href={m.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 rounded-2xl bg-glass-2 px-3 py-2">
+              <span className="min-w-0 grow">
+                <span className="block font-extrabold">{m.title}</span>
+                <span className="block text-sm font-bold text-dim">
+                  {m.area ?? 'Hela kommunen'}{m.start ? ` · ${new Date(m.start + 3600_000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}` : ''}{m.end ? `–${new Date(m.end + 3600_000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                </span>
+              </span>
+            </a>
+          </li>
+        );
+        return (
+          <Section id="kommunen" icon="road" title="Kommunen · ditt område" count={mine.length} tone={mine.length ? 'warn' : 'ok'}>
+            {mine.length ? <ul className="flex flex-col gap-2">{mine.map(item)}</ul> : <Empty text="Inget pågående i ditt område" />}
+            {rest.length > 0 && (
+              <details className="group mt-2 rounded-2xl bg-glass-2">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 font-extrabold">
+                  Övriga Eskilstuna · {muni.length - mine.length}
+                  <span className="text-dim transition-transform group-open:rotate-180">▾</span>
+                </summary>
+                <ul className="flex flex-col gap-2 px-2 pb-2">{rest.map(item)}</ul>
+              </details>
+            )}
+            <p className="mt-2 px-1 text-[13px] font-bold text-dim">Källa: Eskilstuna kommun (eskilstuna.se/driftinformation), uppdateras var 30:e minut.</p>
+          </Section>
+        );
+      })()}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Section id="batteri" icon="battery" title="Lågt batteri" count={h.lowBatteryList.length} tone={h.lowBatteryList.length ? 'warn' : 'ok'}>
