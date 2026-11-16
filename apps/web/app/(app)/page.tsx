@@ -226,7 +226,7 @@ export default async function HomePage() {
     ...weatherAlerts(wx),
     ...trafficAlerts.filter((a) => !((weekend || sunday) && a.kind === 'train')).map((a): Alert => ({
       id: a.id, icon: a.kind === 'train' ? 'train' : 'road', text: a.label, href: '/pendling',
-      level: a.kind === 'road' ? 'orange' : a.tone === 'bad' ? 'red' : 'yellow',
+      level: a.tone === 'bad' ? 'red' : a.kind === 'road' ? 'orange' : 'yellow',
     })),
     ...(net?.state === 'down' ? [{ id: 'net', level: 'red', icon: 'wifi', text: `Internet nere${net.isp ? ` · ${net.isp}` : ''}`, href: '/larm#natverk' } as Alert] : []),
     ...(rain ? [{ id: 'rain', level: 'orange', icon: 'rain', text: `Regn kl ${hhmm(rain.at)} – stäng ${rain.windows.map((w) => w.name).join(', ')}`, href: '/larm' } as Alert] : []),

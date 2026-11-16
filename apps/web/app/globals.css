@@ -187,9 +187,9 @@ svg.ico {
   font-size: 16px; font-weight: 600; white-space: nowrap; background: var(--color-card); color: var(--color-dim); }
 .pill[aria-current="page"], .pill.on { background: var(--color-fg); color: #0B0F14; }
 
-/* Röd varning: svag puls i kanten (inte i texten). */
+/* Röd varning: helfylld och lyser (pulserande glöd runt plattan, inte i texten). */
 .alert-pulse { animation: alert-pulse 2.4s ease-in-out infinite; }
-@keyframes alert-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(248 81 73 / 0.0); } 50% { box-shadow: 0 0 0 4px rgb(248 81 73 / 0.35); } }
+@keyframes alert-pulse { 0%, 100% { box-shadow: 0 0 6px 0 rgb(248 81 73 / 0.35); } 50% { box-shadow: 0 0 22px 4px rgb(248 81 73 / 0.6); } }
 @media (prefers-reduced-motion: reduce) { .alert-pulse { animation: none; } }
 
 /* Trendpil: glider åt sitt håll och kommer in från andra sidan (lugnt, var 3:e sekund). */
