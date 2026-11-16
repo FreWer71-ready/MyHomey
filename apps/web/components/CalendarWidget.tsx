@@ -34,7 +34,9 @@ export function CalendarWidget() {
     return () => { alive = false; clearInterval(poll); clearInterval(tick); };
   }, []);
 
-  const days = (cal?.days ?? []).filter((d, i) => i < 2 || d.timed.some((e) => e.end! > now));
+  // Bara dagar med något kvar: tidsatta som inte är slut, eller heldag (visas som antal).
+  const days = (cal?.days ?? []).filter((d) => d.allDay.length > 0 || d.timed.some((e) => e.end! > now));
+  const weekDays = (cal?.days ?? []).filter((d) => d.allDay.length + d.timed.length > 0);
   const week = useRef<HTMLDivElement>(null);
 
   return (
@@ -56,6 +58,7 @@ export function CalendarWidget() {
         <p className="animate-pulse text-[16px] text-dim">Hämtar kalendern …</p>
       ) : (
         <div className="scroll-x -mr-2 flex min-h-0 flex-col gap-3 overflow-y-auto pr-2">
+          {days.length === 0 && <p className="text-[16px] text-dim">Inget inplanerat de närmaste 7 dagarna</p>}
           {days.map((d) => {
             const timed = d.timed.filter((e) => e.end! > now || d.date !== cal.days[0].date);
             return (
@@ -64,7 +67,6 @@ export function CalendarWidget() {
                   <span className="first-letter:uppercase">{dayLabel(d.date, now)}</span>
                   {d.allDay.length > 0 && <span className="text-[16px] font-normal text-dim">· {d.allDay.length} heldag</span>}
                 </h3>
-                {timed.length === 0 && <p className="text-[16px] text-dim">Inget inplanerat{d.allDay.length ? ' med tid' : ''}</p>}
                 {timed.map((e) => <Row key={e.id} e={e} now={now} />)}
               </section>
             );
@@ -79,7 +81,8 @@ export function CalendarWidget() {
           <button type="button" popoverTarget="kalender-vecka" popoverTargetAction="hide" className="pill">Stäng</button>
         </div>
         <div className="max-h-[calc(88dvh-72px)] overflow-y-auto px-5 py-4">
-          {cal.days.map((d) => (
+          {weekDays.length === 0 && <p className="py-3 text-[16px] text-dim">Inget inplanerat</p>}
+          {weekDays.map((d) => (
             <section key={d.date} className="flex flex-col gap-1.5 border-b border-line py-3 last:border-b-0">
               <h3 className="text-[17px] font-semibold first-letter:uppercase">{dayLabel(d.date, now)}</h3>
               {d.allDay.map((e) => (
@@ -90,7 +93,6 @@ export function CalendarWidget() {
                 </p>
               ))}
               {d.timed.map((e) => <Row key={e.id} e={e} now={now} />)}
-              {d.allDay.length + d.timed.length === 0 && <p className="px-3 text-[16px] text-dim">Inget inplanerat</p>}
             </section>
           ))}
         </div>
