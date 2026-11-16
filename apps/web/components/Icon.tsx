@@ -110,6 +110,33 @@ const FLAT = {
       <path className="wx-twinkle" d="M20 2.5v3M18.5 4h3" stroke={C.cloud} strokeWidth={1.4} strokeLinecap="round" />
     </>
   ),
+  // Kommunen: vägarbete (avspärrning + kon). roadwork = blinkande lampa och gungande kon; roadworkStill = stilla.
+  roadwork: (
+    <>
+      <rect x={2} y={9} width={13} height={4.5} rx={1} fill={C.cloud} />
+      <path d="M4 9 2.5 13.5M8 9l-1.5 4.5M12 9l-1.5 4.5" stroke={C.orange} strokeWidth={2} />
+      <path d="M4 13.5V21M13 13.5V21" stroke={C.dark} strokeWidth={1.6} strokeLinecap="round" />
+      <g className="wx-bob">
+        <path d="M17 8.5h3l2.5 11h-8z" fill={C.orange} />
+        <path d="M16.2 12.5h4.6M15.6 15.7h5.8" stroke={C.cloud} strokeWidth={1.3} />
+        <rect x={13.5} y={19.5} width={10} height={2} rx={0.8} fill={C.dark} />
+      </g>
+      <circle className="wx-blink" cx={18.5} cy={6} r={1.8} fill={C.sun} />
+    </>
+  ),
+  roadworkStill: (
+    <>
+      <rect x={2} y={9} width={13} height={4.5} rx={1} fill={C.cloud} />
+      <path d="M4 9 2.5 13.5M8 9l-1.5 4.5M12 9l-1.5 4.5" stroke={C.orange} strokeWidth={2} />
+      <path d="M4 13.5V21M13 13.5V21" stroke={C.dark} strokeWidth={1.6} strokeLinecap="round" />
+      <g>
+        <path d="M17 8.5h3l2.5 11h-8z" fill={C.orange} />
+        <path d="M16.2 12.5h4.6M15.6 15.7h5.8" stroke={C.cloud} strokeWidth={1.3} />
+        <rect x={13.5} y={19.5} width={10} height={2} rx={0.8} fill={C.dark} />
+      </g>
+      <circle cx={18.5} cy={6} r={1.8} fill={C.sun} />
+    </>
+  ),
   // Polisen: blåljus. siren = roterar (strålar växlar höger/vänster, kupolen pulserar); sirenOff = släckt.
   siren: (
     <>

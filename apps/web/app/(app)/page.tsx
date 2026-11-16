@@ -235,7 +235,7 @@ export default async function HomePage() {
     })),
     // Kommunen: nytt ärende i ditt område (startat senaste 3 dygnen), högst en platta.
     ...muni.filter((m) => m.mine && m.start != null && m.start <= now && now - m.start < 3 * 86400_000).slice(0, 1).map((m): Alert => ({
-      id: `kommun-${m.id}`, level: 'yellow', icon: 'road', text: `Kommunen: ${m.title}`, href: '/larm#kommunen',
+      id: `kommun-${m.id}`, level: 'yellow', icon: 'roadwork', text: `Kommunen: ${m.title}`, href: '/larm#kommunen',
     })),
     ...(damp.length ? [{ id: 'damp', level: 'yellow', icon: 'drop', text: `Fukt ${damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')}`, href: '/larm#fukt' } as Alert] : []),
   ];

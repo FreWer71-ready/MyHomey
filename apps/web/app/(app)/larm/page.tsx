@@ -130,7 +130,7 @@ export default async function AlarmPage() {
           </li>
         );
         return (
-          <Section id="kommunen" icon="road" title="Kommunen · ditt område" count={mine.length} tone={mine.length ? 'warn' : 'ok'}>
+          <Section id="kommunen" icon={mine.length ? 'roadwork' : 'roadworkStill'} title="Kommunen · ditt område" count={mine.length} tone={mine.length ? 'warn' : 'ok'}>
             {mine.length ? <ul className="flex flex-col gap-2">{mine.map(item)}</ul> : <Empty text="Inget pågående i ditt område" />}
             {rest.length > 0 && (
               <details className="group mt-2 rounded-2xl bg-glass-2">
