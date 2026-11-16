@@ -136,6 +136,10 @@ body {
 @keyframes wx-flake { from { transform: translate(0, -3px); opacity: 0; } 20% { opacity: 1; } 50% { transform: translate(2px, 4px); } to { transform: translate(-1px, 11px); opacity: 0; } }
 @keyframes wx-flash { 0%, 86%, 92% { opacity: 1; } 88%, 95% { opacity: 0.25; } }
 @keyframes wx-slide { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
+/* Öppet fönster: halvan fladdrar runt gångjärnet till höger. */
+.win-flap { animation: win-flap 1.1s ease-in-out infinite alternate; transform-box: view-box; transform-origin: 20.5px 12px; }
+@keyframes win-flap { from { transform: scaleX(1); } 60% { transform: scaleX(0.45); } to { transform: scaleX(0.3) skewY(-4deg); } }
+@media (prefers-reduced-motion: reduce) { .win-flap { animation: none; transform: scaleX(0.45); } }
 /* Blåljus: strålarna växlar sida, kupolen blinkar och en ljusreflex sveper runt (roterande ljus). */
 .siren-l { animation: siren-side 0.9s steps(1) infinite; }
 .siren-r { animation: siren-side 0.9s steps(1) infinite; animation-delay: -0.45s; }

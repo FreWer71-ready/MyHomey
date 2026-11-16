@@ -307,6 +307,20 @@ const FLAT = {
       <path className="wx-twinkle" d="M6 9.5l3-3M14 9.5l3-3M6 17.5l3-3M14 17.5l3-3" stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" />
     </>
   ),
+  // Öppet fönster vid varning: högra fönsterhalvan fladdrar på gångjärnet, vindstreck blåser in.
+  windowOpen: (
+    <>
+      <rect x={3} y={3} width={18} height={18} rx={2} fill={C.dark} />
+      <rect x={5} y={5} width={6} height={6} rx={0.8} fill={C.blue} />
+      <rect x={5} y={13} width={6} height={6} rx={0.8} fill={C.blue} />
+      <g className="win-flap">
+        <rect x={12.5} y={3.5} width={8} height={17} rx={1.2} fill={C.cloud} />
+        <rect x={14} y={5} width={5} height={6} rx={0.8} fill={C.blue} />
+        <rect x={14} y={13} width={5} height={6} rx={0.8} fill={C.blue} />
+      </g>
+      <path className="wx-blink" d="M-1 8h4M-2 12h5M-1 16h4" stroke={C.grey} strokeWidth={1.4} strokeLinecap="round" />
+    </>
+  ),
   wc: (
     <>
       <rect x={6} y={2.5} width={12} height={6.5} rx={1.5} fill={C.grey} />

@@ -205,7 +205,7 @@ export default async function AlarmPage() {
           )}
         </Section>
 
-        <Section id="oppet" icon="window" title="Öppna dörrar och fönster" count={open.length} tone={open.length ? 'warn' : 'ok'}>
+        <Section id="oppet" icon={open.length ? 'windowOpen' : 'window'} title="Öppna dörrar och fönster" count={open.length} tone={open.length ? 'warn' : 'ok'}>
           {open.length ? <ul className="flex flex-col gap-2">
             {open.map((o) => (
               <li key={o.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
