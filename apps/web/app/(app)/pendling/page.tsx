@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute } from '@/lib/data';
-import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, type RoadEvent, type Train } from '@/lib/commute';
+import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
 import { PageTrainList } from '@/components/TrainFocus';
 import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
@@ -25,7 +25,30 @@ function Trains({ title, icon, list, active }: { title: string; icon: IconName; 
   );
 }
 
-function Road({ list }: { list: RoadEvent[] }) {
+const deg = (v: number | null | undefined) => (v == null ? '–' : `${v.toLocaleString('sv-SE', { maximumFractionDigits: 1 })}°`);
+
+/** Vägväderstationerna längs vägen: vägbana stort (färg efter halka), luft och nederbörd under. */
+function Stations({ list }: { list: RoadStation[] }) {
+  if (!list.length) return null;
+  return (
+    <ul className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
+      {list.map((s) => {
+        const tone = slip(s);
+        return (
+          <li key={s.id ?? s.name} className="flex flex-col rounded-2xl px-3 py-2" style={{ background: tone ? tint(TONE_COLOR[tone], 0.4) : undefined }}>
+            <span className="truncate text-[13px] font-bold text-dim">{s.name}</span>
+            <span className="text-[22px] leading-tight font-extrabold">Väg {deg(s.road)}</span>
+            <span className="text-[13px] font-bold opacity-85">
+              Luft {deg(s.air)}{s.snow ? ' · snö' : s.rain ? ' · regn' : ''}{tone === 'bad' ? ' · halt' : tone === 'warn' ? ' · risk för halka' : ''}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }) {
   // Liknande ärenden (samma väg, typ och läge) visas som ett kort.
   const groups = groupRoad(list);
   return (
@@ -35,6 +58,7 @@ function Road({ list }: { list: RoadEvent[] }) {
         Bil Eskilstuna–Västerås
         <span className="rounded-full bg-glass-2 px-3 py-0.5 text-base text-dim">{groups.length}</span>
       </h2>
+      <Stations list={stations} />
       {groups.length === 0 && <p className="rounded-2xl bg-ok-soft p-3 font-bold text-ok">Inga störningar på väg 56 eller E18</p>}
       <ul className="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
         {groups.map((g) => {
@@ -92,7 +116,7 @@ export default async function CommutePage() {
             </div>
           )}
           {c.trains && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
-          <Road list={c.road} />
+          <Road list={c.road} stations={c.stations ?? []} />
         </>
       )}
     </>

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { commuteAlerts, direction, groupRoad, parseCommute, parseStation, phrases, shortPlace, roadTone, trainTone, type RawCommute } from './commute.ts';
+import { commuteAlerts, direction, groupRoad, nearAverage, parseCommute, parseStation, phrases, shortPlace, roadTone, slip, trainTone, type RawCommute } from './commute.ts';
 
 const now = Date.parse('2026-11-12T15:30:00+01:00');
 const raw: RawCommute = {
@@ -112,4 +112,21 @@ test('pendling: fokus på nästa avgång inom 45 min', async () => {
   assert.equal(countdown(9 * 60_000 + 5_000), '9:05');
   assert.equal(countdown(0), 'Nu');
   assert.deepEqual([countdownTone(20 * 60_000), countdownTone(5 * 60_000), countdownTone(60_000)], ['ok', 'warn', 'bad']);
+});
+
+test('pendling: halka och medel nära hemmet', () => {
+  const st = (Id: string, Name: string, air: number, road: number, dew: number, Rain = false) => ({ Id, Name, Observation: { Sample: '2026-11-12T15:20:00+01:00', Air: { Temperature: { Value: air }, Dewpoint: { Value: dew } }, Surface: { Temperature: { Value: road } }, Aggregated30minutes: { Precipitation: { Rain } }, Aggregated10minutes: { Wind: { SpeedMax: { Value: 3 } } } } });
+  const a = parseStation(st('429', 'Eskilstuna Ö', 1, -0.5, -1.5, true), now)!;
+  const b = parseStation(st('418', 'Gröndal', 2, 0.3, -2), now)!;
+  const c = parseStation(st('1903', 'Mellansundet', 3, 2, 1), now)!;
+  assert.equal(slip(a), 'bad');
+  assert.equal(slip(b), 'warn');
+  assert.equal(slip(c), null);
+  const m = nearAverage([a, b, c])!;
+  assert.equal(m.air, 1.5);
+  assert.equal(m.road, -0.1);
+  assert.equal(m.name, 'medel Eskilstuna Ö & Gröndal');
+  const cm = parseCommute({ out: [], home: [], arrivals: [], situations: [], stations: [st('1903', 'Mellansundet', 3, 2, 1), st('429', 'Eskilstuna Ö', 1, -0.5, -1.5, true)] } as RawCommute, 'Et', 'Cst', now);
+  assert.deepEqual(cm.stations.map((s) => s.name), ['Eskilstuna Ö', 'Mellansundet']);
+  assert.equal(commuteAlerts(cm, now, String).find((x) => x.id.startsWith('halka'))?.tone, 'bad');
 });

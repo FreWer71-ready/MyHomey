@@ -12,6 +12,8 @@ const API = "https://api.trafikinfo.trafikverket.se/v2/data.json";
 const A = "Et", B = "Cst", ROADS = "56,18", COUNTIES = "4,19";
 // Väderstation (VViS) för Ute-kortet när hushållet saknar egen station i Homey: 429 = Eskilstuna Ö.
 const STATION = "429";
+// Vägväderstationer längs pendlingen: Eskilstuna Ö, Gröndal, Mellansundet (Kvicksund), Vallbymotet (E18 Västerås).
+const ROUTE_STATIONS = "429,418,1903,1924";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -77,7 +79,7 @@ Deno.serve(async (req) => {
       return json(body);
     }
     if (cache && Date.now() - cache.at < 60_000) return json(cache.body);
-    const [out, home, road, ws, every] = await query(departures(A, B) + departures(B, A) + `
+    const [out, home, road, ws, every, route] = await query(departures(A, B) + departures(B, A) + `
 <QUERY objecttype="Situation" namespace="road.trafficinfo" schemaversion="1.6" limit="80">
   <FILTER><AND><IN name="Deviation.RoadNumberNumeric" value="${ROADS}"/><IN name="Deviation.CountyNo" value="${COUNTIES}"/></AND></FILTER>
   <INCLUDE>Deviation</INCLUDE>
@@ -93,6 +95,13 @@ Deno.serve(async (req) => {
     <EQ name="ActivityType" value="Avgang"/><EQ name="LocationSignature" value="${A}"/><EQ name="Advertised" value="true"/>
     <GT name="AdvertisedTimeAtLocation" value="$dateadd(-00:20:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(06:00:00)"/>
   </AND></FILTER>${TRAIN_FIELDS}
+</QUERY>
+<QUERY objecttype="WeatherMeasurepoint" namespace="Road.WeatherInfo" schemaversion="2.1" limit="10">
+  <FILTER><IN name="Id" value="${ROUTE_STATIONS}"/></FILTER>
+  <INCLUDE>Id</INCLUDE><INCLUDE>Name</INCLUDE><INCLUDE>Observation.Sample</INCLUDE><INCLUDE>Observation.Air</INCLUDE>
+  <INCLUDE>Observation.Surface.Temperature.Value</INCLUDE><INCLUDE>Observation.Wind</INCLUDE><INCLUDE>Observation.Weather</INCLUDE>
+  <INCLUDE>Observation.Aggregated10minutes.Wind.SpeedMax.Value</INCLUDE><INCLUDE>Observation.Aggregated30minutes.Precipitation.Rain</INCLUDE>
+  <INCLUDE>Observation.Aggregated30minutes.Precipitation.Snow</INCLUDE>
 </QUERY>`);
     const outT = (out.TrainAnnouncement ?? []) as { AdvertisedTrainIdent: string }[];
     const homeT = (home.TrainAnnouncement ?? []) as { AdvertisedTrainIdent: string }[];
@@ -116,6 +125,7 @@ Deno.serve(async (req) => {
       arrivals: arr.TrainAnnouncement ?? [],
       situations: road.Situation ?? [],
       station: ws?.WeatherMeasurepoint?.[0] ?? null,
+      stations: route?.WeatherMeasurepoint ?? [],
       fetched: new Date().toISOString(),
     };
     cache = { at: Date.now(), body };

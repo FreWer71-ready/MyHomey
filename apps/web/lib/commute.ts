@@ -15,13 +15,23 @@ export type RawDeviation = {
 };
 type V = { Value?: number };
 export type RawStation = {
-  Name?: string;
-  Observation?: { Sample?: string; Air?: { Temperature?: V }; Surface?: { Temperature?: V }; Wind?: { Speed?: V; Direction?: V }[]; Aggregated10minutes?: { Wind?: { SpeedMax?: V } } };
+  Id?: string; Name?: string;
+  Observation?: {
+    Sample?: string; Air?: { Temperature?: V; Dewpoint?: V; RelativeHumidity?: V }; Surface?: { Temperature?: V };
+    Weather?: { Precipitation?: string }; Wind?: { Speed?: V; Direction?: V }[]; Aggregated10minutes?: { Wind?: { SpeedMax?: V } };
+    Aggregated30minutes?: { Precipitation?: { Rain?: boolean; Snow?: boolean } };
+  };
 };
-export type RawCommute = { out: RawTrain[]; home: RawTrain[]; all?: RawTrain[]; arrivals: RawArrival[]; situations: { Deviation?: RawDeviation[] }[]; station?: RawStation | null; fetched?: string };
+export type RawCommute = {
+  out: RawTrain[]; home: RawTrain[]; all?: RawTrain[]; arrivals: RawArrival[]; situations: { Deviation?: RawDeviation[] }[];
+  station?: RawStation | null; stations?: RawStation[]; fetched?: string;
+};
 
 /** Vägväderstation (Trafikverket VViS) direkt från API:t: samma värden som Homey-appens station. */
-export type RoadStation = { name: string; air: number | null; road: number | null; wind: number | null; gust: number | null; deg: number | null; at: number };
+export type RoadStation = {
+  name: string; air: number | null; road: number | null; wind: number | null; gust: number | null; deg: number | null; at: number;
+  id?: string; dew?: number | null; rh?: number | null; rain?: boolean; snow?: boolean;
+};
 /** Äldre än så här räknas stationen som ej tillgänglig (samma gräns som Homey-stationen). */
 const STATION_MAX_H = 4;
 
@@ -31,7 +41,46 @@ export function parseStation(s: RawStation | null | undefined, now = Date.now())
   if (!o || !Number.isFinite(at) || now - at > STATION_MAX_H * 3600_000) return null;
   const n = (v?: V) => (typeof v?.Value === 'number' ? v.Value : null);
   const w = o.Wind?.[0];
-  return { name: s?.Name ?? 'Väderstation', air: n(o.Air?.Temperature), road: n(o.Surface?.Temperature), wind: n(w?.Speed), gust: n(o.Aggregated10minutes?.Wind?.SpeedMax), deg: n(w?.Direction), at };
+  const base: RoadStation = { name: s?.Name ?? 'Väderstation', air: n(o.Air?.Temperature), road: n(o.Surface?.Temperature), wind: n(w?.Speed), gust: n(o.Aggregated10minutes?.Wind?.SpeedMax), deg: n(w?.Direction), at };
+  if (!s?.Id) return base;
+  const p = o.Aggregated30minutes?.Precipitation;
+  const now30 = (o.Weather?.Precipitation ?? 'no').toLowerCase();
+  return {
+    ...base, id: s.Id, dew: n(o.Air?.Dewpoint), rh: n(o.Air?.RelativeHumidity),
+    rain: !!p?.Rain || /rain|drizzle|regn/.test(now30), snow: !!p?.Snow || /snow|sleet|snö/.test(now30),
+  };
+}
+
+/** Vägväderstationer på pendlingen, i körordning. NEAR = nära hemmet (medel i Ute-kortet). */
+export const ROUTE_STATIONS = ['429', '418', '1903', '1924'];
+export const NEAR_STATIONS = ['429', '418'];
+
+/**
+ * Halka per station: 'bad' = vägbanan under 0° och fukt (nederbörd eller rimfrost: vägen kallare än daggpunkten),
+ * 'warn' = vägbanan 0,5° eller kallare (risk för halka), annars null.
+ */
+export function slip(s: RoadStation): Tone | null {
+  if (s.road == null) return null;
+  const wet = !!s.rain || !!s.snow || (s.dew != null && s.road <= s.dew);
+  if (s.road <= 0 && wet) return 'bad';
+  return s.road <= 0.5 ? 'warn' : null;
+}
+
+/** Medel av stationerna nära hemmet (luft, väg, vind); byar = högsta. Riktning från den första. */
+export function nearAverage(list: RoadStation[]): RoadStation | null {
+  const near = list.filter((s) => s.id && NEAR_STATIONS.includes(s.id));
+  if (!near.length) return null;
+  const avg = (k: 'air' | 'road' | 'wind' | 'dew') => {
+    const v = near.map((s) => s[k]).filter((x): x is number => typeof x === 'number');
+    return v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null;
+  };
+  const gusts = near.map((s) => s.gust).filter((x): x is number => typeof x === 'number');
+  return {
+    name: near.length > 1 ? `medel ${near.map((s) => s.name).join(' & ')}` : near[0].name,
+    air: avg('air'), road: avg('road'), wind: avg('wind'), gust: gusts.length ? Math.max(...gusts) : null,
+    deg: near.find((s) => s.deg != null)?.deg ?? null, at: Math.min(...near.map((s) => s.at)),
+    dew: avg('dew'), rain: near.some((s) => s.rain), snow: near.some((s) => s.snow),
+  };
 }
 
 export type Train = {
@@ -45,7 +94,10 @@ export type RoadEvent = {
   lat?: number; lon?: number;
 };
 /** trains=false: bara väg (COMMUTE=road), t.ex. hushåll som inte pendlar med tåg. */
-export type Commute = { out: Train[]; home: Train[]; /** Alla avgångar från Eskilstuna C, alla riktningar. */ all: Train[]; road: RoadEvent[]; station: RoadStation | null; fetched: number; trains: boolean };
+export type Commute = {
+  out: Train[]; home: Train[]; /** Alla avgångar från Eskilstuna C, alla riktningar. */ all: Train[]; road: RoadEvent[];
+  /** Ute-kortet: medel av stationerna nära hemmet (annars Eskilstuna Ö). */ station: RoadStation | null;
+  /** Vägväderstationer längs bilvägen, i körordning. */ stations: RoadStation[]; fetched: number; trains: boolean };
 
 /** Signaturer som syns som slutstation på sträckan. Okända visas som de är. */
 export const STATIONS: Record<string, string> = {
@@ -143,7 +195,10 @@ export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Dat
     home: trains(raw.home ?? [], raw.arrivals ?? [], from, now, max),
     all: trains(raw.all ?? [], [], '', now, 60),
     road: parseRoad(raw.situations, now),
-    station: parseStation(raw.station, now),
+    ...(() => {
+      const list = ROUTE_STATIONS.map((id) => parseStation((raw.stations ?? []).find((x) => x.Id === id), now)).filter((x): x is RoadStation => !!x);
+      return { stations: list, station: nearAverage(list) ?? parseStation(raw.station, now) };
+    })(),
     fetched: t(raw.fetched) ?? now,
     trains: true,
   };
@@ -174,6 +229,15 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
     out.push({
       id: `tag-${bad.map((x) => x.id).join('-')}`, kind: 'train', tone: bad.some((x) => x.canceled) ? 'bad' : 'warn',
       label: `Tåg ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}: ${list}${bad.length > 3 ? ` + ${bad.length - 3} till` : ''}`,
+    });
+  }
+  // Halka längs bilvägen (vägväderstationerna): ett kort, rött om någon station har halt väglag.
+  const slips = (c.stations ?? []).map((s) => ({ s, tone: slip(s) })).filter((x) => x.tone);
+  if (slips.length) {
+    const fmtT = (v: number) => `${v.toLocaleString('sv-SE', { maximumFractionDigits: 1 })}°`;
+    out.push({
+      id: `halka-${slips.map((x) => `${x.s.id}${x.tone}`).join('-')}`, kind: 'road', tone: slips.some((x) => x.tone === 'bad') ? 'bad' : 'warn',
+      label: `Risk för halka: ${slips.slice(0, 3).map((x) => `${x.s.name} ${fmtT(x.s.road!)}`).join(', ')}`,
     });
   }
   const inc = c.road.filter((r) => r.incident && (r.severity >= 3 || /Accident|Obstruction|Closure|Restriction/i.test(r.code)));
