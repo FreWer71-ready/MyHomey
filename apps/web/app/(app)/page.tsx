@@ -38,8 +38,8 @@ const C = { ok: '#3FB950', warn: '#E3A008', bad: '#F85149', mute: '#8B98A5' } as
 const num = (v: number, d = 1) => v.toLocaleString('sv-SE', { maximumFractionDigits: d });
 /** Rum utanför det här spannet räknas som avvikelse och lyfts fram. */
 const COMFORT = { low: 18, high: 26 };
-/** Pendling och helgtrafik delar plats: samma höjd på plattan oavsett innehåll. */
-const COMMUTE_H = 'lg:h-[272px]';
+/** Pendling/helgtrafik och kalendern delar på höjden: pendlingen får alltid plats med allt, resten delas lika. */
+const COMMUTE_H = 'lg:min-h-[272px]';
 
 /** Kort: helt kort (#131A22), ingen gradient, samma inre marginal överallt. */
 function Card({ title, icon, href, className = '', children }: { title?: string; icon?: IconName; href?: string; className?: string; children: React.ReactNode }) {
@@ -360,7 +360,7 @@ export default async function HomePage() {
         {/* HÄRNÄST: pendling och kalender. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6">
           {weekend && (
-            <Card title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
+            <Card title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 lg:grow ${COMMUTE_H}`}>
               <p className="truncate text-[16px] text-dim">
                 {trip
                   ? <>{trip.start != null ? <span className="font-semibold text-fg">{dayOf(trip.start) === dayOf(now) ? hhmm(trip.start) : `imorgon ${hhmm(trip.start)}`}</span> : <span className="font-semibold text-fg">Idag</span>} · {trip.title} · {Math.round(trip.km)} km</>
@@ -390,7 +390,7 @@ export default async function HomePage() {
             </Card>
           )}
           {commute?.trains && !weekend && (
-            <Card title={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
+            <Card title={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 lg:grow ${COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[18px] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               <HomeTrains trains={trains} serverNow={now} />
@@ -433,7 +433,7 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow"><CalendarWidget /></div>}
+          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow lg:basis-0"><CalendarWidget /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
