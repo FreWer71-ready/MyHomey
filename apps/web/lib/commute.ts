@@ -179,8 +179,8 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
     const roads = [...new Set(inc.map((r) => r.road))].join(' & ');
     const first = inc[0];
     out.push({
-      // Olycka eller stor påverkan (4–5) = rött; övriga incidenter = gult/orange.
-      id: `vag-${inc.map((r) => r.id).join('-')}`, kind: 'road', tone: inc.some((r) => /Accident/i.test(r.code) || r.severity >= 4) ? 'bad' : 'warn',
+      // Samma bedömning som pendlingskortet: "Stor påverkan" (roadTone = bad) ger röd varning, annars orange.
+      id: `vag-${inc.map((r) => r.id).join('-')}`, kind: 'road', tone: inc.some((r) => roadTone(r, now) === 'bad') ? 'bad' : 'warn',
       label: `${roads}: ${first.type.toLowerCase()}${first.place ? ` · ${first.place}` : ''}${inc.length > 1 ? ` + ${inc.length - 1} till` : ''}`,
     });
   }
