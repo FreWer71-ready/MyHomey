@@ -3,8 +3,7 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
-import { ActionTiles } from '@/components/ActionTiles';
-import { quickActions, type QuickItem } from '@/lib/quick';
+import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type Trip } from '@/lib/trip';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { policeAlerts } from '@/lib/police';
@@ -16,7 +15,7 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadUsage, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainTone } from '@/lib/commute';
@@ -101,14 +100,13 @@ export default async function HomePage() {
     loadHome(), loadPrices(), loadWeather(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
     loadHistory('power', '12h').catch(() => []), loadHistory('energy', '24h').catch(() => []),
   ]);
-  // Snabbval: fasta val (QUICK_ACTIONS) + mest använda moods/flows från dashboarden.
-  const [flows, usage] = await Promise.all([loadFlows().catch(() => []), loadUsage().catch(() => new Map<string, number>())]);
-  const quickAll: QuickItem[] = [
-    ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced })),
-    ...h.homeMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const })),
-    ...h.rooms.flatMap((r) => r.moods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const }))),
+  // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), flows först.
+  const flows = await loadFlows().catch(() => []);
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
+  const quick: Action[] = [
+    ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced })).sort(byName),
+    ...h.favoriteMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const })).sort(byName),
   ];
-  const quick = quickActions(quickAll, (process.env.QUICK_ACTIONS ?? '').split(','), usage);
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
   const tvRows = await loadTvStatuses().catch(() => []);
   const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
@@ -342,16 +340,10 @@ export default async function HomePage() {
             )}
           </Card>
 
-          {(quick.pinned.length > 0 || quick.most.length > 0) && (
+          {quick.length > 0 && (
             <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0 lg:grow">
-              <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-                {quick.pinned.length > 0 && <ActionTiles items={quick.pinned} layout="compact" />}
-                {quick.most.length > 0 && (
-                  <>
-                    <h3 className="text-[14px] font-semibold text-dim">Mest använda</h3>
-                    <ActionTiles items={quick.most} layout="compact" />
-                  </>
-                )}
+              <div className="flex min-h-0 flex-col overflow-y-auto">
+                <ActionTiles items={quick} layout="compact" />
               </div>
             </Card>
           )}
