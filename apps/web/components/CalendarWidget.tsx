@@ -35,13 +35,14 @@ export function CalendarWidget() {
   }, []);
 
   // Bara dagar med något kvar: tidsatta som inte är slut, eller heldag (visas som antal).
-  const days = (cal?.days ?? []).filter((d) => d.allDay.length > 0 || d.timed.some((e) => e.end! > now));
-  const weekDays = (cal?.days ?? []).filter((d) => d.allDay.length + d.timed.length > 0);
+  // Kortet: idag + 7 dagar. Rutan vid tryck: hela månaden (30 dagar).
+  const days = (cal?.days ?? []).slice(0, 8).filter((d) => d.allDay.length > 0 || d.timed.some((e) => e.end! > now));
+  const monthDays = (cal?.days ?? []).filter((d) => d.allDay.length + d.timed.length > 0);
   const week = useRef<HTMLDivElement>(null);
 
   return (
     <>
-    {/* Tryck på kortet: de närmaste 7 dagarna i en egen ruta. */}
+    {/* Tryck på kortet: kommande månad i en egen ruta. */}
     <section
       aria-label="Kalender" role="button" tabIndex={0}
       onClick={() => cal && week.current?.showPopover()}
@@ -50,7 +51,7 @@ export function CalendarWidget() {
     >
       <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim">
         <Icon name="calendar" size={22} />Kalender
-        <span className="ml-auto text-[16px] font-normal">7 dagar ›</span>
+        <span className="ml-auto text-[16px] font-normal">Månad ›</span>
       </h2>
       {error ? (
         <p role="status" className="text-[16px] text-dim">{error} Vi försöker igen om en stund.</p>
@@ -77,12 +78,12 @@ export function CalendarWidget() {
     {cal && (
       <div ref={week} id="kalender-vecka" popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,720px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-          <h2 className="flex items-center gap-2.5 text-[20px] font-semibold"><Icon name="calendar" size={24} />Kommande 7 dagar</h2>
+          <h2 className="flex items-center gap-2.5 text-[20px] font-semibold"><Icon name="calendar" size={24} />Kommande 30 dagar</h2>
           <button type="button" popoverTarget="kalender-vecka" popoverTargetAction="hide" className="pill">Stäng</button>
         </div>
         <div className="max-h-[calc(88dvh-72px)] overflow-y-auto px-5 py-4">
-          {weekDays.length === 0 && <p className="py-3 text-[16px] text-dim">Inget inplanerat</p>}
-          {weekDays.map((d) => (
+          {monthDays.length === 0 && <p className="py-3 text-[16px] text-dim">Inget inplanerat</p>}
+          {monthDays.map((d) => (
             <section key={d.date} className="flex flex-col gap-1.5 border-b border-line py-3 last:border-b-0">
               <h3 className="text-[17px] font-semibold first-letter:uppercase">{dayLabel(d.date, now)}</h3>
               {d.allDay.map((e) => (

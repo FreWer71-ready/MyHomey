@@ -16,7 +16,7 @@ export function calendarUrls(): string[] {
 }
 export const calendarConfigured = () => calendarUrls().length > 0;
 
-/** Kalendern för idag + 7 dagar, eller null om ingen kalender är kopplad eller ingen gick att hämta. */
+/** Kalendern för idag + 30 dagar (kortet visar en vecka, rutan vid tryck en månad), eller null om ingen kalender är kopplad eller ingen gick att hämta. */
 export async function loadCalendarServer(): Promise<Calendar | null> {
   const urls = calendarUrls();
   if (!urls.length) return null;
@@ -28,7 +28,7 @@ export async function loadCalendarServer(): Promise<Calendar | null> {
       const text = res.ok ? await res.text() : '';
       if (text.trimStart().startsWith('BEGIN:VCALENDAR')) {
         // Kalendrar som bara visar ledig/upptagen (t.ex. jobbets Outlook) slås ihop till "Möten på jobbet" per dag.
-        const cal = parseCalendar(text);
+        const cal = parseCalendar(text, Date.now(), 30);
         return isBusyOnly(cal) ? summarizeBusy(cal) : cal;
       }
       console.error(`Kalender ${i + 1}: oväntat svar (status ${res.status})`);
