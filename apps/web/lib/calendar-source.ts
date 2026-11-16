@@ -1,20 +1,26 @@
 import 'server-only';
 import { mergeCalendars, parseCalendar, type Calendar } from './calendar';
 
-// Hämtar och tolkar installationens kalendrar (CALENDAR_ICAL_URL, för Ulrika ULRIKA_ICAL_URL). Bara på servern.
+// Hämtar och tolkar installationens kalendrar. Bara på servern.
+// CALENDAR_ICAL_URL (privat) plus valfria CALENDAR_ICAL_URL_<NAMN> (t.ex. _WORK för jobbets Outlook); för Ulrika ULRIKA_ICAL_URL.
 // Adresserna får aldrig hamna i loggar, felmeddelanden eller svar.
 export const CAL_TTL = 600; // 10 minuter
 let memo: { at: number; cal: Calendar } | null = null;
 
-export const calendarConfigured = () => !!(process.env.CALENDAR_ICAL_URL || process.env.ULRIKA_ICAL_URL);
+/** Alla kalenderadresser i fast ordning (grundinställningen först, sedan extra efter namn) – ordningen ger färgen. */
+export function calendarUrls(): string[] {
+  const keys = Object.keys(process.env).filter((k) => /^CALENDAR_ICAL_URL(_[A-Z0-9]+)?$/.test(k)).sort();
+  const raw = keys.length ? keys.map((k) => process.env[k] ?? '') : [process.env.ULRIKA_ICAL_URL ?? ''];
+  // Varje inställning kan ha flera adresser (mellanslag, komma eller radbrytning). webcal:// hämtas som https://.
+  return raw.join(' ').split(/[\s,]+/).filter(Boolean).map((u) => u.replace(/^webcal:\/\//i, 'https://'));
+}
+export const calendarConfigured = () => calendarUrls().length > 0;
 
 /** Kalendern för idag + 7 dagar, eller null om ingen kalender är kopplad eller ingen gick att hämta. */
 export async function loadCalendarServer(): Promise<Calendar | null> {
-  const url = process.env.CALENDAR_ICAL_URL || process.env.ULRIKA_ICAL_URL;
-  if (!url) return null;
+  const urls = calendarUrls();
+  if (!urls.length) return null;
   if (memo && Date.now() - memo.at < CAL_TTL * 1000) return memo.cal;
-  // Flera kalendrar: adresserna separeras med mellanslag, komma eller radbrytning. webcal:// hämtas som https://.
-  const urls = url.split(/[\s,]+/).filter(Boolean).map((u) => u.replace(/^webcal:\/\//i, 'https://'));
   const parsed = await Promise.all(urls.map(async (u, i) => {
     try {
       // Next cachar varje flöde i 10 min (delas mellan serverinstanser), minnet ovan sparar tolkningen.

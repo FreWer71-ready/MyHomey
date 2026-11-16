@@ -6,7 +6,7 @@ import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles } from '@/components/ActionTiles';
 import { quickActions, type QuickItem } from '@/lib/quick';
 import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type Trip } from '@/lib/trip';
-import { loadCalendarServer } from '@/lib/calendar-source';
+import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
@@ -183,7 +183,7 @@ export default async function HomePage() {
   const trains = (commute?.[dir] ?? []).filter((t) => !sunday || t.dep >= monday6);
   const roads = commute ? groupRoad(commute.road) : [];
   const trafficAlerts = commute ? commuteAlerts(commute, now, hhmm) : [];
-  const hasCal = !!(process.env.CALENDAR_ICAL_URL || process.env.ULRIKA_ICAL_URL);
+  const hasCal = calendarConfigured();
   // Helg: ingen tågpendling. Visa i stället vägläget mot nästa kalenderhändelse med plats (t.ex. Mariefred),
   // annars trafikläget i närområdet. Samma kortstorlek som pendlingen.
   const weekend = !!commute?.trains && isWeekend(now);
