@@ -44,6 +44,9 @@ export default async function AlarmPage() {
   const open = h.openings.filter((o) => o.open);
   const wet = h.rooms.filter((r) => r.humidity != null);
   const damp = humidityWarnings(h.rooms);
+  const wetHigh = wet.filter((r) => r.humidity! >= HUMIDITY_LIMIT);
+  // Nätverk: bara enheter som är offline eller har en uppdatering.
+  const netIssues = net?.devices.filter((d) => d.status !== 'online' || (d.firmware_status && d.firmware_status !== 'upToDate')) ?? [];
   const wx = await loadWarnings(weather);
   const wxCount = wx.vma.length + wx.smhi.length + wx.storms.length;
 
@@ -203,8 +206,8 @@ export default async function AlarmPage() {
         </Section>
 
         <Section id="oppet" icon="window" title="Öppna dörrar och fönster" count={open.length} tone={open.length ? 'warn' : 'ok'}>
-          <ul className="flex flex-col gap-2">
-            {h.openings.map((o) => (
+          {open.length ? <ul className="flex flex-col gap-2">
+            {open.map((o) => (
               <li key={o.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
                 <Icon name={o.kind === 'door' ? 'door' : 'window'} size={22} />
                 <span className="min-w-0 grow">
@@ -218,13 +221,13 @@ export default async function AlarmPage() {
                 </span>
               </li>
             ))}
-          </ul>
+          </ul> : <Empty text="Alla dörrar och fönster är stängda." />}
         </Section>
 
         <Section id="fukt" icon="drop" title="Luftfuktighet i våtrum" count={damp.length} tone={damp.length ? 'warn' : 'ok'}>
-          {wet.length ? (
+          {wetHigh.length ? (
             <ul className="flex flex-col gap-2">
-              {wet.map((r) => (
+              {wetHigh.map((r) => (
                 <li key={r.id} className="flex items-center gap-3 rounded-2xl bg-glass-2 px-3 py-2">
                   <span className="min-w-0 grow font-extrabold">{r.name}</span>
                   <span className="text-sm font-bold text-dim">gräns {HUMIDITY_LIMIT} %</span>
@@ -235,7 +238,7 @@ export default async function AlarmPage() {
               ))}
             </ul>
           ) : (
-            <Empty text="Ingen fuktsensor i badrum eller toalett." />
+            <Empty text={wet.length ? `Normal luftfuktighet (under ${HUMIDITY_LIMIT} %).` : 'Ingen fuktsensor i badrum eller toalett.'} />
           )}
         </Section>
       </div>
@@ -263,8 +266,8 @@ export default async function AlarmPage() {
               </div>
             ))}
           </div>
-          <ul className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-            {net.devices.map((d) => {
+          {netIssues.length > 0 && <ul className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+            {netIssues.map((d) => {
               const up = d.status === 'online';
               const fw = d.firmware_status && d.firmware_status !== 'upToDate';
               return (
@@ -280,7 +283,7 @@ export default async function AlarmPage() {
                 </li>
               );
             })}
-          </ul>
+          </ul>}
           {net.latencySeries.length > 1 && (
             <details className="group mt-2 rounded-2xl bg-glass-2">
               <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 font-extrabold">
