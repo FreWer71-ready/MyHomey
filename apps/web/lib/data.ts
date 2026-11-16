@@ -363,7 +363,7 @@ export async function loadWarnings(weather: WeatherSummary | null): Promise<Warn
  */
 export async function loadCommute(): Promise<Commute | null> {
   if (process.env.COMMUTE === 'off') return null;
-  const roadOnly = (c: Commute): Commute => (process.env.COMMUTE === 'road' ? { ...c, out: [], home: [], trains: false } : c);
+  const roadOnly = (c: Commute): Commute => (process.env.COMMUTE === 'road' ? { ...c, out: [], home: [], all: [], trains: false } : c);
   if (DEMO) {
     const at = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
     return roadOnly(parseCommute({

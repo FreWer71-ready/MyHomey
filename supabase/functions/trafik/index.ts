@@ -1,4 +1,4 @@
-// Pendling via Trafikverkets öppna API (avgångar 24 h framåt, så att måndagens morgontåg syns redan söndag eftermiddag): tåg Eskilstuna C <-> Stockholm C, händelser på bilvägen (väg 56 + E18 till Västerås)
+// Pendling via Trafikverkets (plus alla avgångar från Eskilstuna C) öppna API (avgångar 24 h framåt, så att måndagens morgontåg syns redan söndag eftermiddag): tåg Eskilstuna C <-> Stockholm C, händelser på bilvägen (väg 56 + E18 till Västerås)
 // och vägväderstationen Eskilstuna Ö.
 // Med { area: [minLon, minLat, maxLon, maxLat] }: vägärenden inom rutan (helgtrafik och resor från kalendern).
 // Anropas av webben med användarens JWT (eller x-cron-secret vid test). Nyckeln ligger i Vault (trafikverket_api_key).
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       return json(body);
     }
     if (cache && Date.now() - cache.at < 60_000) return json(cache.body);
-    const [out, home, road, ws] = await query(departures(A, B) + departures(B, A) + `
+    const [out, home, road, ws, every] = await query(departures(A, B) + departures(B, A) + `
 <QUERY objecttype="Situation" namespace="road.trafficinfo" schemaversion="1.6" limit="80">
   <FILTER><AND><IN name="Deviation.RoadNumberNumeric" value="${ROADS}"/><IN name="Deviation.CountyNo" value="${COUNTIES}"/></AND></FILTER>
   <INCLUDE>Deviation</INCLUDE>
@@ -87,6 +87,12 @@ Deno.serve(async (req) => {
   <INCLUDE>Name</INCLUDE><INCLUDE>Observation.Sample</INCLUDE><INCLUDE>Observation.Air.Temperature.Value</INCLUDE>
   <INCLUDE>Observation.Surface.Temperature.Value</INCLUDE><INCLUDE>Observation.Wind</INCLUDE>
   <INCLUDE>Observation.Aggregated10minutes.Wind.SpeedMax.Value</INCLUDE>
+</QUERY>
+<QUERY objecttype="TrainAnnouncement" schemaversion="1.9" limit="60" orderby="AdvertisedTimeAtLocation">
+  <FILTER><AND>
+    <EQ name="ActivityType" value="Avgang"/><EQ name="LocationSignature" value="${A}"/><EQ name="Advertised" value="true"/>
+    <GT name="AdvertisedTimeAtLocation" value="$dateadd(-00:20:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(06:00:00)"/>
+  </AND></FILTER>${TRAIN_FIELDS}
 </QUERY>`);
     const outT = (out.TrainAnnouncement ?? []) as { AdvertisedTrainIdent: string }[];
     const homeT = (home.TrainAnnouncement ?? []) as { AdvertisedTrainIdent: string }[];
@@ -105,6 +111,8 @@ Deno.serve(async (req) => {
     const body = {
       from: A, to: B, roads: ROADS,
       out: outT, home: homeT,
+      // Alla avgångar från Eskilstuna C (alla riktningar) närmaste 6 h.
+      all: every?.TrainAnnouncement ?? [],
       arrivals: arr.TrainAnnouncement ?? [],
       situations: road.Situation ?? [],
       station: ws?.WeatherMeasurepoint?.[0] ?? null,

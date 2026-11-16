@@ -18,7 +18,7 @@ export type RawStation = {
   Name?: string;
   Observation?: { Sample?: string; Air?: { Temperature?: V }; Surface?: { Temperature?: V }; Wind?: { Speed?: V; Direction?: V }[]; Aggregated10minutes?: { Wind?: { SpeedMax?: V } } };
 };
-export type RawCommute = { out: RawTrain[]; home: RawTrain[]; arrivals: RawArrival[]; situations: { Deviation?: RawDeviation[] }[]; station?: RawStation | null; fetched?: string };
+export type RawCommute = { out: RawTrain[]; home: RawTrain[]; all?: RawTrain[]; arrivals: RawArrival[]; situations: { Deviation?: RawDeviation[] }[]; station?: RawStation | null; fetched?: string };
 
 /** Vägväderstation (Trafikverket VViS) direkt från API:t: samma värden som Homey-appens station. */
 export type RoadStation = { name: string; air: number | null; road: number | null; wind: number | null; gust: number | null; deg: number | null; at: number };
@@ -45,13 +45,14 @@ export type RoadEvent = {
   lat?: number; lon?: number;
 };
 /** trains=false: bara väg (COMMUTE=road), t.ex. hushåll som inte pendlar med tåg. */
-export type Commute = { out: Train[]; home: Train[]; road: RoadEvent[]; station: RoadStation | null; fetched: number; trains: boolean };
+export type Commute = { out: Train[]; home: Train[]; /** Alla avgångar från Eskilstuna C, alla riktningar. */ all: Train[]; road: RoadEvent[]; station: RoadStation | null; fetched: number; trains: boolean };
 
 /** Signaturer som syns som slutstation på sträckan. Okända visas som de är. */
 export const STATIONS: Record<string, string> = {
   Et: 'Eskilstuna C', Cst: 'Stockholm C', U: 'Uppsala C', Arnc: 'Arlanda C', Arb: 'Arboga', Öb: 'Örebro C', Hpbg: 'Hallsberg',
   Söö: 'Södertälje Syd', Sgs: 'Strängnäs', Lg: 'Läggesta', Kp: 'Köping', Vå: 'Västerås C', K: 'Kungsör', Gä: 'Gävle C',
   Fv: 'Flen', Kat: 'Katrineholm C', Hgl: 'Hagalund', Sci: 'Stockholm City', Mr: 'Mariefred', Kh: 'Karlstad C',
+  Lp: 'Linköping C', Nk: 'Nyköping C', Nr: 'Norrköping C', G: 'Göteborg C',
 };
 export const station = (sig: string) => STATIONS[sig] ?? sig;
 
@@ -140,6 +141,7 @@ export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Dat
   return {
     out: trains(raw.out ?? [], raw.arrivals ?? [], to, now, max),
     home: trains(raw.home ?? [], raw.arrivals ?? [], from, now, max),
+    all: trains(raw.all ?? [], [], '', now, 60),
     road: parseRoad(raw.situations, now),
     station: parseStation(raw.station, now),
     fetched: t(raw.fetched) ?? now,
