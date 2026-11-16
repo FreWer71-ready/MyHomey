@@ -150,6 +150,18 @@ export function mergeCalendars(cals: Calendar[]): Calendar {
   return { days, generated: Math.max(...cals.map((c) => c.generated)) };
 }
 
+/** Tidsatt händelse som går midnatt–midnatt (Stockholm) ett eller flera dygn räknas också som heldag. */
+const midnightToMidnight = (e: CalEvent) => {
+  if (e.allDay || e.start == null || e.end == null || e.end - e.start < 86400_000) return false;
+  const a = parts(e.start, TZ), b = parts(e.end, TZ);
+  return a.h + a.mi + a.s === 0 && b.h + b.mi + b.s === 0;
+};
+
+/** Tar bort heldagshändelser (alla kalendrar). Dagar som blir tomma ligger kvar tomma – vyerna hoppar redan över dem. */
+export function withoutAllDay(cal: Calendar): Calendar {
+  return { ...cal, days: cal.days.map((d) => ({ ...d, allDay: [], timed: d.timed.filter((e) => !midnightToMidnight(e)) })) };
+}
+
 // ---- Kalendrar som bara visar ledig/upptagen (t.ex. publicerad jobbkalender i Outlook) ----
 
 const BUSY = /^(upptagen|busy|preliminärt|preliminär|tentative|arbetar på annan plats|working elsewhere)$/i;

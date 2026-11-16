@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dayLabel, isOngoing, mergeCalendars, parseCalendar } from './calendar.ts';
+import { dayLabel, isOngoing, mergeCalendars, parseCalendar, withoutAllDay } from './calendar.ts';
 
 const VTZ = `BEGIN:VTIMEZONE
 TZID:Europe/Stockholm
@@ -100,4 +100,14 @@ test('ledig/upptagen-kalender: ett objekt per dag, riktiga möten behålls', asy
   assert.equal(d.timed[0].start, Date.parse('2026-11-17T08:00:00Z'));
   assert.equal(d.timed[0].end, Date.parse('2026-11-17T16:00:00Z'));
   assert.deepEqual(d.allDay.map((e) => e.title), ['Ledig från jobbet']);
+});
+
+test('withoutAllDay tar bort heldag och midnatt–midnatt men behåller vanliga', () => {
+  const t = (id: string, s: string, e: string) => ({ id, title: id, location: null, start: Date.parse(s), end: Date.parse(e), allDay: false, firstDay: '2026-11-17', lastDay: '2026-11-17' });
+  const cal = { generated: 0, days: [{ date: '2026-11-17',
+    allDay: [{ id: 'h', title: 'Semester', location: null, start: null, end: null, allDay: true, firstDay: '2026-11-17', lastDay: '2026-11-17' }],
+    timed: [t('Möte', '2026-11-17T08:00:00Z', '2026-11-17T09:00:00Z'), t('Dygn', '2026-11-16T23:00:00Z', '2026-11-17T23:00:00Z')] }] };
+  const d = withoutAllDay(cal).days[0];
+  assert.deepEqual(d.allDay, []);
+  assert.deepEqual(d.timed.map((e) => e.title), ['Möte']);
 });

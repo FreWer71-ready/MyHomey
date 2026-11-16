@@ -1,5 +1,5 @@
 import 'server-only';
-import { isBusyOnly, mergeCalendars, parseCalendar, summarizeBusy, type Calendar } from './calendar';
+import { isBusyOnly, mergeCalendars, parseCalendar, summarizeBusy, withoutAllDay, type Calendar } from './calendar';
 
 // Hämtar och tolkar installationens kalendrar. Bara på servern.
 // CALENDAR_ICAL_URL (privat) plus valfria CALENDAR_ICAL_URL_<NAMN> (t.ex. _WORK för jobbets Outlook); för Ulrika ULRIKA_ICAL_URL.
@@ -41,7 +41,9 @@ export async function loadCalendarServer(): Promise<Calendar | null> {
   const okCals = parsed.filter((c): c is Calendar => !!c);
   if (!okCals.length) return null;
   // Behåll källordningen (färgen per kalender) även om någon misslyckas.
-  const merged = mergeCalendars(parsed.map((c) => c ?? { days: okCals[0].days.map((d) => ({ date: d.date, allDay: [], timed: [] })), generated: 0 }));
+  // Heldagshändelser döljs i alla vyer. CALENDAR_SHOW_ALL_DAY=1 visar dem igen.
+  const all = mergeCalendars(parsed.map((c) => c ?? { days: okCals[0].days.map((d) => ({ date: d.date, allDay: [], timed: [] })), generated: 0 }));
+  const merged = process.env.CALENDAR_SHOW_ALL_DAY === '1' ? all : withoutAllDay(all);
   memo = { at: Date.now(), cal: merged };
   return merged;
 }
