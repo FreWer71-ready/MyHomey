@@ -12,14 +12,15 @@ const fmtDate = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Eu
 
 function Trains({ title, icon, list, active }: { title: string; icon: IconName; list: Train[]; active: boolean }) {
   return (
-    <section className={`flex min-w-0 flex-col gap-2 rounded-[24px] glass p-3 ${active ? 'ring-2 ring-sun/60' : ''}`}>
+    // Högst 2/3 av skärmhöjden; listan skrollar inuti så att vägläget under alltid syns.
+    <section className={`flex max-h-[66dvh] min-h-0 min-w-0 flex-col gap-2 rounded-[24px] glass p-3 ${active ? 'ring-2 ring-sun/60' : ''}`}>
       <h2 className="flex items-center gap-3 text-xl font-extrabold">
         <span className="flex size-10 items-center justify-center rounded-2xl bg-glass-hi"><Icon name={icon} size={24} /></span>
         {title}
       </h2>
-      {list.length === 0 && <p className="rounded-2xl bg-glass-2 p-3 font-bold text-dim">Inga avgångar de närmaste timmarna</p>}
+      {list.length === 0 && <p className="rounded-2xl bg-glass-2 p-3 font-bold text-dim">Inga avgångar de närmaste 5 timmarna</p>}
       {/* Tåget som går inom 45 min visas stort med nedräkning. */}
-      <PageTrainList trains={list} serverNow={Date.now()} />
+      <div className="scroll-x -mr-1 min-h-0 overflow-y-auto pr-1"><PageTrainList trains={list} serverNow={Date.now()} /></div>
     </section>
   );
 }
@@ -72,6 +73,8 @@ export default async function CommutePage() {
   if (process.env.COMMUTE === 'off') notFound();
   const c = await loadCommute();
   const dir = direction();
+  // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
+  const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
   return (
     <>
       <h1 className="flex items-baseline justify-between gap-3 text-2xl font-extrabold">
@@ -83,9 +86,9 @@ export default async function CommutePage() {
       ) : (
         <>
           {c.trains && (
-            <div className={`grid grid-cols-1 gap-3 lg:grid-cols-2 ${dir === 'home' ? '[&>*:first-child]:order-2' : ''}`}>
-              <Trains title="Eskilstuna → Stockholm" icon="train" list={c.out.slice(0, 4)} active={dir === 'out'} />
-              <Trains title="Stockholm → Eskilstuna" icon="train" list={c.home.slice(0, 4)} active={dir === 'home'} />
+            <div className={`grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start ${dir === 'home' ? '[&>*:first-child]:order-2' : ''}`}>
+              <Trains title="Eskilstuna → Stockholm" icon="train" list={soon(c.out)} active={dir === 'out'} />
+              <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active={dir === 'home'} />
             </div>
           )}
           <Road list={c.road} />
