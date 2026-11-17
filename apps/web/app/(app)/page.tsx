@@ -232,11 +232,10 @@ export default async function HomePage() {
     if (t && dest && dist > 3 && dist < 400) {
       const eta = await routeEta(o.from, dest, t.start, now);
       if (eta) tripEta = { trip: { ...t, km: dist }, eta, fromHere: o.away, fallback: false };
-    } else if (!dayInfo(dayOf(now), now).free && stockholm(now).hour >= 5 && stockholm(now).hour < 12) {
-      const g = await goalEta(locate.members, now);
-      if (g) tripEta = { trip: { title: g.label, location: g.address, place: g.label, start: null, km: g.km }, eta: g.eta, fromHere: g.fromHere, fallback: true };
     }
   }
+  // Restid till standardmålet (DEFAULT_DESTINATION, t.ex. Ulrikas jobb) i vägkortet, som på Trafik.
+  const homeGoal = etaConfigured() && process.env.DEFAULT_DESTINATION && commute && !commute.trains ? await goalEta(locate.members, now) : null;
   // Kollektivt till jobbet (ResRobot) på väg mot Stockholm en arbetsdag: nästa resa i pendlingskortet.
   const tg = transitConfigured() && commute?.trains && !weekend && dir === 'out' && !dayInfo(dayOf(now), now).free ? transitGoal() : null;
   const o2 = tg ? origin(locate.members) : null;
@@ -489,6 +488,14 @@ export default async function HomePage() {
           )}
           {commute && !commute.trains && (
             <Card title="Väg 56/E18 · Eskilstuna–Västerås" icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
+              {homeGoal && (
+                <p className="flex flex-wrap items-baseline gap-x-2 border-b border-line pb-3 text-[16px]">
+                  <span className="font-semibold">Tid till {homeGoal.label.toLowerCase()}:</span>
+                  <span className="text-[22px] font-extrabold tabular-nums">{homeGoal.eta.minutes} min</span>
+                  <span className="text-dim">framme {hhmm(homeGoal.eta.arrive)}</span>
+                  {homeGoal.eta.trafficMin > 0 && <span className="ml-auto font-semibold" style={{ color: C.warn }}>+{homeGoal.eta.trafficMin} min trafik</span>}
+                </p>
+              )}
               {roads.length === 0 ? <p className="text-[24px] font-semibold" style={{ color: C.ok }}>Fritt</p> : (
                 <ul className="flex flex-col gap-1.5">
                   {roads.slice(0, 3).map((g) => (
