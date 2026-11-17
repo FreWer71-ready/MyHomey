@@ -11,6 +11,8 @@ import { goalEta, origin } from '@/lib/goal';
 import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { HourStrip } from '@/components/HourStrip';
+import { PingPhoneButton } from '@/components/PingPhoneButton';
+import { pingableNames } from '@/app/actions/ping';
 import { freshestPosition } from '@/lib/onboard';
 import { detectTrain } from '@/lib/onboard-source';
 import { RoadImpact } from '@/components/RoadImpact';
@@ -120,6 +122,7 @@ export default async function HomePage() {
   ]);
   // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), i bokstavsordning.
   const flows = await loadFlows().catch(() => []);
+  const pingable = await pingableNames();
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
   const quick: Action[] = [
     ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced })),
@@ -427,11 +430,13 @@ export default async function HomePage() {
             )}
           </Card>
 
-          {quick.length > 0 && (
+          {(quick.length > 0 || pingable.length > 0) && (
             <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0">
               <div className="flex min-h-0 flex-col overflow-y-auto">
                 <ActionTiles items={quick} layout="compact" />
               </div>
+              {/* Hitta mobilen (Android via ntfy): larmar tills den stängs på telefonen. */}
+              {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}s mobil`} className="w-full justify-center" />)}
             </Card>
           )}
         </div>
