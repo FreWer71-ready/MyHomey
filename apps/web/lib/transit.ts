@@ -24,7 +24,7 @@ const ms = (s: RawStop, rt = true) => {
 /** Korta stoppnamn: "Årstaberg station (Stockholm kn)" → "Årstaberg", "Eskilstuna Centralstation" → "Eskilstuna C",
  *  "Fredsborgsgatan 24, Liljeholmen" → "Fredsborgsgatan 24"; koordinater → "Start". */
 export const stopName = (n: string) => (/^\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/.test(n) ? 'Start'
-  : n.replace(/\s*\([^)]*\bkn\)\s*$/, '').split(',')[0].replace(/\s+Centralstation$/i, ' C').replace(/\s+station$/i, '').replace(/\s+Spårv$/i, '').trim());
+  : n.replace(/\s*\([^)]*\bkn\)\s*$/, '').split(',')[0].replace(/\s+Centralstation$/i, ' C').replace(/\s+station$/i, '').replace(/\s+Spårv$/i, '').replace(/\s+T-bana$/i, '').trim());
 
 function kindOf(name: string): LegKind {
   const n = name.toLowerCase();
