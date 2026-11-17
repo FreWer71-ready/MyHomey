@@ -3,14 +3,14 @@ import { HistoryChart } from '@/components/HistoryChart';
 import { Icon, type IconName } from '@/components/Icon';
 import { LightTimeline } from '@/components/LightTimeline';
 import { ScrollActive } from '@/components/ScrollActive';
-import { loadHistory, loadLightTimeline, loadPresenceTimeline, loadWine, loadWineHistory } from '@/lib/data';
+import { loadHistory, loadLightTimeline, loadPresenceTimeline, loadRoadHistory, loadWine, loadWineHistory, type RoadHistRow } from '@/lib/data';
 import {
   METRICS, PERIODS, fmtValue, isMetric, isPeriod, sumSeries, type MetricKey, type PeriodKey,
 } from '@/lib/history';
 
 export const dynamic = 'force-dynamic';
 
-type View = MetricKey | 'lights' | 'presence' | 'wine';
+type View = MetricKey | 'lights' | 'presence' | 'wine' | 'road';
 const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'temp', label: METRICS.temp.label, icon: 'thermo' },
   { key: 'hum', label: 'Fukt', icon: 'drop' },
@@ -18,8 +18,46 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'energy', label: METRICS.energy.label, icon: 'chart' },
   { key: 'lights', label: 'Lampor', icon: 'bulb' },
   { key: 'presence', label: 'Närvaro', icon: 'home' },
+  { key: 'road', label: 'Vägväder', icon: 'road' },
   { key: 'wine', label: 'Vinkällare', icon: 'wine' },
 ];
+// Trafikverkets vägväderstationer längs pendlingen (samma som på Pendling).
+const ROAD_STATIONS: [string, string][] = [['429', 'Eskilstuna Ö'], ['418', 'Gröndal'], ['1903', 'Mellansundet'], ['1924', 'Vallbymotet']];
+
+/** Grafer för en vägväderstation: temperatur, nederbörd, vind, luftfuktighet. */
+function RoadCharts({ rows, long }: { rows: RoadHistRow[]; long: boolean }) {
+  if (!rows.length) return <p className="rounded-[24px] glass p-10 text-center text-lg font-bold text-dim">Ingen vägväderdata för perioden.</p>;
+  const col = (i: number) => rows.filter((r) => r[i] != null).map((r) => [r[0], r[i] as number] as [number, number]);
+  const rain = rows.reduce((a, r) => a + (r[7] ?? 0), 0);
+  const charts: { title: string; extra?: string; unit: string; decimals: number; bars: boolean; series: { id: string; label: string; color: string; points: [number, number][] }[] }[] = [
+    { title: 'Temperatur', unit: '°', decimals: 1, bars: false, series: [
+      { id: 'air', label: 'Luft', color: '#FF7A1A', points: col(1) },
+      { id: 'road', label: 'Vägbana', color: '#1E6FE0', points: col(2) },
+      { id: 'dew', label: 'Daggpunkt', color: '#8B5CF6', points: col(3) },
+    ] },
+    { title: 'Nederbörd', extra: `${rain.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} mm totalt`, unit: ' mm', decimals: 1, bars: true, series: [
+      { id: 'rain', label: 'Nederbörd', color: '#0A8F9E', points: col(7) },
+    ] },
+    { title: 'Vind', unit: ' m/s', decimals: 1, bars: false, series: [
+      { id: 'wind', label: 'Medelvind', color: '#12B76A', points: col(5) },
+      { id: 'gust', label: 'Byar', color: '#E8418C', points: col(6) },
+    ] },
+    { title: 'Luftfuktighet', unit: ' %', decimals: 0, bars: false, series: [{ id: 'rh', label: 'Fukt', color: '#5B6180', points: col(4) }] },
+  ];
+  return (
+    <>
+      {charts.filter((c) => c.series.some((x) => x.points.length)).map((c) => (
+        <section key={c.title} className="rounded-[24px] glass p-3">
+          <h2 className="mb-1 flex items-baseline justify-between gap-2 px-1 text-xl font-extrabold">
+            {c.title}{c.extra && <span className="text-[13px] font-bold text-dim">{c.extra}</span>}
+          </h2>
+          <HistoryChart series={c.series} unit={c.unit} decimals={c.decimals} bars={c.bars} longPeriod={long} fit={760} />
+        </section>
+      ))}
+      <p className="px-1 text-[13px] font-bold text-dim">Källa: Trafikverket (VViS). Vägväder sparas ca 7 dygn bakåt.</p>
+    </>
+  );
+}
 const SHORT: PeriodKey[] = ['4h', '12h', '24h'];
 
 const chip = (active: boolean) => `pill ${active ? 'on' : ''}`;
@@ -30,12 +68,14 @@ export default async function HistoryPage({
   searchParams,
 }: { searchParams: Promise<{ m?: string; p?: string; s?: string }> }) {
   const { m, p, s: sel } = await searchParams;
-  const view: View = m === 'lights' || m === 'presence' || m === 'wine' ? m : isMetric(m) ? m : 'temp';
-  const metric: MetricKey = view === 'lights' || view === 'presence' || view === 'wine' ? 'temp' : view;
+  const view: View = m === 'lights' || m === 'presence' || m === 'wine' || m === 'road' ? m : isMetric(m) ? m : 'temp';
+  const metric: MetricKey = view === 'lights' || view === 'presence' || view === 'wine' || view === 'road' ? 'temp' : view;
   const period: PeriodKey = isPeriod(p) ? p : '24h';
   const cfg = METRICS[metric];
   const [wine, winePts] = await Promise.all([loadWine(), view === 'wine' ? loadWineHistory() : Promise.resolve([] as [number, number][])]);
-  const [series, timeline] = view === 'wine'
+  const roadStation = ROAD_STATIONS.some(([id]) => id === sel) ? sel! : '429';
+  const roadRows = view === 'road' ? await loadRoadHistory(roadStation, period) : [];
+  const [series, timeline] = view === 'wine' || view === 'road'
     ? [[], null]
     : view === 'lights' || view === 'presence'
       ? [[], await (view === 'presence' ? loadPresenceTimeline(period) : loadLightTimeline(period))]
@@ -65,7 +105,7 @@ export default async function HistoryPage({
         </nav>}
       </header>
 
-      <nav aria-label="Mått" className={`scroll-x flex gap-2 max-lg:-mx-3 max-lg:overflow-x-auto max-lg:px-3 lg:grid lg:gap-2.5 ${views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
+      <nav aria-label="Mått" className={`scroll-x flex gap-2 max-lg:-mx-3 max-lg:overflow-x-auto max-lg:px-3 lg:grid lg:gap-2.5 ${views.length > 7 ? 'lg:grid-cols-8' : views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
         {views.map((v) => (
           <Link
             key={v.key}
@@ -129,7 +169,18 @@ export default async function HistoryPage({
         </section>
       )}
 
-      {!timeline && view !== 'wine' && (
+      {view === 'road' && (
+        <>
+          <nav aria-label="Station" className={scrollRow}>
+            {ROAD_STATIONS.map(([id, name]) => (
+              <Link key={id} href={href('road', period, id)} aria-current={id === roadStation ? 'page' : undefined} className={chip(id === roadStation)}>{name}</Link>
+            ))}
+          </nav>
+          <RoadCharts rows={roadRows} long={!SHORT.includes(period)} />
+        </>
+      )}
+
+      {!timeline && view !== 'wine' && view !== 'road' && (
         <section className="rounded-[24px] glass p-3">
           {chartSeries.length ? (
             <HistoryChart

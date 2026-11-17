@@ -564,3 +564,22 @@ export async function loadMunicipal(): Promise<MuniItem[]> {
   const [all, mine] = await Promise.all([page(''), area ? page(`?tags=${encodeURIComponent(area)}`) : Promise.resolve([])]);
   return toItems([...mine, ...all], area, words);
 }
+
+/** Vägväderhistorik för en VViS-station (Trafikverket sparar ca 7 dygn bakåt). Rader: [t, luft, väg, dagg, fukt, vind, byar, nederbörd mm]. */
+export type RoadHistRow = [number, number | null, number | null, number | null, number | null, number | null, number | null, number];
+export async function loadRoadHistory(station: string, period: PeriodKey): Promise<RoadHistRow[]> {
+  const p = PERIODS[period];
+  const [n, unit] = p.bucket.split(' ');
+  const bucket = Number(n) * (unit.startsWith('hour') ? 3600 : unit.startsWith('day') ? 86400 : 60);
+  if (DEMO) {
+    const now = Math.floor(Date.now() / 1000 / bucket) * bucket;
+    return Array.from({ length: Math.min(200, (p.hours * 3600) / bucket) }, (_, i) => {
+      const t = now - i * bucket, w = Math.sin(t / 20000);
+      return [t, 2 + 3 * w, 1 + 3 * w, w, 85 + 10 * w, 3 + 2 * w, 6 + 3 * w, i % 7 === 0 ? 0.4 : 0] as RoadHistRow;
+    }).reverse();
+  }
+  const sb = await createClient();
+  const { data, error } = await sb.functions.invoke('trafik', { body: { history: station, hours: p.hours, bucket } });
+  if (error || !data || data.error) return [];
+  return (data as { rows: RoadHistRow[] }).rows;
+}

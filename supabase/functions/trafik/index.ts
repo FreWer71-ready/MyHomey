@@ -60,6 +60,47 @@ Deno.serve(async (req) => {
     // Felsökning (bara med x-cron-secret): skicka en egen QUERY rakt till Trafikverket.
     const p = await req.json().catch(() => ({}));
     if (p.query && req.headers.get("x-cron-secret")) return json(await query(p.query));
+    // Historik för en vägväderstation: { history: "429", hours: 24, bucket: 600 } → medel per period (sekunder).
+    // Trafikverket sparar 5-minutersvärden bakåt i tiden; nederbörd summeras (mm), byar = högsta.
+    if (p.history) {
+      const id = String(p.history), hours = Math.min(Math.max(Number(p.hours) || 24, 1), 24 * 30);
+      const bucket = Math.max(Number(p.bucket) || 600, 300);
+      if (!ROUTE_STATIONS.split(",").includes(id)) return json({ error: "okänd station" }, 400);
+      const k = `h:${id}:${hours}:${bucket}`;
+      const hit = areas.get(k);
+      if (hit && Date.now() - hit.at < 300_000) return json(hit.body);
+      const d = Math.floor(hours / 24), h = hours % 24;
+      const [r] = await query(`
+<QUERY objecttype="WeatherObservation" namespace="Road.WeatherInfo" schemaversion="2.1" limit="10000" orderby="Sample">
+  <FILTER><AND><EQ name="Measurepoint.Id" value="${id}"/><GT name="Sample" value="$dateadd(-${d}.${String(h).padStart(2, "0")}:00:00)"/></AND></FILTER>
+  <INCLUDE>Sample</INCLUDE><INCLUDE>Air.Temperature.Value</INCLUDE><INCLUDE>Air.Dewpoint.Value</INCLUDE><INCLUDE>Air.RelativeHumidity.Value</INCLUDE>
+  <INCLUDE>Surface.Temperature.Value</INCLUDE><INCLUDE>Wind</INCLUDE><INCLUDE>Aggregated10minutes.Wind.SpeedMax.Value</INCLUDE>
+  <INCLUDE>Aggregated5minutes.Precipitation.TotalWaterEquivalent.Value</INCLUDE>
+</QUERY>`);
+      type O = { Sample: string; Air?: { Temperature?: { Value?: number }; Dewpoint?: { Value?: number }; RelativeHumidity?: { Value?: number } };
+        Surface?: { Temperature?: { Value?: number } }; Wind?: { Speed?: { Value?: number } }[];
+        Aggregated10minutes?: { Wind?: { SpeedMax?: { Value?: number } } };
+        Aggregated5minutes?: { Precipitation?: { TotalWaterEquivalent?: { Value?: number } } } };
+      const acc = new Map<number, { n: Record<string, number[]>; rain: number; gust: number | null }>();
+      for (const o of (r.WeatherObservation ?? []) as O[]) {
+        const t = Math.floor(Date.parse(o.Sample) / 1000 / bucket) * bucket;
+        const a = acc.get(t) ?? { n: { air: [], road: [], dew: [], rh: [], wind: [] }, rain: 0, gust: null };
+        const push = (key: string, v: number | undefined) => { if (typeof v === "number") a.n[key].push(v); };
+        push("air", o.Air?.Temperature?.Value); push("road", o.Surface?.Temperature?.Value); push("dew", o.Air?.Dewpoint?.Value);
+        push("rh", o.Air?.RelativeHumidity?.Value); push("wind", o.Wind?.[0]?.Speed?.Value);
+        const g = o.Aggregated10minutes?.Wind?.SpeedMax?.Value;
+        if (typeof g === "number") a.gust = Math.max(a.gust ?? 0, g);
+        a.rain += o.Aggregated5minutes?.Precipitation?.TotalWaterEquivalent?.Value ?? 0;
+        acc.set(t, a);
+      }
+      const mean = (v: number[]) => (v.length ? Math.round((v.reduce((x, y) => x + y, 0) / v.length) * 10) / 10 : null);
+      const rows = [...acc.entries()].sort((x, y) => x[0] - y[0]).map(([t, a]) =>
+        [t, mean(a.n.air), mean(a.n.road), mean(a.n.dew), mean(a.n.rh), mean(a.n.wind), a.gust, Math.round(a.rain * 10) / 10]);
+      const body = { station: id, cols: ["t", "air", "road", "dew", "rh", "wind", "gust", "rain"], rows };
+      if (areas.size > 50) areas.clear();
+      areas.set(k, { at: Date.now(), body });
+      return json(body);
+    }
     // Område (helgtrafik/kalenderresa): vägärenden inom en ruta [minLon, minLat, maxLon, maxLat], cache 5 min per ruta.
     if (Array.isArray(p.area)) {
       const box = p.area.map(Number);
