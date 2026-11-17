@@ -28,6 +28,10 @@ function Trains({ title, icon, list, active }: { title: string; icon: IconName; 
 const deg = (v: number | null | undefined) => (v == null ? '–' : `${v.toLocaleString('sv-SE', { maximumFractionDigits: 1 })}°`);
 
 /** Vägväderstationerna längs vägen: vägbana stort (färg efter halka), luft och nederbörd under. */
+/** Väglagskamera vid VViS-stationen (samma id). Tidsstämpel per 5 min så att webbläsaren hämtar en färsk bild. */
+const camUrl = (id: string, full = false) =>
+  `https://api.trafikinfo.trafikverket.se/v2/Images/data/road.infrastructure.camera/RoadConditionCamera_VViS_${id}_K1.jpg?${full ? 'type=fullsize&' : ''}t=${Math.floor(Date.now() / 300_000)}`;
+
 function Stations({ list }: { list: RoadStation[] }) {
   if (!list.length) return null;
   return (
@@ -35,12 +39,27 @@ function Stations({ list }: { list: RoadStation[] }) {
       {list.map((s) => {
         const tone = slip(s);
         return (
-          <li key={s.id ?? s.name} className="flex flex-col rounded-2xl px-3 py-2" style={{ background: tone ? tint(TONE_COLOR[tone], 0.4) : undefined }}>
-            <span className="truncate text-[13px] font-bold text-dim">{s.name}</span>
-            <span className="text-[22px] leading-tight font-extrabold">Väg {deg(s.road)}</span>
-            <span className="text-[13px] font-bold opacity-85">
-              Luft {deg(s.air)}{s.snow ? ' · snö' : s.rain ? ' · regn' : ''}{tone === 'bad' ? ' · halt' : tone === 'warn' ? ' · risk för halka' : ''}
-            </span>
+          <li key={s.id ?? s.name} className="rounded-2xl has-[[open]]:col-span-full" style={{ background: tone ? tint(TONE_COLOR[tone], 0.4) : undefined }}>
+            <details className="group">
+              {/* Tryck på temperaturen: Trafikverkets väglagskamera vid stationen. */}
+              <summary className="flex cursor-pointer list-none flex-col px-3 py-2">
+                <span className="truncate text-[13px] font-bold text-dim">{s.name}</span>
+                <span className="flex items-center gap-1.5 text-[22px] leading-tight font-extrabold">
+                  Väg {deg(s.road)}
+                  {s.id && <Icon name="camera" size={16} className="opacity-60 group-open:opacity-100" />}
+                </span>
+                <span className="text-[13px] font-bold opacity-85">
+                  Luft {deg(s.air)}{s.snow ? ' · snö' : s.rain ? ' · regn' : ''}{tone === 'bad' ? ' · halt' : tone === 'warn' ? ' · risk för halka' : ''}
+                </span>
+              </summary>
+              {s.id && (
+                <a href={camUrl(s.id, true)} target="_blank" rel="noopener noreferrer" className="block px-2 pb-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={camUrl(s.id)} alt={`Väglagskamera ${s.name}`} loading="lazy" className="w-full rounded-xl bg-glass-2" />
+                  <span className="mt-1 block text-[12px] font-bold text-dim">Trafikverket · tryck för större bild</span>
+                </a>
+              )}
+            </details>
           </li>
         );
       })}

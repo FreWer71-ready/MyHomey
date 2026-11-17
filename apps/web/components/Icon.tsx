@@ -351,6 +351,7 @@ const FLAT = {
 
 // Linjeikoner för rena kontroller (följer textfärgen).
 const LINE = {
+  camera: 'M4 8h3l1.5-2h7L17 8h3v11H4zM12 10.5a3.25 3.25 0 1 0 0 6.5 3.25 3.25 0 1 0 0-6.5',
   wind: 'M3 8.5h10.5a2.75 2.75 0 1 0-2.75-2.75M3 12.5h15a3 3 0 1 1-3 3M3 16.5h7',
   volDown: 'M3 9.5v5h3.5L11 18V6L6.5 9.5zM15 12h5',
   volUp: 'M3 9.5v5h3.5L11 18V6L6.5 9.5zM15 12h6M18 9v6',
