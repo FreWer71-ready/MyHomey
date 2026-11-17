@@ -1,11 +1,13 @@
 import 'server-only';
-import { bestTrips, parseTrips, withWalk, withWalkEnd, type TransitTrip } from './transit';
-import { km } from './trip';
-import type { LatLon } from './trip';
+import { bestTrips, parseTrips, withWalk, withWalkEnd, type TransitLeg, type TransitTrip } from './transit.ts';
+import { km, type LatLon } from './trip.ts';
 
 // Hämtar kollektivresor från ResRobot (RESROBOT_API_KEY). Mål: TRANSIT_DESTINATION ("lat,lon"), rubrik TRANSIT_DESTINATION_LABEL.
 // Hemifrån: från hållplatsen TRANSIT_ORIGIN_STOP (t.ex. 740000170 = Eskilstuna C) med promenad dit. Trafikslag i
 // TRANSIT_PRODUCTS (ResRobots bitmask, standard 118 = tåg, pendeltåg, tunnelbana och spårvagn, utan buss).
+// Föredragen väg (valfri): via TRANSIT_VIA (t.ex. 740000001 = Stockholm C) till bytespunkten TRANSIT_TRANSFER
+// som "id|lat,lon|namn" (t.ex. 740004046|59.311187,18.024702|Liljeholmen); sista biten gång eller spårvagn,
+// det som är framme först. Hem i omvänd ordning.
 // Nyckeln får aldrig hamna i loggar eller svar.
 
 export const transitConfigured = () => !!process.env.RESROBOT_API_KEY && !!transitGoal();
@@ -15,37 +17,103 @@ export function transitGoal(): { label: string; at: LatLon } | null {
   return c ? { label: process.env.TRANSIT_DESTINATION_LABEL || 'Jobbet', at: { lat: Number(c[1]), lon: Number(c[2]) } } : null;
 }
 
-/**
- * De närmaste resorna med avresa från `at` (avrundat till 5 min för cachen), eller [] vid fel.
- * `home`: hemifrån via TRANSIT_ORIGIN_STOP (om satt) med promenad dit; `toHome`: dit med promenad hem efteråt.
- */
-export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n = 2, home = false, toHome = false): Promise<TransitTrip[]> {
+type Point = { id: string } | { at: LatLon };
+type Transfer = { id: string; at: LatLon; name: string };
+
+/** Bytespunkten ur TRANSIT_TRANSFER ("id|lat,lon|namn"), eller null. */
+function transfer(): Transfer | null {
+  const [id, ll, name] = (process.env.TRANSIT_TRANSFER ?? '').split('|');
+  const c = ll?.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  return id && c ? { id: id.trim(), at: { lat: Number(c[1]), lon: Number(c[2]) }, name: name?.trim() || 'Bytet' } : null;
+}
+const SPÅRVAGN = '64';
+const MIN = 60_000;
+
+/** En sökning i ResRobot från tiden `at` (avrundad till minut, cachas 2 min). [] vid fel. */
+async function query(from: Point, to: Point, at: number, opts: { products?: string; via?: string; n?: number } = {}): Promise<TransitTrip[]> {
   const key = process.env.RESROBOT_API_KEY;
   if (!key) return [];
-  const t = Math.floor(at / 300_000) * 300_000;
   const p = Object.fromEntries(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-    .formatToParts(t).map((x) => [x.type, x.value]));
-  const stop = home ? process.env.TRANSIT_ORIGIN_STOP : undefined;
-  const endStop = toHome ? process.env.TRANSIT_ORIGIN_STOP : undefined;
-  const base = {
-    format: 'json', accessId: key, numF: String(n + 2), passlist: '0',
+    .formatToParts(Math.floor(at / MIN) * MIN).map((x) => [x.type, x.value]));
+  const q = new URLSearchParams({
+    format: 'json', accessId: key, numF: String(opts.n ?? 4), passlist: '0',
     date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}`,
-    ...(stop ? { originId: stop } : { originCoordLat: from.lat.toFixed(5), originCoordLong: from.lon.toFixed(5) }),
-    ...(endStop ? { destId: endStop } : { destCoordLat: to.lat.toFixed(5), destCoordLong: to.lon.toFixed(5) }),
-  };
-  const get = async (products?: string) => {
-    const q = new URLSearchParams({ ...base, ...(products ? { products } : {}) });
-    const res = await fetch(`https://api.resrobot.se/v2.1/trip?${q}`, { next: { revalidate: 120 }, signal: AbortSignal.timeout(8000) });
-    if (!res.ok) { console.error(`ResRobot: status ${res.status}`); return []; }
-    return parseTrips(await res.json());
-  };
+    ...('id' in from ? { originId: from.id } : { originCoordLat: from.at.lat.toFixed(5), originCoordLong: from.at.lon.toFixed(5) }),
+    ...('id' in to ? { destId: to.id } : { destCoordLat: to.at.lat.toFixed(5), destCoordLong: to.at.lon.toFixed(5) }),
+    ...(opts.products ? { products: opts.products } : {}),
+    ...(opts.via ? { viaId: opts.via } : {}),
+  });
+  const res = await fetch(`https://api.resrobot.se/v2.1/trip?${q}`, { next: { revalidate: 120 }, signal: AbortSignal.timeout(8000) });
+  if (!res.ok) { console.error(`ResRobot: status ${res.status}`); return []; }
+  return parseTrips(await res.json());
+}
+
+const walkMin = (d: number) => Math.max(1, Math.ceil(((d * 1.25) / 4.8) * 60));
+const walkLeg = (from: string, to: string, dep: number, min: number): TransitLeg =>
+  ({ kind: 'walk', from, to, dep, arr: dep + min * MIN, minutes: min, label: null, num: null, dir: null, track: null });
+
+/**
+ * Sista/första biten mellan bytespunkten och målet: spårvagn (med gång) eller bara gång, det som är framme först.
+ * `out`: från bytespunkten (ankomst `at`) till målet; annars från målet (avgång tidigast `at`) till bytespunkten.
+ */
+async function lastMile(tr: Transfer, goal: LatLon, at: number, out: boolean): Promise<TransitLeg[]> {
+  const walk = walkMin(km(tr.at, goal));
+  const tram = (await query(out ? { id: tr.id } : { at: goal }, out ? { at: goal } : { id: tr.id }, at + (out ? 2 * MIN : 0), { products: SPÅRVAGN, n: 2 }))
+    .filter((t) => t.legs.some((l) => l.kind === 'tram'))[0];
+  const walkArr = at + walk * MIN;
+  if (tram && tram.arr < walkArr) return tram.legs;
+  return [out ? walkLeg(tr.name, 'Jobbet', at, walk) : walkLeg('Jobbet', tr.name, at, walk)];
+}
+
+/** Föredragen väg till jobbet: (gång +) tåg via TRANSIT_VIA till TRANSIT_TRANSFER, sedan gång eller spårvagn. */
+async function preferredOut(tr: Transfer, from: LatLon, goal: LatLon, at: number, n: number, home: boolean): Promise<TransitTrip[]> {
+  const stop = home ? process.env.TRANSIT_ORIGIN_STOP : undefined;
+  const trips = bestTrips(await query(stop ? { id: stop } : { at: from }, { id: tr.id }, at,
+    { products: process.env.TRANSIT_PRODUCTS ?? '118', via: process.env.TRANSIT_VIA }))
+    .map((t) => (stop && t.startAt ? withWalk(t, km(from, t.startAt)) : t))
+    .filter((t) => t.dep >= at - 2 * MIN).slice(0, n);
+  return Promise.all(trips.map(async (t) => {
+    const tail = await lastMile(tr, goal, t.arr, true);
+    return { ...t, arr: tail.at(-1)!.arr, legs: [...t.legs, ...tail], endAt: goal };
+  }));
+}
+
+/** Föredragen väg hem: gång eller spårvagn till TRANSIT_TRANSFER, tunnelbana + tåg via TRANSIT_VIA, promenad hem. */
+async function preferredHome(tr: Transfer, goal: LatLon, home: LatLon, at: number, n: number): Promise<TransitTrip[]> {
+  const head = await lastMile(tr, goal, at, false);
+  const reach = head.at(-1)!.arr;
+  const trips = bestTrips(await query({ id: tr.id }, { id: process.env.TRANSIT_ORIGIN_STOP! }, reach + 2 * MIN,
+    { products: process.env.TRANSIT_PRODUCTS ?? '118', via: process.env.TRANSIT_VIA })).slice(0, n);
+  return trips.map((t, i) => {
+    // Senare alternativ: samma första bit, men man går så att man hinner precis (avgång flyttas fram).
+    const shift = i === 0 ? 0 : Math.max(0, t.dep - 2 * MIN - reach);
+    const legs = head.map((l) => ({ ...l, dep: l.dep + shift, arr: l.arr + shift }));
+    const full = { ...t, dep: legs[0].dep, legs: [...legs, ...t.legs], startAt: goal };
+    return full.endAt ? withWalkEnd(full, km(full.endAt, home)) : full;
+  });
+}
+
+/**
+ * De närmaste resorna med avresa från `at`, eller [] vid fel.
+ * `home`: hemifrån via TRANSIT_ORIGIN_STOP (om satt) med promenad dit; `toHome`: dit med promenad hem efteråt.
+ * Med TRANSIT_VIA och TRANSIT_TRANSFER används den föredragna vägen (jobbet ↔ hemmet).
+ */
+export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n = 2, home = false, toHome = false): Promise<TransitTrip[]> {
+  if (!process.env.RESROBOT_API_KEY) return [];
+  const goal = transitGoal()?.at;
+  const tr = process.env.TRANSIT_VIA ? transfer() : null;
   try {
-    // Utan buss först; saknas hållplatser för de trafikslagen nära startpunkten, alla trafikslag.
-    let trips = await get(process.env.TRANSIT_PRODUCTS ?? '118');
-    if (!trips.length) trips = await get();
-    if (stop) trips = trips.map((t) => (t.startAt ? withWalk(t, km(from, t.startAt)) : t));
-    if (endStop) trips = trips.map((t) => (t.endAt ? withWalkEnd(t, km(t.endAt, to)) : t));
-    return bestTrips(trips).filter((t) => t.dep >= at - 2 * 60_000).slice(0, n);
+    if (tr && goal && !toHome && km(to, goal) < 0.2) return await preferredOut(tr, from, to, at, n, home);
+    if (tr && goal && toHome && process.env.TRANSIT_ORIGIN_STOP && km(from, goal) < 1) return await preferredHome(tr, goal, to, at, n);
+    // Övrigt (t.ex. från en annan plats): snabbaste vägen, utan buss om det går.
+    const stop = home ? process.env.TRANSIT_ORIGIN_STOP : undefined;
+    const endStop = toHome ? process.env.TRANSIT_ORIGIN_STOP : undefined;
+    const f: Point = stop ? { id: stop } : { at: from }, t: Point = endStop ? { id: endStop } : { at: to };
+    let trips = await query(f, t, at, { products: process.env.TRANSIT_PRODUCTS ?? '118', n: n + 2 });
+    if (!trips.length) trips = await query(f, t, at, { n: n + 2 });
+    if (stop) trips = trips.map((x) => (x.startAt ? withWalk(x, km(from, x.startAt)) : x));
+    if (endStop) trips = trips.map((x) => (x.endAt ? withWalkEnd(x, km(x.endAt, to)) : x));
+    return bestTrips(trips).filter((x) => x.dep >= at - 2 * MIN).slice(0, n);
   } catch (e) {
     console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);
     return [];
