@@ -1,7 +1,7 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
-import { CAL_COLORS, dayLabel, isOngoing, isOwnTeam, shortTitle, TZ, type Calendar, type CalEvent } from '@/lib/calendar-view';
+import { CAL_COLORS, dayInfo, isOngoing, isOwnTeam, shortTitle, TZ, type Calendar, type CalEvent, type DayInfo } from '@/lib/calendar-view';
 import { Icon } from './Icon';
 
 const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);
@@ -34,8 +34,8 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
     return () => { alive = false; clearInterval(poll); clearInterval(tick); };
   }, [src]);
 
-  // Bara dagar med något kvar: tidsatta som inte är slut, eller heldag (visas som antal).
-  // Kortet: idag + 7 dagar. Rutan vid tryck: hela månaden (30 dagar).
+  // Bara dagar med något kvar: tidsatta som inte är slut, eller heldag.
+  // Kortet: idag + 7 dagar, högst 4 händelser per dag. Rutan vid tryck: hela månaden (30 dagar).
   const days = (cal?.days ?? []).slice(0, 8).filter((d) => d.allDay.length > 0 || d.timed.some((e) => e.end! > now));
   const monthDays = (cal?.days ?? []).filter((d) => d.allDay.length + d.timed.length > 0);
   const week = useRef<HTMLDivElement>(null);
@@ -58,18 +58,21 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
       ) : !cal ? (
         <p className="animate-pulse text-[16px] text-dim">Hämtar kalendern …</p>
       ) : (
-        <div className="scroll-x -mr-2 flex min-h-0 flex-col gap-3 overflow-y-auto pr-2">
+        <div className="scroll-x -mr-2 flex min-h-0 flex-col gap-4 overflow-y-auto pr-2">
           {days.length === 0 && <p className="text-[16px] text-dim">Inget inplanerat de närmaste 7 dagarna</p>}
-          {days.map((d) => {
+          {days.map((d, i) => {
             const timed = d.timed.filter((e) => e.end! > now || d.date !== cal.days[0].date);
+            const info = dayInfo(d.date, now);
+            const prev = i > 0 ? dayInfo(days[i - 1].date, now) : null;
             return (
-              <section key={d.date} className="flex flex-col gap-1.5">
-                <h3 className="flex items-center gap-2 text-[16px] font-semibold">
-                  <span className="first-letter:uppercase">{dayLabel(d.date, now)}</span>
-                  {d.allDay.length > 0 && <span className="text-[16px] font-normal text-dim">· {d.allDay.length} heldag</span>}
-                </h3>
-                {timed.map((e) => <Row key={e.id} e={e} now={now} />)}
-              </section>
+              <Fragment key={d.date}>
+                {prev && prev.week !== info.week && <WeekLine week={info.week} />}
+                <Day info={info} count={timed.length + d.allDay.length}>
+                  {d.allDay.map((e) => <AllDay key={e.id} e={e} />)}
+                  {timed.slice(0, 4).map((e) => <Row key={e.id} e={e} now={now} />)}
+                  {timed.length > 4 && <p className="pl-[76px] text-[14px] font-semibold text-dim">+{timed.length - 4} till</p>}
+                </Day>
+              </Fragment>
             );
           })}
         </div>
@@ -81,21 +84,21 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
           <h2 className="flex items-center gap-2.5 text-[20px] font-semibold"><Icon name="calendar" size={24} />{title === 'Kalender' ? 'Kommande 30 dagar' : `${title} · 30 dagar`}</h2>
           <button type="button" popoverTarget={id} popoverTargetAction="hide" className="pill">Stäng</button>
         </div>
-        <div className="max-h-[calc(88dvh-72px)] overflow-y-auto px-5 py-4">
+        <div className="flex max-h-[calc(88dvh-72px)] flex-col gap-4 overflow-y-auto px-5 py-4">
           {monthDays.length === 0 && <p className="py-3 text-[16px] text-dim">Inget inplanerat</p>}
-          {monthDays.map((d) => (
-            <section key={d.date} className="flex flex-col gap-1.5 border-b border-line py-3 last:border-b-0">
-              <h3 className="text-[17px] font-semibold first-letter:uppercase">{dayLabel(d.date, now)}</h3>
-              {d.allDay.map((e) => (
-                <p key={e.id} className="flex items-center gap-3 px-3 text-[16px] text-dim">
-                  {e.src !== undefined && <span className="size-2.5 shrink-0 rounded-full" style={{ background: CAL_COLORS[e.src % CAL_COLORS.length] }} aria-hidden="true" />}
-                  <span className="w-[108px] shrink-0">Heldag</span>
-                  <span className="truncate text-fg">{shortTitle(e.title)}</span>
-                </p>
-              ))}
-              {d.timed.map((e) => <Row key={e.id} e={e} now={now} />)}
-            </section>
-          ))}
+          {monthDays.map((d, i) => {
+            const info = dayInfo(d.date, now);
+            const prev = i > 0 ? dayInfo(monthDays[i - 1].date, now) : null;
+            return (
+              <Fragment key={d.date}>
+                {prev && prev.week !== info.week && <WeekLine week={info.week} />}
+                <Day info={info} count={d.timed.length + d.allDay.length}>
+                  {d.allDay.map((e) => <AllDay key={e.id} e={e} />)}
+                  {d.timed.map((e) => <Row key={e.id} e={e} now={now} />)}
+                </Day>
+              </Fragment>
+            );
+          })}
         </div>
       </div>
     )}
@@ -103,18 +106,64 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
   );
 }
 
+/** Helg och röda dagar: varm ton över hela dagen och en etikett i rubriken. */
+const FREE_BG = 'rgba(255, 170, 90, 0.08)';
+const FREE_FG = '#FFB86B';
+/** Kalenderns färg som kant till vänster (bara när flera kalendrar slagits ihop). */
+const bar = (e: CalEvent) => (e.src !== undefined ? { boxShadow: `inset 3px 0 0 ${CAL_COLORS[e.src % CAL_COLORS.length]}` } : undefined);
+
+function Day({ info, count, children }: { info: DayInfo; count: number; children: React.ReactNode }) {
+  return (
+    <section className={`flex flex-col gap-1.5 ${info.free ? '-mx-2.5 rounded-[14px] px-2.5 py-2' : ''}`} style={info.free ? { background: FREE_BG } : undefined}>
+      <h3 className="flex items-baseline gap-2">
+        <span className="text-[15px] font-bold tracking-wide uppercase" style={info.free ? { color: FREE_FG } : undefined}>{info.main}</span>
+        <span className="text-[15px] text-dim">{info.sub}</span>
+        {info.free && (
+          <span className="self-center rounded-full px-2 py-0.5 text-[12px] font-bold tracking-wide uppercase" style={{ color: FREE_FG, background: 'rgba(255, 170, 90, 0.16)' }}>
+            {info.holiday ?? 'Helg'}
+          </span>
+        )}
+        <span className="ml-auto text-[14px] text-dim tabular-nums">{count}</span>
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function WeekLine({ week }: { week: number }) {
+  return (
+    <div className="flex items-center gap-2 text-[13px] font-bold tracking-wide text-dim uppercase">
+      <span>v. {week}</span><span className="h-px grow bg-line" />
+    </div>
+  );
+}
+
+function AllDay({ e }: { e: CalEvent }) {
+  return (
+    <p className="flex min-w-0 items-center gap-3 rounded-[12px] py-1 pr-3 pl-3" style={bar(e)}>
+      <span className="w-[52px] shrink-0 text-[13px] font-bold text-dim uppercase">Heldag</span>
+      <span className="truncate text-[16px]">{shortTitle(e.title)}</span>
+    </p>
+  );
+}
+
 function Row({ e, now }: { e: CalEvent; now: number }) {
   const live = isOngoing(e, now);
+  const past = !live && e.end! <= now;
   const own = isOwnTeam(e.title);
+  const loc = e.location?.split(',')[0];
   return (
-    <p className={`flex min-w-0 items-baseline gap-3 rounded-[12px] px-3 py-1.5 ${live ? 'bg-[#E6EDF3] text-[#0B0F14]' : own ? 'shadow-[inset_3px_0_0_#E6EDF3]' : ''}`}>
-      {e.src !== undefined && <span className="size-2.5 shrink-0 self-center rounded-full" style={{ background: CAL_COLORS[e.src % CAL_COLORS.length] }} aria-hidden="true" />}
-      <span className="shrink-0 text-[16px] font-semibold tabular-nums">{hm(e.start!)}–{hm(e.end!)}</span>
-      <span className={`min-w-0 grow truncate text-[17px] ${own ? 'font-bold' : ''}`}>
-        {shortTitle(e.title)}
-        {e.location && <span className={live ? 'opacity-70' : 'text-dim'}> · {e.location.split(',')[0]}</span>}
+    <div className={`flex min-w-0 gap-3 rounded-[12px] py-1.5 pr-3 pl-3 ${live ? 'bg-[#E6EDF3] text-[#0B0F14]' : ''} ${past ? 'opacity-45' : ''}`}
+      style={bar(e)}>
+      <span className="flex w-[52px] shrink-0 flex-col leading-tight tabular-nums">
+        <span className="text-[17px] font-bold">{hm(e.start!)}</span>
+        <span className={`text-[13px] ${live ? 'opacity-70' : 'text-dim'}`}>{hm(e.end!)}</span>
       </span>
-      {live && <span className="shrink-0 text-[14px] font-bold uppercase">Pågår</span>}
-    </p>
+      <span className="flex min-w-0 grow flex-col leading-tight">
+        <span className={`line-clamp-2 text-[17px] break-words ${own ? 'font-bold' : 'font-semibold'}`}>{shortTitle(e.title)}</span>
+        {loc && <span className={`truncate text-[14px] ${live ? 'opacity-70' : 'text-dim'}`}>{loc}</span>}
+      </span>
+      {live && <span className="shrink-0 self-center text-[13px] font-bold uppercase">Pågår</span>}
+    </div>
   );
 }
