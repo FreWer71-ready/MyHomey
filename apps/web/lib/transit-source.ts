@@ -119,3 +119,26 @@ export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n =
     return [];
   }
 }
+
+/**
+ * Resten av resan efter tåget (tågläget): mot jobbet från TRANSIT_VIA (Stockholm C) via bytespunkten och sista biten;
+ * hem från TRANSIT_ORIGIN_STOP (Eskilstuna C) till hemmet. `arr` = tågets beräknade ankomst. [] om inget hittas.
+ */
+export async function loadOnward(arr: number, toWork: boolean, home: LatLon): Promise<TransitLeg[]> {
+  try {
+    const goal = transitGoal()?.at;
+    const tr = transfer();
+    if (toWork) {
+      if (!goal || !tr || !process.env.TRANSIT_VIA) return [];
+      const first = bestTrips(await query({ id: process.env.TRANSIT_VIA }, { id: tr.id }, arr + 3 * MIN, { products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2 }))[0];
+      if (!first) return [];
+      return [...first.legs, ...(await lastMile(tr, goal, first.arr, true))];
+    }
+    if (!process.env.TRANSIT_ORIGIN_STOP) return [];
+    const t = (await query({ id: process.env.TRANSIT_ORIGIN_STOP }, { at: home }, arr + MIN, { n: 2 })).sort((a, b) => a.arr - b.arr)[0];
+    return t ? t.legs.map((l, i, all) => (i === all.length - 1 && l.kind === 'walk' ? { ...l, to: 'Hemma' } : l)) : [];
+  } catch (e) {
+    console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);
+    return [];
+  }
+}
