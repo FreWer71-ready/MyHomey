@@ -10,6 +10,7 @@ import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
 import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
+import { HourStrip } from '@/components/HourStrip';
 import { freshestPosition } from '@/lib/onboard';
 import { detectTrain } from '@/lib/onboard-source';
 import { RoadImpact } from '@/components/RoadImpact';
@@ -32,7 +33,7 @@ import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
 import { addDays, dayInfo, dayOf } from '@/lib/calendar-view';
 import { zoned } from '@/lib/calendar';
-import { symbolInfo, weatherKind, hourLabel } from '@/lib/weather';
+import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { hhmm, hourly, summarize, VAT, fixedPriceOre } from '@/lib/prices';
 import { fmtTemp } from '@/lib/scale';
@@ -417,16 +418,7 @@ export default async function HomePage() {
               )}
             </div>
             {weather && (
-              <ol aria-label="Kommande timmar" className="grid grid-cols-6 gap-1 border-t border-line pt-2">
-                {weather.hours.slice(1, 7).map((w) => (
-                  // Varannan timme med svag ton, så kolumnerna är lätta att följa; vid midnatt veckodagen i stället för 00.
-                  <li key={w.time} className="flex flex-col items-center rounded-[0.625rem] py-1 even:bg-white/[0.04]">
-                    <span className="text-[0.875rem] text-dim tabular-nums">{hourLabel(w.time)}</span>
-                    <WeatherIcon kind={weatherKind(w.symbol)} size={26} label={symbolInfo(w.symbol).label} />
-                    <span className="text-[0.9375rem] font-semibold tabular-nums">{Number.isFinite(w.temp) ? `${Math.round(w.temp)}°` : '–'}</span>
-                  </li>
-                ))}
-              </ol>
+              <div className="border-t border-line pt-2"><HourStrip hours={weather.hours.slice(1, 13)} lat={PLACE.lat} lon={PLACE.lon} interactive={false} /></div>
             )}
             {hint && (
               <p className="flex items-center gap-2 text-[0.9375rem] font-semibold" style={{ color: C.warn }}>

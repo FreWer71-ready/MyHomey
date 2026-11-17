@@ -1,8 +1,8 @@
 import { Fragment } from 'react';
 import { Icon } from '@/components/Icon';
 import { WeatherIcon } from '@/components/WeatherIcon';
-import { loadWeather } from '@/lib/data';
-import { hourLabel } from '@/lib/weather';
+import { loadWeather, PLACE } from '@/lib/data';
+import { HourStrip } from '@/components/HourStrip';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { FREE_BG, FREE_CHIP, FREE_FG, dayInfo } from '@/lib/calendar-view';
 
@@ -21,18 +21,9 @@ export default async function WeatherPage() {
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
       <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight lg:col-span-12">Väder{w.source ? ` · ${w.source}` : ''}</h1>
       <section aria-label="Kommande timmar" className={`${card} lg:col-span-7`}>
-        <h2 className={h2}><Icon name="thermo" size={22} />24 timmar</h2>
-        <ol className="grid grid-cols-4 gap-x-1 gap-y-2 sm:grid-cols-6 lg:grid-cols-8">
-          {w.hours.slice(0, 24).map((x) => (
-            // Varannan timme med svag ton (jämnt antal kolumner ger raka band); vid midnatt veckodagen.
-            <li key={x.time} className="flex flex-col items-center rounded-[0.75rem] py-1.5 even:bg-white/[0.04]">
-              <span className="text-[0.9375rem] text-dim tabular-nums">{hourLabel(x.time)}</span>
-              <WeatherIcon kind={weatherKind(x.symbol)} size={34} label={symbolInfo(x.symbol).label} />
-              <span className="text-[1.0625rem] font-semibold tabular-nums">{Number.isFinite(x.temp) ? `${Math.round(x.temp)}°` : '–'}</span>
-              {x.precip >= 0.1 && <span className="text-[0.875rem] text-[#4FA3FF] tabular-nums">{num(x.precip)} mm</span>}
-            </li>
-          ))}
-        </ol>
+        <h2 className={h2}><Icon name="thermo" size={22} />Timme för timme</h2>
+        {/* Svep mellan timmarna; vald timme visas stort och bakgrunden animeras till den timmens väder (som Yr). */}
+        <HourStrip hours={w.hours.slice(0, 24)} lat={PLACE.lat} lon={PLACE.lon} />
       </section>
       {w.days && w.days.length > 0 && (
         <section aria-label="Kommande dagar" className={`${card} lg:col-span-5`}>
