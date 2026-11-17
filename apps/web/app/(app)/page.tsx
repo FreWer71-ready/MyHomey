@@ -8,8 +8,10 @@ import { alongRoute, boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nex
 import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
-import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
+import { freshestPosition } from '@/lib/onboard';
+import { detectTrain } from '@/lib/onboard-source';
 import { RoadImpact } from '@/components/RoadImpact';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
@@ -266,6 +268,13 @@ export default async function HomePage() {
   }
   const transitLate = nextTransit && commute ? tripDelay(nextTransit, [...commute.out, ...commute.home, ...commute.all]) : null;
   const leaveIn = nextTransit ? Math.round((nextTransit.dep - now) / 60_000) : 0;
+  // Tågläge: sitter dashboardens person på ett tåg (Life360/Apple Watch mot tågens GPS) visar pendlingskortet bara det
+  // tåget och resten av resan.
+  const onTrain = commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '', now), now) : null;
+  const ridden = onTrain && commute ? [...commute.out, ...commute.home, ...commute.all].find((t) => t.ident === onTrain.train) ?? null : null;
+  const riddenToWork = !!ridden && !!commute?.out.some((t) => t.id === ridden.id);
+  const riddenArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;
+  const onward = ridden && riddenArr && (riddenToWork || commute?.home.some((t) => t.id === ridden.id)) ? await loadOnward(riddenArr, riddenToWork, PLACE) : [];
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
   const tripLine = tripEta && (() => {
     const { eta, trip: t } = tripEta;
@@ -479,13 +488,20 @@ export default async function HomePage() {
             </Card>
           )}
           {commute?.trains && !weekend && (
-            <Card title={<>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
-              label={`Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
-              className={`order-3 lg:order-none lg:shrink-0 ${nextTransit ? '' : COMMUTE_H}`}>
+            <Card title={ridden ? <>På tåget<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{ridden.product ?? 'Tåg'} {ridden.ident}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
+              label={ridden ? `Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}${ridden.canceled ? ', inställt' : ridden.delay ? `, ${plural(ridden.delay, 'minut', 'minuter')} sent` : ', i tid'}${riddenArr ? `, framme ${ridden.dest} cirka ${hhmm(riddenArr)}` : ''}${onward.length ? `, framme ${riddenToWork ? 'på jobbet' : 'hemma'} ${hhmm(onward.at(-1)!.arr)}` : ''}. Visa trafikläget.` : `Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
+              className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
-              <HomeTrains trains={trains} serverNow={now} />
-              {nextTransit && tg && (
+              <HomeTrains trains={ridden ? [ridden] : trains} serverNow={now} />
+              {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
+              {ridden && onward.length > 0 && commute && (
+                <div className="flex flex-col gap-1 border-t border-line pt-3">
+                  <p className="text-[1rem]"><span className="font-semibold">{riddenToWork ? 'Jobbet' : 'Hem'}:</span> {riddenToWork ? 'framme' : 'hemma'} ca {hhmm(onward.at(-1)!.arr)}</p>
+                  <TransitLegs trip={{ dep: onward[0].dep, arr: onward.at(-1)!.arr, legs: onward, startAt: null, endAt: null }} trains={[...commute.out, ...commute.home, ...commute.all]} compact />
+                </div>
+              )}
+              {!ridden && nextTransit && tg && (
                 <p className="flex items-baseline gap-2 border-t border-line pt-3 text-[1rem]">
                   <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
                   <span>
@@ -496,9 +512,9 @@ export default async function HomePage() {
                 </p>
               )}
               {/* Resebeskrivningen för förslaget (gång, tåg, SL) med spår och förseningar. */}
-              {nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact />}
-              {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). */}
-              <ul className="flex flex-col gap-1.5 border-t border-line pt-3">
+              {!ridden && nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact />}
+              {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). Inte i tågläget. */}
+              <ul hidden={!!ridden} className="flex flex-col gap-1.5 border-t border-line pt-3">
                 {roads.length === 0 && (
                   <li className="flex items-center gap-3 text-[1rem]">
                     <Icon name="road" size={22} /><span className="grow text-dim">Väg 56/E18</span>
@@ -521,16 +537,16 @@ export default async function HomePage() {
           )}
           {commute && !commute.trains && (
             <Card
-              title={homeGoal ? (homeGoal.home ? 'Hem' : `Till ${homeGoal.label.toLowerCase()}`) : 'Väg 56/E18 · Eskilstuna–Västerås'}
+              title={homeGoal ? `${homeGoal.driving ? 'Du kör · ' : ''}${homeGoal.home ? (homeGoal.driving ? 'hem' : 'Hem') : `${homeGoal.driving ? 'till' : 'Till'} ${homeGoal.label.toLowerCase()}`}` : 'Väg 56/E18 · Eskilstuna–Västerås'}
               icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0"
               label={homeGoal
-                ? `${homeGoal.home ? 'Hem' : `Till ${homeGoal.label.toLowerCase()}`}: ${homeGoal.home ? 'hemma' : 'framme'} klockan ${hhmm(homeGoal.eta.arrive)} om du åker nu, ${plural(homeGoal.eta.minutes, 'minut', 'minuter')}${homeGoal.eta.trafficMin > 0 ? `, varav ${plural(homeGoal.eta.trafficMin, 'minut', 'minuter')} trafik` : ''}. ${roads.length ? `${plural(roads.length, 'störning', 'störningar')} längs vägen.` : 'Fritt längs vägen.'} Visa trafikläget.`
+                ? `${homeGoal.home ? 'Hem' : `Till ${homeGoal.label.toLowerCase()}`}: ${homeGoal.home ? 'hemma' : 'framme'} klockan ${hhmm(homeGoal.eta.arrive)} ${homeGoal.driving ? 'med nuvarande trafik' : 'om du åker nu'}, ${plural(homeGoal.eta.minutes, 'minut', 'minuter')}${homeGoal.eta.trafficMin > 0 ? `, varav ${plural(homeGoal.eta.trafficMin, 'minut', 'minuter')} trafik` : ''}. ${roads.length ? `${plural(roads.length, 'störning', 'störningar')} längs vägen.` : 'Fritt längs vägen.'} Visa trafikläget.`
                 : `Väg 56 och E18: ${roads.length ? plural(roads.length, 'störning', 'störningar') : 'fritt'}. Visa trafikläget.`}
             >
               {homeGoal && (
                 // Samma upplägg som på Trafik: liten rubrik, ETA störst, restid/avstånd/trafik mindre under.
                 <div className="flex flex-col gap-0.5 border-b border-line pb-3">
-                  <span className="text-[0.9375rem] font-semibold text-dim">Om du åker nu</span>
+                  <span className="text-[0.9375rem] font-semibold text-dim">{homeGoal.driving ? 'Du kör nu' : 'Om du åker nu'}</span>
                   <span className="flex items-baseline gap-2 leading-none">
                     <span className="text-[1.0625rem] font-semibold">{homeGoal.home ? 'Hemma' : 'Framme'}</span>
                     <span className="text-[2.25rem] font-extrabold tabular-nums">{hhmm(homeGoal.eta.arrive)}</span>

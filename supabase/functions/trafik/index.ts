@@ -2,6 +2,7 @@
 // och vägväderstationen Eskilstuna Ö.
 // Med { train: "950" }: tågets alla passager (även driftplatser mellan stationerna) och stationsnamn.
 // Med { area: [minLon, minLat, maxLon, maxLat] }: vägärenden inom rutan (helgtrafik och resor från kalendern).
+// Med { near: [lon, lat] }: tåg (GPS) nära en position, för tågläget.
 // Anropas av webben med användarens JWT (eller x-cron-secret vid test). Nyckeln ligger i Vault (trafikverket_api_key).
 // Svarar med Trafikverkets rådata i nedbantad form; tolkningen görs i webben (lib/commute.ts).
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -63,6 +64,26 @@ Deno.serve(async (req) => {
     // Felsökning (bara med x-cron-secret): skicka en egen QUERY rakt till Trafikverket.
     const p = await req.json().catch(() => ({}));
     if (p.query && req.headers.get("x-cron-secret")) return json(await query(p.query));
+    // Tågläge: { near: [lon, lat] } → aktiva tåg (GPS, TrainPosition) inom 800 m, rapporterade senaste 3 min. Cache 20 s.
+    if (Array.isArray(p.near)) {
+      const [lon, lat] = p.near.map(Number);
+      if (!(lon > 10 && lon < 25 && lat > 55 && lat < 70)) return json({ error: "ogiltig position" }, 400);
+      const k = `n:${lon.toFixed(3)}:${lat.toFixed(3)}`;
+      const hit = areas.get(k);
+      if (hit && Date.now() - hit.at < 20_000) return json(hit.body);
+      const [r] = await query(`
+<QUERY objecttype="TrainPosition" namespace="järnväg.trafikinfo" schemaversion="1.1" limit="10">
+  <FILTER><AND>
+    <WITHIN name="Position.WGS84" shape="center" value="${lon} ${lat}" radius="800m"/>
+    <EQ name="Status.Active" value="true"/><GT name="TimeStamp" value="$dateadd(-0.00:03:00)"/>
+  </AND></FILTER>
+  <INCLUDE>Train.AdvertisedTrainNumber</INCLUDE><INCLUDE>Position.WGS84</INCLUDE><INCLUDE>TimeStamp</INCLUDE>
+  <INCLUDE>Speed</INCLUDE><INCLUDE>Bearing</INCLUDE>
+</QUERY>`);
+      const body = { trains: r?.TrainPosition ?? [] };
+      areas.set(k, { at: Date.now(), body });
+      return json(body);
+    }
     // Historik för en vägväderstation: { history: "429", hours: 24, bucket: 600 } → medel per period (sekunder).
     // Trafikverket sparar 5-minutersvärden bakåt i tiden; nederbörd summeras (mm), byar = högsta.
     if (p.history) {

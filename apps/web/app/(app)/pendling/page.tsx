@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
-import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { freshestPosition } from '@/lib/onboard';
+import { detectTrain } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
 import { RoadImpact } from '@/components/RoadImpact';
 import { km } from '@/lib/trip';
@@ -121,7 +123,7 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
 
 export default async function CommutePage() {
   if (process.env.COMMUTE === 'off') notFound();
-  const [c, locate] = await Promise.all([loadCommute(), (etaConfigured() && process.env.DEFAULT_DESTINATION) || transitConfigured() ? loadLocate().catch(() => ({ members: [] })) : Promise.resolve({ members: [] })]);
+  const [c, locate] = await Promise.all([loadCommute(), (etaConfigured() && process.env.DEFAULT_DESTINATION) || transitConfigured() ? loadLocate().catch(() => ({ members: [], items: [] })) : Promise.resolve({ members: [], items: [] })]);
   // Tid till standardmålet (DEFAULT_DESTINATION, t.ex. jobbet) med aktuell trafik, om det är inställt.
   const goal = etaConfigured() && process.env.DEFAULT_DESTINATION ? await goalEta(locate.members) : null;
   // Kollektivt till TRANSIT_DESTINATION (ResRobot): de två närmaste resorna härifrån eller hemifrån, om man inte redan är där.
@@ -134,6 +136,12 @@ export default async function CommutePage() {
     : direction() === 'home' ? (goingHome ? await loadTransit(o.away ? o.pos! : tg.at, PLACE, Date.now(), 2, false, true) : [])
     : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
   const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
+  // Tågläge: på ett tåg i pendlingen visas bara det tåget och resten av resan.
+  const onTrain = c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '')) : null;
+  const ridden = onTrain ? rtTrains.find((t) => t.ident === onTrain.train) ?? null : null;
+  const toWork = !!ridden && !!c?.out.some((t) => t.id === ridden.id);
+  const rArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;
+  const onward = ridden && rArr && (toWork || c?.home.some((t) => t.id === ridden.id)) ? await loadOnward(rArr, toWork, PLACE) : [];
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
@@ -143,7 +151,15 @@ export default async function CommutePage() {
         {c && !c.trains ? 'Trafik' : 'Pendling'}
         {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
       </h1>
-      {goal && (
+      {ridden && (
+        <section aria-label="Tåget du är på" className="flex flex-col gap-3">
+          <Trains title={`Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}`} icon="train" list={[ridden]} active />
+          {onward.length > 0 && (
+            <TransitTripCard trip={{ dep: onward[0].dep, arr: onward.at(-1)!.arr, legs: onward, startAt: null, endAt: null }} trains={rtTrains} first home={!toWork} />
+          )}
+        </section>
+      )}
+      {!ridden && goal && (
         // ETA först och störst; restid, avstånd och trafik mindre under (ljusgrå #C5CDD6 klarar 4,5:1 även mot ljus bild).
         <section aria-label={goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-4 rounded-2xl glass px-4 py-3">
           <Icon name="road" size={32} />
@@ -153,8 +169,8 @@ export default async function CommutePage() {
             {' '}{goal.eta.minutes} {goal.eta.minutes === 1 ? 'minut' : 'minuter'}, {Math.round(goal.eta.km)} kilometer{goal.eta.trafficMin > 0 ? `, varav ${goal.eta.trafficMin} ${goal.eta.trafficMin === 1 ? 'minut' : 'minuter'} trafik` : ''}.
           </span>
           <span aria-hidden="true" className="flex min-w-0 grow flex-col gap-0.5">
-            <span className="text-[1rem] font-semibold text-[#C5CDD6]">
-              {goal.home ? 'Hem' : `Till ${goal.label.toLowerCase()}`} · om du åker nu
+            <span className="text-[1rem] font-semibold text-[#C5CDD6] first-letter:uppercase">
+              {goal.driving ? 'Du kör · ' : ''}{goal.home ? 'hem' : `till ${goal.label.toLowerCase()}`}{goal.driving ? '' : ' · om du åker nu'}
             </span>
             <span className="flex items-baseline gap-2 leading-none">
               <span className="text-[1.125rem] font-semibold">{goal.home ? 'Hemma' : 'Framme'}</span>
@@ -167,7 +183,7 @@ export default async function CommutePage() {
           </span>
         </section>
       )}
-      {tg && transit.length > 0 && (
+      {!ridden && tg && transit.length > 0 && (
         <section aria-label={goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`} className="flex flex-col gap-2">
           <h2 className="text-[1.125rem] font-bold">{goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`}{o.away ? ' · härifrån' : ''}</h2>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -175,7 +191,7 @@ export default async function CommutePage() {
           </div>
         </section>
       )}
-      {!c ? (
+      {ridden ? null : !c ? (
         <p className="rounded-2xl glass p-4 font-bold text-dim">Trafikinformationen är inte tillgänglig just nu.</p>
       ) : (
         <>
@@ -185,7 +201,8 @@ export default async function CommutePage() {
             : <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active />)}
           {/* Utan tågpendling (COMMUTE=road) är vägen viktigast: vägdata först, sedan tågen från Eskilstuna C. */}
           {!c.trains && <Road list={c.road} stations={c.stations ?? []} />}
-          {((c.trains && dir === 'out') || (!c.trains && c.all.length > 0)) && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
+          {/* I bilen (Life360): bara vägläget, inga tåg. */}
+          {((c.trains && dir === 'out') || (!c.trains && c.all.length > 0 && !goal?.driving)) && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
           {c.trains && <Road list={c.road} stations={c.stations ?? []} />}
         </>
       )}
