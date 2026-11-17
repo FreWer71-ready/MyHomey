@@ -65,6 +65,14 @@ export async function runScene(zoneId: string, scene: string): Promise<Result> {
   return command({ zone: zoneId, scene }, { type: 'scene', zone_id: zoneId, scene });
 }
 
+/** Samma scen i flera rum samtidigt (t.ex. Släck alla lampor). Lyckas om alla rum lyckas. */
+export async function runScenes(zoneIds: string[], scene: string): Promise<Result> {
+  if (!zoneIds.length) return { ok: false, error: 'Inga rum' };
+  const all = await Promise.all(zoneIds.map((z) => runScene(z, scene)));
+  const bad = all.find((r) => !r.ok);
+  return bad ?? { ok: true };
+}
+
 /** Aktivera ett Homey-mood. */
 export async function runMood(moodId: string): Promise<Result> {
   if (!/^[\w-]{1,64}$/.test(moodId)) return { ok: false, error: 'Ogiltigt mood' };

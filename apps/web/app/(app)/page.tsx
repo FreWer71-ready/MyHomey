@@ -108,6 +108,14 @@ export default async function HomePage() {
     ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced })),
     ...h.favoriteMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const })),
   ].sort(byName);
+  // Förval först (QUICK_SCENES), t.ex. "Släck alla lampor=*:slack;Mys vardagsrum=Vardagsrum:mys".
+  // Rum anges med namn, * = alla rum. Scen: ljust, mys eller slack.
+  quick.unshift(...(process.env.QUICK_SCENES ?? '').split(';').flatMap((entry, i): Action[] => {
+    const m = entry.match(/^\s*([^=]+?)\s*=\s*([^:]+?)\s*:\s*(ljust|mys|slack)\s*$/);
+    if (!m) return [];
+    const zones = m[2] === '*' ? h.rooms.map((r) => r.id) : h.rooms.filter((r) => r.name.toLowerCase() === m[2].toLowerCase()).map((r) => r.id);
+    return zones.length ? [{ id: `preset-${i}`, name: m[1], kind: 'room', zones, scene: m[3] }] : [];
+  }));
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
   const tvRows = await loadTvStatuses().catch(() => []);
   const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
