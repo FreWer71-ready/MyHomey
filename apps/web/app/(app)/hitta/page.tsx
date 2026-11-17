@@ -1,5 +1,7 @@
 import { Icon } from '@/components/Icon';
 import { SoundButton } from '@/components/SoundButton';
+import { PingPhoneButton } from '@/components/PingPhoneButton';
+import { pingableNames } from '@/app/actions/ping';
 import { loadLocate, PLACE } from '@/lib/data';
 import { km } from '@/lib/trip';
 import { whereText } from '@/lib/locate';
@@ -15,7 +17,7 @@ const pct = (b: number | null, low = false) => b != null && <span className={`ta
 
 /** Var är alla? Personer från Life360 och prylar från Apple Hitta. */
 export default async function LocatePage() {
-  const { members, items } = await loadLocate();
+  const [{ members, items }, pingable] = await Promise.all([loadLocate(), pingableNames()]);
   const now = Date.now();
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
@@ -41,6 +43,7 @@ export default async function LocatePage() {
                   {pct(m.battery)}
                   {map && !m.home && <a href={map} target="_blank" rel="noopener noreferrer" className="font-semibold text-fg underline">Karta</a>}
                 </span>
+                {pingable.includes(m.first.toLowerCase()) && <PingPhoneButton first={m.first} />}
               </li>
             );
           })}
