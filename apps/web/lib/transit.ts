@@ -8,7 +8,10 @@ export type TransitLeg = {
   /** Tåg-/linjenummer (matchas mot Trafikverkets realtid för tåg). */ num: string | null;
   dir: string | null; track: string | null;
 };
-export type TransitTrip = { dep: number; arr: number; legs: TransitLeg[]; /** Första hållplatsens läge. */ startAt: { lat: number; lon: number } | null };
+export type TransitTrip = {
+  dep: number; arr: number; legs: TransitLeg[];
+  /** Första och sista hållplatsens läge. */ startAt: { lat: number; lon: number } | null; endAt: { lat: number; lon: number } | null;
+};
 
 type RawStop = { name: string; date: string; time: string; lat?: number; lon?: number; track?: string; rtTrack?: string; rtTime?: string; rtDate?: string };
 type RawLeg = { type: string; name?: string; direction?: string; Origin: RawStop; Destination: RawStop; Product?: { name?: string; num?: string; catOutL?: string } | { name?: string; num?: string; catOutL?: string }[] };
@@ -21,7 +24,7 @@ const ms = (s: RawStop, rt = true) => {
 /** Korta stoppnamn: "Årstaberg station (Stockholm kn)" → "Årstaberg", "Eskilstuna Centralstation" → "Eskilstuna C",
  *  "Fredsborgsgatan 24, Liljeholmen" → "Fredsborgsgatan 24"; koordinater → "Start". */
 export const stopName = (n: string) => (/^\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/.test(n) ? 'Start'
-  : n.replace(/\s*\([^)]*\bkn\)\s*$/, '').split(',')[0].replace(/\s+Centralstation$/i, ' C').replace(/\s+station$/i, '').trim());
+  : n.replace(/\s*\([^)]*\bkn\)\s*$/, '').split(',')[0].replace(/\s+Centralstation$/i, ' C').replace(/\s+station$/i, '').replace(/\s+Spårv$/i, '').trim());
 
 function kindOf(name: string): LegKind {
   const n = name.toLowerCase();
@@ -57,8 +60,9 @@ export function parseTrips(raw: unknown): TransitTrip[] {
         dir: l.direction ? stopName(l.direction) : null, track: l.Origin.rtTrack ?? l.Origin.track ?? null,
       }];
     });
-    const o = list[0]?.Origin;
-    return legs.length ? [{ dep: legs[0].dep, arr: legs.at(-1)!.arr, legs, startAt: o?.lat != null && o.lon != null ? { lat: o.lat, lon: o.lon } : null }] : [];
+    const o = list[0]?.Origin, e = list.at(-1)?.Destination;
+    const at = (s?: RawStop) => (s?.lat != null && s.lon != null ? { lat: s.lat, lon: s.lon } : null);
+    return legs.length ? [{ dep: legs[0].dep, arr: legs.at(-1)!.arr, legs, startAt: at(o), endAt: at(e) }] : [];
   });
 }
 
@@ -80,9 +84,19 @@ export function bestTrips(trips: TransitTrip[]): TransitTrip[] {
     .sort((a, b) => a.dep - b.dep);
 }
 
+const walkMin = (km: number) => Math.max(1, Math.ceil(((km * 1.25) / 4.8) * 60));
+
+/** Lägger till promenaden från sista hållplatsen till målet (t.ex. hem från Eskilstuna C). */
+export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma'): TransitTrip {
+  const last = t.legs.at(-1)!;
+  const min = walkMin(km);
+  const walk: TransitLeg = { kind: 'walk', from: last.to, to, dep: last.arr, arr: last.arr + min * 60_000, minutes: min, label: null, num: null, dir: null, track: null };
+  return { ...t, arr: walk.arr, legs: [...t.legs, walk] };
+}
+
 /** Lägger till promenaden till första hållplatsen (cirka 4,8 km/h, 25 % omväg, 2 min marginal). */
 export function withWalk(t: TransitTrip, km: number): TransitTrip {
-  const min = Math.max(1, Math.ceil(((km * 1.25) / 4.8) * 60));
+  const min = walkMin(km);
   const first = t.legs[0];
   const walk: TransitLeg = { kind: 'walk', from: 'Hemma', to: first.from, dep: first.dep - (min + 2) * 60_000, arr: first.dep - 2 * 60_000, minutes: min, label: null, num: null, dir: null, track: null };
   return { ...t, dep: walk.dep, legs: [walk, ...t.legs] };
