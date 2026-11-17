@@ -29,6 +29,9 @@ export async function loadCalendarServer(): Promise<Calendar | null> {
       if (text.trimStart().startsWith('BEGIN:VCALENDAR')) {
         // Kalendrar som bara visar ledig/upptagen (t.ex. jobbets Outlook) slås ihop till "Möten på jobbet" per dag.
         const cal = parseCalendar(text, Date.now(), 30);
+        // Bara antal (aldrig titlar eller adresser), för felsökning när en kalender verkar tom.
+        const n = (k: 'timed' | 'allDay') => cal.days.reduce((a, d) => a + d[k].length, 0);
+        console.info(`Kalender ${i + 1}: ${n('timed')} med tid, ${n('allDay')} heldag (30 dygn)`);
         return isBusyOnly(cal) ? summarizeBusy(cal) : cal;
       }
       console.error(`Kalender ${i + 1}: oväntat svar (status ${res.status})`);
