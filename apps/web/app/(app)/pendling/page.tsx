@@ -141,17 +141,21 @@ export default async function CommutePage() {
         {c && <span className="text-[0.8125rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
       </h1>
       {goal && (
-        <section aria-label={goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-3 rounded-2xl glass p-4">
-          <Icon name="road" size={28} />
-          <span className="flex min-w-0 grow flex-col leading-tight">
-            <span className="text-[1.0625rem] font-bold">{goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`}</span>
-            <span className="truncate text-[0.875rem] text-dim">
-              {goal.home ? 'Hemma' : 'Framme'} {hhmm(goal.eta.arrive)} om du åker nu · {Math.round(goal.eta.km)} km{goal.fromHere ? ' härifrån' : ''}
+        // ETA först och störst; restid, avstånd och trafik mindre under (ljusgrå #C5CDD6 klarar 4,5:1 även mot ljus bild).
+        <section aria-label={goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-4 rounded-2xl glass px-4 py-3">
+          <Icon name="road" size={32} />
+          <span className="flex min-w-0 grow flex-col gap-0.5">
+            <span className="text-[0.8125rem] font-bold tracking-wide text-[#C5CDD6] uppercase">
+              {goal.home ? 'Hem' : goal.label} · om du åker nu
             </span>
-          </span>
-          <span className="flex shrink-0 flex-col items-end leading-tight">
-            <span className="text-[1.75rem] font-extrabold tabular-nums">{goal.eta.minutes} min</span>
-            {goal.eta.trafficMin > 0 && <span className="text-[0.875rem] font-bold" style={{ color: TONE_COLOR.warn }}>+{goal.eta.trafficMin} min trafik</span>}
+            <span className="flex items-baseline gap-2 leading-none">
+              <span className="text-[1.125rem] font-semibold">{goal.home ? 'Hemma' : 'Framme'}</span>
+              <span className="text-[2.5rem] font-extrabold tabular-nums">{hhmm(goal.eta.arrive)}</span>
+            </span>
+            <span className="text-[0.875rem] text-[#C5CDD6]">
+              {goal.eta.minutes} min · {Math.round(goal.eta.km)} km{goal.fromHere ? ' härifrån' : ''}
+              {goal.eta.trafficMin > 0 && <span className="font-bold" style={{ color: TONE_COLOR.warn }}> · +{goal.eta.trafficMin} min trafik</span>}
+            </span>
           </span>
         </section>
       )}
