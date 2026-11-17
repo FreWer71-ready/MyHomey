@@ -43,15 +43,15 @@ const num = (v: number, d = 1) => v.toLocaleString('sv-SE', { maximumFractionDig
 /** Rum utanför det här spannet räknas som avvikelse och lyfts fram. */
 const COMFORT = { low: 18, high: 26 };
 /** Pendling/helgtrafik: höjd efter innehåll men högst halva kolumnen; kalendern tar resten. */
-const COMMUTE_H = 'lg:max-h-[calc(50%-12px)]';
+const COMMUTE_H = 'lg:max-h-[calc(50%-0.75rem)]';
 
 /** Kort: helt kort (#131A22), ingen gradient, samma inre marginal överallt. */
 function Card({ title, icon, href, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; className?: string; children: React.ReactNode }) {
   const Box = href ? Link : 'section';
   return (
-    <Box href={href!} className={`flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[20px] bg-card p-5 lg:p-6 ${className}`}>
+    <Box href={href!} className={`flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:p-6 ${className}`}>
       {title && (
-        <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim">
+        <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
           {icon && <Icon name={icon} size={22} />}
           {title}
         </h2>
@@ -71,18 +71,18 @@ function Row({ icon, label, value, unit, detail, color, href, extra }: {
   const Box = href ? (href.startsWith('http') ? 'a' : Link) : 'div';
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <Box href={href!} {...ext} className="flex h-[var(--row-h,60px)] min-w-0 shrink-0 lg:h-[68px] items-center gap-3 border-b border-line last:border-b-0">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
+    <Box href={href!} {...ext} className="flex h-[var(--row-h,3.75rem)] min-w-0 shrink-0 lg:h-[4.25rem] cols2:h-auto cols2:min-h-[4.25rem] cols2:lg:h-auto cols2:py-2 items-center gap-3 border-b border-line last:border-b-0">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
       <span className="flex min-w-0 grow flex-col gap-0.5 leading-tight">
-        <span className="truncate text-[17px] font-semibold text-fg">{label}</span>
-        {detail && <span className="truncate text-[16px] text-dim">{detail}</span>}
+        <span className="truncate text-[1.0625rem] font-semibold text-fg">{label}</span>
+        {detail && <span className="truncate text-[1rem] text-dim">{detail}</span>}
       </span>
       {extra}
-      <span className="flex w-[92px] shrink-0 flex-col items-end leading-none">
-        <span className="text-[30px] font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
-        {unit && <span className="mt-1 text-[14px] text-dim">{unit}</span>}
+      <span className="flex w-[5.75rem] shrink-0 flex-col items-end leading-none">
+        <span className="text-[1.875rem] font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
+        {unit && <span className="mt-1 text-[0.875rem] text-dim">{unit}</span>}
       </span>
-      {href && <span className="shrink-0 text-[22px] text-dim" aria-hidden="true">›</span>}
+      {href && <span className="shrink-0 text-[1.375rem] text-dim" aria-hidden="true">›</span>}
     </Box>
   );
 }
@@ -254,8 +254,8 @@ export default async function HomePage() {
     const late = t.start != null && eta.arrive > t.start ? Math.round((eta.arrive - t.start) / 60_000) : 0;
     const extra = `${eta.minutes} min${eta.trafficMin > 0 ? ` (+${eta.trafficMin} trafik)` : ''} · ${Math.round(eta.km)} km${tripEta.fromHere ? ' härifrån' : ''}`;
     return eta.live
-      ? <p className="text-[16px]"><span className="font-semibold" style={{ color: late ? C.warn : C.ok }}>Åk nu · framme {hhmm(eta.arrive)}{late ? ` (${late} min sen)` : ''}</span> <span className="text-dim">· {extra}</span></p>
-      : <p className="text-[16px]"><span className="font-semibold">Åk senast {when(eta.depart)}</span> <span className="text-dim">· {extra}</span></p>;
+      ? <p className="text-[1rem]"><span className="font-semibold" style={{ color: late ? C.warn : C.ok }}>Åk nu · framme {hhmm(eta.arrive)}{late ? ` (${late} min sen)` : ''}</span> <span className="text-dim">· {extra}</span></p>
+      : <p className="text-[1rem]"><span className="font-semibold">Åk senast {when(eta.depart)}</span> <span className="text-dim">· {extra}</span></p>;
   })();
 
   // ---- Hemmet ----
@@ -320,29 +320,30 @@ export default async function HomePage() {
 
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-6">
+      {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-6 cols2:lg:h-auto cols2:lg:grid-cols-2 cols2:lg:grid-rows-[auto_auto_auto_1fr] cols2:lg:items-start">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
-        <header className="order-1 flex items-end gap-4 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-3">
+        <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-3 cols2:lg:col-span-2 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
           <h1 className="sr-only">Hemma</h1>
-          <Clock show="time" className="text-[76px] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:text-[88px] lg:leading-[0.75]" />
+          <Clock show="time" className="text-[4.75rem] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:text-[5.5rem] lg:leading-[0.75]" />
           <span className="flex flex-col pb-1 leading-tight">
-            <Clock show="date" className="text-[18px] font-semibold first-letter:uppercase" />
-            {names && <span className="text-[16px] text-dim">Namnsdag <span className="text-sun">{names}</span></span>}
+            <Clock show="date" className="text-[1.125rem] font-semibold first-letter:uppercase" />
+            {names && <span className="text-[1rem] text-dim">Namnsdag <span className="text-sun">{names}</span></span>}
           </span>
         </header>
 
         {/* STATUS: närvaro och läget. Lugnt = dämpad rad; något händer = färgade rader. */}
-        <section aria-label="Status" className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 lg:order-none lg:col-span-8 lg:self-end">
+        <section aria-label="Status" className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 lg:order-none lg:col-span-8 lg:self-end cols2:lg:col-span-2 cols2:lg:row-start-2">
           <NowPlayingStrip items={playing} />
           {people.length > 0 && (
             <Link href="/hitta" aria-label="Närvaro – visa var alla är">
             <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-x-5 gap-y-1 lg:justify-end">
               {people.map((p) => (
-                <li key={p.id} className="flex items-center gap-2 text-[18px]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
+                <li key={p.id} className="flex items-center gap-2 text-[1.125rem]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
                   <span className="size-3 rounded-full" style={{ background: p.present ? C.ok : 'transparent', boxShadow: p.present ? undefined : `inset 0 0 0 2px ${C.mute}` }} />
                   <span className={p.present ? 'font-semibold' : 'text-dim'}>{p.name}</span>
-                  <span className="-ml-1 text-[13px] text-dim" title={p.src === 'L360' ? 'Life360' : 'Smart Presence'}>({p.src})</span>
-                  {!p.present && (() => { const m = where(p.name); const w = m && !m.home ? [whereText(m), awayKm(m)].filter(Boolean).join(' · ') || null : null; return w ? <span className="text-[16px] text-dim">{w}</span> : p.since ? <span className="text-[16px] text-dim">{seenAgo(p.since)}</span> : null; })()}
+                  <span className="-ml-1 text-[0.8125rem] text-dim" title={p.src === 'L360' ? 'Life360' : 'Smart Presence'}>({p.src})</span>
+                  {!p.present && (() => { const m = where(p.name); const w = m && !m.home ? [whereText(m), awayKm(m)].filter(Boolean).join(' · ') || null : null; return w ? <span className="text-[1rem] text-dim">{w}</span> : p.since ? <span className="text-[1rem] text-dim">{seenAgo(p.since)}</span> : null; })()}
                 </li>
               ))}
             </ul>
@@ -351,7 +352,7 @@ export default async function HomePage() {
           {issues > 0 ? (
             <AlertChips alerts={alerts} />
           ) : (
-            <Link href="/larm" className="flex min-w-0 items-center gap-2.5 text-[16px] text-dim lg:justify-end">
+            <Link href="/larm" className="flex min-w-0 items-center gap-2.5 text-[1rem] text-dim lg:justify-end">
               <span className="size-2.5 shrink-0 rounded-full" style={{ background: C.ok }} />
               <span className="truncate">
                 Inga varningar{trainNote ? ` · ${trainNote}` : ''}{commute ? ` · ${roadNote}` : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
@@ -361,18 +362,18 @@ export default async function HomePage() {
         </section>
 
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
-        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6">
+        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
           <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader" className="order-4 lg:order-none lg:shrink-0">
             <div className="flex items-center gap-3">
               {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={60} label={sky.label} />}
               <div className="flex min-w-0 grow flex-col">
                 {outTemp != null ? (
-                  <span className="text-[48px] leading-none font-bold tracking-tight tabular-nums">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
+                  <span className="text-[3rem] leading-none font-bold tracking-tight tabular-nums">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
                 ) : (
-                  <span className="text-[20px] font-semibold text-dim">{h.outdoorStale ? 'Stationen tyst' : 'Ej tillgänglig'}</span>
+                  <span className="text-[1.25rem] font-semibold text-dim">{h.outdoorStale ? 'Stationen tyst' : 'Ej tillgänglig'}</span>
                 )}
                 {sky && weather && (
-                  <span className="truncate text-[16px] font-semibold">
+                  <span className="truncate text-[1rem] font-semibold">
                     {weather.nextPrecip && weather.nextPrecip.time > weather.current.time
                       ? `${sky.label} · ${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} ${hhmm(weather.nextPrecip.time)}`
                       : sky.label}
@@ -380,7 +381,7 @@ export default async function HomePage() {
                 )}
               </div>
               {station?.wind != null && (
-                <span className="flex shrink-0 flex-col items-end text-[15px] text-dim">
+                <span className="flex shrink-0 flex-col items-end text-[0.9375rem] text-dim">
                   <span className="flex items-center gap-1"><Icon name="wind" size={16} />{num(station.wind, 0)}{station.gust != null && station.gust > station.wind ? `–${num(station.gust, 0)}` : ''} m/s</span>
                   {station.road != null && <span className={homeSlip ? 'font-semibold' : undefined} style={{ color: slipColor }}>{homeSlip ? '⚠ ' : ''}Väg {fmtTemp(station.road)}</span>}
                 </span>
@@ -390,15 +391,15 @@ export default async function HomePage() {
               <ol aria-label="Kommande timmar" className="grid grid-cols-6 gap-1 border-t border-line pt-2">
                 {weather.hours.slice(1, 7).map((w) => (
                   <li key={w.time} className="flex flex-col items-center">
-                    <span className="text-[14px] text-dim tabular-nums">{hhmm(w.time).slice(0, 2)}</span>
+                    <span className="text-[0.875rem] text-dim tabular-nums">{hhmm(w.time).slice(0, 2)}</span>
                     <WeatherIcon kind={weatherKind(w.symbol)} size={26} label={symbolInfo(w.symbol).label} />
-                    <span className="text-[15px] font-semibold tabular-nums">{Number.isFinite(w.temp) ? `${Math.round(w.temp)}°` : '–'}</span>
+                    <span className="text-[0.9375rem] font-semibold tabular-nums">{Number.isFinite(w.temp) ? `${Math.round(w.temp)}°` : '–'}</span>
                   </li>
                 ))}
               </ol>
             )}
             {hint && (
-              <p className="flex items-center gap-2 text-[15px] font-semibold" style={{ color: C.warn }}>
+              <p className="flex items-center gap-2 text-[0.9375rem] font-semibold" style={{ color: C.warn }}>
                 <Icon name={hint.icon} size={18} /><span className="truncate">{hint.text}</span>
               </p>
             )}
@@ -414,11 +415,11 @@ export default async function HomePage() {
         </div>
 
         {/* HÄRNÄST: pendling och kalender. */}
-        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6">
+        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
           {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
           {tripEta && !(weekend && trip) && (
             <Card title={`Resa · ${tripEta.trip.place}`} icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
-              <p className="truncate text-[16px] text-dim">
+              <p className="truncate text-[1rem] text-dim">
                 {tripEta.fallback
                   ? <>Ingen kalenderhändelse · {tripEta.trip.location.split(',')[0]}</>
                   : <><span className="font-semibold text-fg">{tripEta.trip.start != null ? when(tripEta.trip.start) : 'Idag'}</span> · {tripEta.trip.title}</>}
@@ -428,7 +429,7 @@ export default async function HomePage() {
           )}
           {weekend && (
             <Card title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
-              <p className="truncate text-[16px] text-dim">
+              <p className="truncate text-[1rem] text-dim">
                 {trip
                   ? <>{trip.start != null ? <span className="font-semibold text-fg">{dayOf(trip.start) === dayOf(now) ? hhmm(trip.start) : `imorgon ${hhmm(trip.start)}`}</span> : <span className="font-semibold text-fg">Idag</span>} · {trip.title} · {Math.round(trip.km)} km</>
                   : 'Vägar inom 2 mil hemifrån'}
@@ -436,7 +437,7 @@ export default async function HomePage() {
               {trip && tripLine}
               <ul className="flex flex-col gap-2 border-t border-line pt-3">
                 {weekendRoads.length === 0 && (
-                  <li className="flex items-center gap-3 text-[18px]">
+                  <li className="flex items-center gap-3 text-[1.125rem]">
                     <Icon name="road" size={24} /><span className="grow text-dim">{trip ? 'Längs vägen' : 'I närområdet'}</span>
                     <span className="font-semibold" style={{ color: C.ok }}>Inga störningar</span>
                   </li>
@@ -445,25 +446,25 @@ export default async function HomePage() {
                   <li key={g.id} className="flex min-w-0 items-center gap-3">
                     <Icon name="road" size={22} />
                     <span className="flex min-w-0 grow flex-col leading-tight">
-                      <span className="truncate text-[16px] font-semibold">{g.road} · {g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
-                      <span className="truncate text-[15px] text-dim">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
+                      <span className="truncate text-[1rem] font-semibold">{g.road} · {g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
+                      <span className="truncate text-[0.9375rem] text-dim">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
                     </span>
-                    <span className="shrink-0 text-[16px] font-semibold" style={{ color: TONE_COLOR[g.tone] }}>
+                    <span className="shrink-0 text-[1rem] font-semibold" style={{ color: TONE_COLOR[g.tone] }}>
                       {g.tone === 'bad' ? 'Stor påverkan' : g.tone === 'warn' ? 'Påverkan' : 'Liten'}
                     </span>
                   </li>
                 ))}
-                {weekendRoads.length > 3 && <li className="pl-[34px] text-[15px] text-dim">+ {weekendRoads.length - 3} till</li>}
+                {weekendRoads.length > 3 && <li className="pl-[2.125rem] text-[0.9375rem] text-dim">+ {weekendRoads.length - 3} till</li>}
               </ul>
             </Card>
           )}
           {commute?.trains && !weekend && (
-            <Card title={<>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[17px] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${nextTransit ? '' : COMMUTE_H}`}>
-              {trains.length === 0 && <p className="text-[18px] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
+            <Card title={<>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${nextTransit ? '' : COMMUTE_H}`}>
+              {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               <HomeTrains trains={trains} serverNow={now} />
               {nextTransit && tg && (
-                <p className="flex items-baseline gap-2 border-t border-line pt-3 text-[16px]">
+                <p className="flex items-baseline gap-2 border-t border-line pt-3 text-[1rem]">
                   <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
                   <span>
                     <span className="font-semibold">{leaveIn <= 0 ? 'gå nu' : `gå om ${leaveIn} min`}</span>
@@ -477,7 +478,7 @@ export default async function HomePage() {
               {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). */}
               <ul className="flex flex-col gap-1.5 border-t border-line pt-3">
                 {roads.length === 0 && (
-                  <li className="flex items-center gap-3 text-[16px]">
+                  <li className="flex items-center gap-3 text-[1rem]">
                     <Icon name="road" size={22} /><span className="grow text-dim">Väg 56/E18</span>
                     <span className="font-semibold" style={{ color: C.ok }}>Fritt</span>
                   </li>
@@ -486,32 +487,32 @@ export default async function HomePage() {
                   <li key={g.id} className="flex min-w-0 items-center gap-3">
                     <Icon name="road" size={22} />
                     <span className="flex min-w-0 grow flex-col leading-tight">
-                      <span className="truncate text-[16px] font-semibold">{g.road} · {g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
-                      <span className="truncate text-[16px] text-dim">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
+                      <span className="truncate text-[1rem] font-semibold">{g.road} · {g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
+                      <span className="truncate text-[1rem] text-dim">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
                     </span>
-                    <span className="shrink-0 text-[16px] font-semibold" style={{ color: TONE_COLOR[g.tone] }}>
+                    <span className="shrink-0 text-[1rem] font-semibold" style={{ color: TONE_COLOR[g.tone] }}>
                       {g.tone === 'bad' ? 'Stor påverkan' : g.tone === 'warn' ? 'Påverkan' : 'Liten'}
                     </span>
                   </li>
                 ))}
-                {roads.length > 2 && <li className="pl-[34px] text-[16px] text-dim">+ {roads.length - 2} till</li>}
+                {roads.length > 2 && <li className="pl-[2.125rem] text-[1rem] text-dim">+ {roads.length - 2} till</li>}
               </ul>
             </Card>
           )}
           {commute && !commute.trains && (
             <Card title="Väg 56/E18 · Eskilstuna–Västerås" icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
               {homeGoal && (
-                <p className="flex flex-wrap items-baseline gap-x-2 border-b border-line pb-3 text-[16px]">
+                <p className="flex flex-wrap items-baseline gap-x-2 border-b border-line pb-3 text-[1rem]">
                   <span className="font-semibold">{homeGoal.home ? 'Tid hem:' : `Tid till ${homeGoal.label.toLowerCase()}:`}</span>
-                  <span className="text-[22px] font-extrabold tabular-nums">{homeGoal.eta.minutes} min</span>
+                  <span className="text-[1.375rem] font-extrabold tabular-nums">{homeGoal.eta.minutes} min</span>
                   <span className="text-dim">{homeGoal.home ? 'hemma' : 'framme'} {hhmm(homeGoal.eta.arrive)}</span>
                   {homeGoal.eta.trafficMin > 0 && <span className="ml-auto font-semibold" style={{ color: C.warn }}>+{homeGoal.eta.trafficMin} min trafik</span>}
                 </p>
               )}
-              {roads.length === 0 ? <p className="text-[24px] font-semibold" style={{ color: C.ok }}>Fritt</p> : (
+              {roads.length === 0 ? <p className="text-[1.5rem] font-semibold" style={{ color: C.ok }}>Fritt</p> : (
                 <ul className="flex flex-col gap-1.5">
                   {roads.slice(0, 3).map((g) => (
-                    <li key={g.id} className="flex items-center gap-2 text-[16px]">
+                    <li key={g.id} className="flex items-center gap-2 text-[1rem]">
                       <span className="size-2.5 shrink-0 rounded-full" style={{ background: TONE_COLOR[g.tone] }} />
                       <span className="font-semibold">{g.road} {g.type.toLowerCase()}</span>
                       <span className="truncate text-dim">{g.places.map(shortPlace)[0] ?? ''}</span>
@@ -521,15 +522,15 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px]"><CalendarWidget /></div>}
+          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget /></div>}
           {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
-          {hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
+          {hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
-        <Card className="order-6 lg:order-none lg:col-span-4 lg:self-start lg:py-3 lg:max-h-full">
+        <Card className="order-6 lg:order-none lg:col-span-4 lg:self-start lg:py-3 lg:max-h-full cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-4 cols2:lg:max-h-none">
           <h2 className="sr-only">Hemmet</h2>
-          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto lg:grow" style={{ '--row-h': rowCount > 6 ? '51px' : '58px' } as React.CSSProperties}>
+          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto lg:grow" style={{ '--row-h': rowCount > 6 ? '3.1875rem' : '3.625rem' } as React.CSSProperties}>
             {tempAvg != null && (
               <Row
                 icon="thermo" label="Inomhus" href="/temperatur" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt"

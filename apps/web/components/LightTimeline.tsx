@@ -24,15 +24,15 @@ export function LightTimeline({ rooms, since, now, kind = 'light' }: { rooms: Ro
   const presence = kind === 'presence';
   const marks = ticks(since, now);
   if (!rooms.length) {
-    return <p className="rounded-[28px] glass p-10 text-center text-lg font-bold text-dim">{presence ? 'Ingen närvarohistorik för perioden än.' : 'Inga lampor med historik än.'}</p>;
+    return <p className="rounded-[1.75rem] glass p-10 text-center text-lg font-bold text-dim">{presence ? 'Ingen närvarohistorik för perioden än.' : 'Inga lampor med historik än.'}</p>;
   }
   return (
     <div className="flex flex-col gap-4">
       {rooms.map((room) => (
-        <section key={room.name} className="rounded-[28px] glass p-4 md:p-5">
+        <section key={room.name} className="rounded-[1.75rem] glass p-4 md:p-5">
           <h2 className="mb-3 text-xl font-extrabold">{room.name}</h2>
           {/* Mobil: namn och tid på en rad, stapeln i full bredd under. Större skärmar: allt på en rad. */}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 md:grid-cols-[minmax(0,180px)_1fr_auto] md:gap-y-2.5 md:[grid-auto-flow:dense]">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 md:grid-cols-[minmax(0,11.25rem)_1fr_auto] md:gap-y-2.5 md:[grid-auto-flow:dense]">
             <span className="hidden md:block" />
             <div className="relative col-span-2 h-5 text-xs font-bold text-dim md:col-span-1" aria-hidden="true">
               {marks.map((m, i) => (

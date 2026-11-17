@@ -18,7 +18,7 @@ const fmtDate = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Eu
 function Trains({ title, icon, list, active }: { title: string; icon: IconName; list: Train[]; active: boolean }) {
   return (
     // Högst 2/3 av skärmhöjden; listan skrollar inuti så att vägläget under alltid syns.
-    <section className={`flex max-h-[66dvh] min-h-0 min-w-0 flex-col gap-2 rounded-[24px] glass p-3 ${active ? 'ring-2 ring-sun/60' : ''}`}>
+    <section className={`flex max-h-[66dvh] min-h-0 min-w-0 flex-col gap-2 rounded-[1.5rem] glass p-3 ${active ? 'ring-2 ring-sun/60' : ''}`}>
       <h2 className="flex items-center gap-3 text-xl font-extrabold">
         <span className="flex size-10 items-center justify-center rounded-2xl bg-glass-hi"><Icon name={icon} size={24} /></span>
         {title}
@@ -48,12 +48,12 @@ function Stations({ list }: { list: RoadStation[] }) {
             <details className="group">
               {/* Tryck på temperaturen: Trafikverkets väglagskamera vid stationen. */}
               <summary className="flex cursor-pointer list-none flex-col px-3 py-2">
-                <span className="truncate text-[13px] font-bold text-dim">{s.name}</span>
-                <span className="flex items-center gap-1.5 text-[22px] leading-tight font-extrabold">
+                <span className="truncate text-[0.8125rem] font-bold text-dim">{s.name}</span>
+                <span className="flex items-center gap-1.5 text-[1.375rem] leading-tight font-extrabold">
                   Väg {deg(s.road)}
                   {s.id && <Icon name="camera" size={16} className="opacity-60 group-open:opacity-100" />}
                 </span>
-                <span className="text-[13px] font-bold opacity-85">
+                <span className="text-[0.8125rem] font-bold opacity-85">
                   Luft {deg(s.air)}{s.snow ? ' · snö' : s.rain ? ' · regn' : ''}{tone === 'bad' ? ' · halt' : tone === 'warn' ? ' · risk för halka' : ''}
                 </span>
               </summary>
@@ -61,7 +61,7 @@ function Stations({ list }: { list: RoadStation[] }) {
                 <a href={camUrl(s.id, true)} target="_blank" rel="noopener noreferrer" className="block px-2 pb-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={camUrl(s.id)} alt={`Väglagskamera ${s.name}`} loading="lazy" className="w-full rounded-xl bg-glass-2" />
-                  <span className="mt-1 block text-[12px] font-bold text-dim">Trafikverket · tryck för större bild</span>
+                  <span className="mt-1 block text-[0.75rem] font-bold text-dim">Trafikverket · tryck för större bild</span>
                 </a>
               )}
             </details>
@@ -76,7 +76,7 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
   // Liknande ärenden (samma väg, typ och läge) visas som ett kort.
   const groups = groupRoad(list);
   return (
-    <section className="flex flex-col gap-2 rounded-[24px] glass p-3">
+    <section className="flex flex-col gap-2 rounded-[1.5rem] glass p-3">
       <h2 className="flex items-center gap-3 text-xl font-extrabold">
         <span className="flex size-10 items-center justify-center rounded-2xl bg-glass-hi"><Icon name="road" size={24} /></span>
         Bil Eskilstuna–Västerås
@@ -92,21 +92,21 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
             <li key={g.id} className="flex flex-col gap-1 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[g.tone], 0.4) }} title={g.severityText ?? undefined}>
               {/* Rad 1: väg, typ, antal – period till höger. */}
               <span className="flex items-center gap-2">
-                <span className="shrink-0 rounded-md bg-black/25 px-1.5 text-[13px] font-extrabold">{g.road}</span>
-                <span className="min-w-0 grow truncate text-[17px] font-extrabold">
+                <span className="shrink-0 rounded-md bg-black/25 px-1.5 text-[0.8125rem] font-extrabold">{g.road}</span>
+                <span className="min-w-0 grow truncate text-[1.0625rem] font-extrabold">
                   {g.type}{g.count > 1 && <span className="opacity-80"> ×{g.count}</span>}
                 </span>
-                <span className="shrink-0 text-[13px] font-bold opacity-80">
+                <span className="shrink-0 text-[0.8125rem] font-bold opacity-80">
                   {g.start && g.start > Date.now() ? `från ${fmtDate(g.start)}` : g.end ? `t.o.m. ${fmtDate(g.end)}` : ''}
                 </span>
               </span>
               {/* Rad 2: var. Rad 3: vad det innebär, som korta etiketter. */}
               {places.length > 0 && (
-                <span className="truncate text-[15px] font-bold">{places.slice(0, 2).join(' · ')}{places.length > 2 ? ` +${places.length - 2}` : ''}</span>
+                <span className="truncate text-[0.9375rem] font-bold">{places.slice(0, 2).join(' · ')}{places.length > 2 ? ` +${places.length - 2}` : ''}</span>
               )}
               {facts.length > 0 && (
                 <span className="flex flex-wrap gap-1">
-                  {facts.map((f) => <span key={f} className="rounded-full bg-black/20 px-2 py-0.5 text-[12px] font-bold">{f}</span>)}
+                  {facts.map((f) => <span key={f} className="rounded-full bg-black/20 px-2 py-0.5 text-[0.75rem] font-bold">{f}</span>)}
                 </span>
               )}
             </li>
@@ -138,26 +138,26 @@ export default async function CommutePage() {
     <>
       <h1 className="flex items-baseline justify-between gap-3 text-2xl font-extrabold">
         {c && !c.trains ? 'Trafik' : 'Pendling'}
-        {c && <span className="text-[13px] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
+        {c && <span className="text-[0.8125rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
       </h1>
       {goal && (
         <section aria-label={goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-3 rounded-2xl glass p-4">
           <Icon name="road" size={28} />
           <span className="flex min-w-0 grow flex-col leading-tight">
-            <span className="text-[17px] font-bold">{goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`}</span>
-            <span className="truncate text-[14px] text-dim">
+            <span className="text-[1.0625rem] font-bold">{goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`}</span>
+            <span className="truncate text-[0.875rem] text-dim">
               {goal.home ? 'Hemma' : 'Framme'} {hhmm(goal.eta.arrive)} om du åker nu · {Math.round(goal.eta.km)} km{goal.fromHere ? ' härifrån' : ''}
             </span>
           </span>
           <span className="flex shrink-0 flex-col items-end leading-tight">
-            <span className="text-[28px] font-extrabold tabular-nums">{goal.eta.minutes} min</span>
-            {goal.eta.trafficMin > 0 && <span className="text-[14px] font-bold" style={{ color: TONE_COLOR.warn }}>+{goal.eta.trafficMin} min trafik</span>}
+            <span className="text-[1.75rem] font-extrabold tabular-nums">{goal.eta.minutes} min</span>
+            {goal.eta.trafficMin > 0 && <span className="text-[0.875rem] font-bold" style={{ color: TONE_COLOR.warn }}>+{goal.eta.trafficMin} min trafik</span>}
           </span>
         </section>
       )}
       {tg && transit.length > 0 && (
         <section aria-label={goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`} className="flex flex-col gap-2">
-          <h2 className="text-[18px] font-bold">{goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`}{o.away ? ' · härifrån' : ''}</h2>
+          <h2 className="text-[1.125rem] font-bold">{goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`}{o.away ? ' · härifrån' : ''}</h2>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {transit.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={rtTrains} first={i === 0} home={goingHome} />)}
           </div>

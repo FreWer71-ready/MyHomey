@@ -47,19 +47,19 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
       aria-label={title} role="button" tabIndex={0}
       onClick={() => cal && week.current?.showPopover()}
       onKeyDown={(e) => { if (cal && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); week.current?.showPopover(); } }}
-      className="flex max-h-[30rem] min-h-0 w-full min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-[20px] bg-card p-5 lg:max-h-none lg:p-6"
+      className="flex max-h-[30rem] min-h-0 w-full min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:max-h-none lg:p-6"
     >
-      <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim">
+      <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
         <Icon name="calendar" size={22} />{title}
-        <span className="ml-auto text-[16px] font-normal">Månad ›</span>
+        <span className="ml-auto text-[1rem] font-normal">Månad ›</span>
       </h2>
       {error ? (
-        <p role="status" className="text-[16px] text-dim">{error} Vi försöker igen om en stund.</p>
+        <p role="status" className="text-[1rem] text-dim">{error} Vi försöker igen om en stund.</p>
       ) : !cal ? (
-        <p className="animate-pulse text-[16px] text-dim">Hämtar kalendern …</p>
+        <p className="animate-pulse text-[1rem] text-dim">Hämtar kalendern …</p>
       ) : (
         <div className="scroll-x -mr-2 flex min-h-0 flex-col gap-4 overflow-y-auto pr-2">
-          {days.length === 0 && <p className="text-[16px] text-dim">Inget inplanerat de närmaste 7 dagarna</p>}
+          {days.length === 0 && <p className="text-[1rem] text-dim">Inget inplanerat de närmaste 7 dagarna</p>}
           {days.map((d, i) => {
             const timed = d.timed.filter((e) => e.end! > now || d.date !== cal.days[0].date);
             const info = dayInfo(d.date, now);
@@ -70,7 +70,7 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
                 <Day info={info} count={timed.length + d.allDay.length}>
                   {d.allDay.map((e) => <AllDay key={e.id} e={e} />)}
                   {timed.slice(0, 4).map((e) => <Row key={e.id} e={e} now={now} />)}
-                  {timed.length > 4 && <p className="pl-[76px] text-[14px] font-semibold text-dim">+{timed.length - 4} till</p>}
+                  {timed.length > 4 && <p className="pl-[4.75rem] text-[0.875rem] font-semibold text-dim">+{timed.length - 4} till</p>}
                 </Day>
               </Fragment>
             );
@@ -79,13 +79,13 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
       )}
     </section>
     {cal && (
-      <div ref={week} id={id} popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,720px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
+      <div ref={week} id={id} popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,45rem)] overflow-hidden rounded-[1.25rem] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-          <h2 className="flex items-center gap-2.5 text-[20px] font-semibold"><Icon name="calendar" size={24} />{title === 'Kalender' ? 'Kommande 30 dagar' : `${title} · 30 dagar`}</h2>
+          <h2 className="flex items-center gap-2.5 text-[1.25rem] font-semibold"><Icon name="calendar" size={24} />{title === 'Kalender' ? 'Kommande 30 dagar' : `${title} · 30 dagar`}</h2>
           <button type="button" popoverTarget={id} popoverTargetAction="hide" className="pill">Stäng</button>
         </div>
-        <div className="flex max-h-[calc(88dvh-72px)] flex-col gap-4 overflow-y-auto px-5 py-4">
-          {monthDays.length === 0 && <p className="py-3 text-[16px] text-dim">Inget inplanerat</p>}
+        <div className="flex max-h-[calc(88dvh-4.5rem)] flex-col gap-4 overflow-y-auto px-5 py-4">
+          {monthDays.length === 0 && <p className="py-3 text-[1rem] text-dim">Inget inplanerat</p>}
           {monthDays.map((d, i) => {
             const info = dayInfo(d.date, now);
             const prev = i > 0 ? dayInfo(monthDays[i - 1].date, now) : null;
@@ -111,16 +111,16 @@ const bar = (e: CalEvent) => (e.src !== undefined ? { boxShadow: `inset 3px 0 0 
 
 function Day({ info, count, children }: { info: DayInfo; count: number; children: React.ReactNode }) {
   return (
-    <section className={`flex flex-col gap-1.5 ${info.free ? '-mx-2.5 rounded-[14px] px-2.5 py-2' : ''}`} style={info.free ? { background: FREE_BG } : undefined}>
+    <section className={`flex flex-col gap-1.5 ${info.free ? '-mx-2.5 rounded-[0.875rem] px-2.5 py-2' : ''}`} style={info.free ? { background: FREE_BG } : undefined}>
       <h3 className="flex items-baseline gap-2">
-        <span className="text-[15px] font-bold tracking-wide uppercase" style={info.free ? { color: FREE_FG } : undefined}>{info.main}</span>
-        <span className="text-[15px] text-dim">{info.sub}</span>
+        <span className="text-[0.9375rem] font-bold tracking-wide uppercase" style={info.free ? { color: FREE_FG } : undefined}>{info.main}</span>
+        <span className="text-[0.9375rem] text-dim">{info.sub}</span>
         {info.free && (
-          <span className="self-center rounded-full px-2 py-0.5 text-[12px] font-bold tracking-wide uppercase" style={{ color: FREE_FG, background: FREE_CHIP }}>
+          <span className="self-center rounded-full px-2 py-0.5 text-[0.75rem] font-bold tracking-wide uppercase" style={{ color: FREE_FG, background: FREE_CHIP }}>
             {info.holiday ?? 'Helg'}
           </span>
         )}
-        <span className="ml-auto text-[14px] text-dim tabular-nums">{count}</span>
+        <span className="ml-auto text-[0.875rem] text-dim tabular-nums">{count}</span>
       </h3>
       {children}
     </section>
@@ -129,7 +129,7 @@ function Day({ info, count, children }: { info: DayInfo; count: number; children
 
 function WeekLine({ week }: { week: number }) {
   return (
-    <div className="flex items-center gap-2 text-[13px] font-bold tracking-wide text-dim uppercase">
+    <div className="flex items-center gap-2 text-[0.8125rem] font-bold tracking-wide text-dim uppercase">
       <span>v. {week}</span><span className="h-px grow bg-line" />
     </div>
   );
@@ -137,9 +137,9 @@ function WeekLine({ week }: { week: number }) {
 
 function AllDay({ e }: { e: CalEvent }) {
   return (
-    <p className="flex min-w-0 items-center gap-3 rounded-[12px] py-1 pr-3 pl-3" style={bar(e)}>
-      <span className="w-[52px] shrink-0 text-[13px] font-bold text-dim uppercase">Heldag</span>
-      <span className="truncate text-[16px]">{shortTitle(e.title)}</span>
+    <p className="flex min-w-0 items-center gap-3 rounded-[0.75rem] py-1 pr-3 pl-3" style={bar(e)}>
+      <span className="w-[3.25rem] shrink-0 text-[0.8125rem] font-bold text-dim uppercase">Heldag</span>
+      <span className="truncate text-[1rem]">{shortTitle(e.title)}</span>
     </p>
   );
 }
@@ -150,17 +150,17 @@ function Row({ e, now }: { e: CalEvent; now: number }) {
   const own = isOwnTeam(e.title);
   const loc = e.location?.split(',')[0];
   return (
-    <div className={`flex min-w-0 gap-3 rounded-[12px] py-1.5 pr-3 pl-3 ${live ? 'bg-[#E6EDF3] text-[#0B0F14]' : ''} ${past ? 'opacity-45' : ''}`}
+    <div className={`flex min-w-0 gap-3 rounded-[0.75rem] py-1.5 pr-3 pl-3 ${live ? 'bg-[#E6EDF3] text-[#0B0F14]' : ''} ${past ? 'opacity-45' : ''}`}
       style={bar(e)}>
-      <span className="flex w-[52px] shrink-0 flex-col leading-tight tabular-nums">
-        <span className="text-[17px] font-bold">{hm(e.start!)}</span>
-        <span className={`text-[13px] ${live ? 'opacity-70' : 'text-dim'}`}>{hm(e.end!)}</span>
+      <span className="flex w-[3.25rem] shrink-0 flex-col leading-tight tabular-nums">
+        <span className="text-[1.0625rem] font-bold">{hm(e.start!)}</span>
+        <span className={`text-[0.8125rem] ${live ? 'opacity-70' : 'text-dim'}`}>{hm(e.end!)}</span>
       </span>
       <span className="flex min-w-0 grow flex-col leading-tight">
-        <span className={`line-clamp-2 text-[17px] break-words ${own ? 'font-bold' : 'font-semibold'}`}>{shortTitle(e.title)}</span>
-        {loc && <span className={`truncate text-[14px] ${live ? 'opacity-70' : 'text-dim'}`}>{loc}</span>}
+        <span className={`line-clamp-2 text-[1.0625rem] break-words ${own ? 'font-bold' : 'font-semibold'}`}>{shortTitle(e.title)}</span>
+        {loc && <span className={`truncate text-[0.875rem] ${live ? 'opacity-70' : 'text-dim'}`}>{loc}</span>}
       </span>
-      {live && <span className="shrink-0 self-center text-[13px] font-bold uppercase">Pågår</span>}
+      {live && <span className="shrink-0 self-center text-[0.8125rem] font-bold uppercase">Pågår</span>}
     </div>
   );
 }

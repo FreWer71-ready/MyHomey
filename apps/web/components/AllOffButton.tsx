@@ -21,12 +21,12 @@ export function AllOffButton({ ids }: { ids: string[] }) {
           setMsg(r.ok ? undefined : r.error);
           setTimeout(() => router.refresh(), 1500);
         })}
-        className="flex h-14 items-center justify-center gap-2.5 rounded-[16px] bg-fg px-6 text-[18px] font-semibold text-ground disabled:bg-white/10 disabled:text-dim"
+        className="flex h-14 items-center justify-center gap-2.5 rounded-[1rem] bg-fg px-6 text-[1.125rem] font-semibold text-ground disabled:bg-white/10 disabled:text-dim"
       >
         <Icon name="powerLine" size={22} />
         {busy ? 'Släcker …' : none ? 'Allt är släckt' : `Släck alla (${ids.length})`}
       </button>
-      {msg && <p role="alert" className="text-[15px] text-danger">{msg}</p>}
+      {msg && <p role="alert" className="text-[0.9375rem] text-danger">{msg}</p>}
     </div>
   );
 }

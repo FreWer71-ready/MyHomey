@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FullscreenButton } from './FullscreenButton';
+import { ModeButton } from './ModeButton';
 import { LegendButton } from './LegendButton';
 import { RefreshButton } from './RefreshButton';
 import { Icon, type IconName } from './Icon';
@@ -59,7 +60,7 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
             href={it.href}
             aria-current={active(it.href) ? 'page' : undefined}
             title={it.label}
-            className={`flex flex-1 flex-col items-center gap-1 rounded-[14px] py-2.5 text-[12px] md:flex-none ${
+            className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[0.875rem] py-2.5 text-[0.75rem] md:flex-none ${
               active(it.href) ? 'bg-card font-bold text-fg' : 'text-dim'
             }`}
           >
@@ -72,14 +73,14 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
             ) : (
               <Icon name={it.icon} size={24} />
             )}
-            <span className={`md:sr-only ${it.href === '/larm' && fresh ? 'text-danger' : ''}`}>{it.label}</span>
+            <span className={`md:sr-only big:max-md:sr-only ${it.href === '/larm' && fresh ? 'text-danger' : ''}`}>{it.label}</span>
             {it.href === '/larm' && fresh && <span className="sr-only">, nya larm</span>}
           </Link>
         ) : (
           <span
             key={it.href}
             title="Kommer snart"
-            className="flex flex-1 flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] font-bold text-mute md:flex-none"
+            className="flex flex-1 flex-col items-center gap-1 rounded-[1.125rem] py-2.5 text-[0.75rem] font-bold text-mute md:flex-none"
           >
             <Icon name={it.icon} size={24} />
             {it.label}
@@ -92,6 +93,7 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
         </span>
         <RefreshButton />
         <span className="hidden md:block">
+          <ModeButton />
           <FullscreenButton />
         </span>
       </div>

@@ -16,33 +16,25 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: '#070A14', colorScheme: 'dark' };
 
 /**
- * Större text per installation (UI_SCALE, t.ex. 1.5 hos Ulrika). Viewporten görs smalare i CSS-pixlar och skalas upp,
- * så att allt blir större och sidan själv väljer en layout med färre kolumner. Gäller pekskärmar (platta/mobil);
- * på dator används webbläsarens egen zoom. Next skriver om viewport-taggen vid sidbyten (ofta i installerad app),
- * därför bevakas även ändrade attribut och skalningen sätts tillbaka. Zoomen låses (min = max = UI_SCALE), annars
- * nollställer webbläsaren den när ytan ändras, t.ex. i helskärm; vid helskärmsbyte sätts taggen om helt.
+ * Två lägen, valda per installation och enhet (ingen zoom, allt är i rem):
+ * - Standard: text 1×, tre kolumner på Hem.
+ * - Stor: text UI_SCALE× (t.ex. 1,5 hos Ulrika, annars 1,4), två kolumner på Hem.
+ * Standardläget per installation: Stor om UI_SCALE > 1. Knappen Aa i menyn byter läge; valet sparas på enheten
+ * (localStorage "ui-mode") och sätts här före första ritningen, så att sidan inte hoppar.
  */
-const scaleScript = (s: number) => `(function(){var s=${s};function want(){
-var L=(screen.orientation&&screen.orientation.type.indexOf('landscape')===0)||window.innerWidth>window.innerHeight;
-var w=L?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);
-return 'width='+Math.round(w/s)+', initial-scale='+s+', minimum-scale='+s+', maximum-scale='+s+', viewport-fit=cover';}
-function a(){var v=want();document.querySelectorAll('meta[name=viewport]').forEach(function(m){if(m.getAttribute('content')!==v)m.setAttribute('content',v);});}
-function r(){var m=document.querySelector('meta[name=viewport]');if(m){m.setAttribute('content','width=device-width');}setTimeout(a,50);}
-a();document.addEventListener('DOMContentLoaded',a);addEventListener('orientationchange',function(){setTimeout(a,250)});addEventListener('pageshow',a);
-document.addEventListener('fullscreenchange',function(){setTimeout(r,150)});addEventListener('resize',function(){clearTimeout(window.__uis);window.__uis=setTimeout(a,200)});
-new MutationObserver(function(r){for(var i=0;i<r.length;i++){var t=r[i].target;
-if(r[i].type==='attributes'&&t.nodeName==='META'&&t.name==='viewport'){a();return;}
-for(var j=0;j<r[i].addedNodes.length;j++){var n=r[i].addedNodes[j];if(n.nodeName==='META'&&n.name==='viewport'){a();return;}}}})
-.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['content']});})();`;
+const modeScript = (big: number, def: 'standard' | 'stor') => `(function(){try{var m=localStorage.getItem('ui-mode')||'${def}';
+var d=document.documentElement;d.dataset.mode=m;d.dataset.cols=m==='stor'?'2':'3';d.style.setProperty('--ui-scale',m==='stor'?'${big}':'1');}catch(e){}})();`;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const scale = Number(process.env.UI_SCALE) || 1;
+  const big = scale > 1 ? scale : 1.4;
+  const def = scale > 1 ? 'stor' : 'standard';
   const weather = await loadWeather();
   const sky = skyState(weather?.current);
   return (
-    <html lang="sv">
+    <html lang="sv" data-mode={def} data-cols={def === 'stor' ? '2' : '3'} data-big={big} style={{ '--ui-scale': def === 'stor' ? big : 1 } as React.CSSProperties} suppressHydrationWarning>
       <head>
-        {scale !== 1 && <script dangerouslySetInnerHTML={{ __html: scaleScript(scale) }} />}
+        <script dangerouslySetInnerHTML={{ __html: modeScript(big, def) }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- rotlayouten gäller alla sidor i App Router */}
         <link

@@ -43,8 +43,8 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="flex items-center gap-3 text-[32px] leading-tight font-bold tracking-tight">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="flex items-center gap-3 text-[2rem] leading-tight font-bold tracking-tight">
           <Icon name="star" size={32} /> Favoriter
         </h1>
         {!hueMode && allMoods.length > 0 && (
@@ -54,12 +54,12 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
         )}
       </header>
 
-      {hueResult === 'ok' && <p role="status" className="rounded-[14px] bg-card px-4 py-2 text-[16px] font-semibold text-ok">Hue är anslutet.</p>}
-      {hueResult === 'fel' && <p role="alert" className="rounded-[14px] bg-card px-4 py-2 text-[16px] font-semibold text-danger">Det gick inte att ansluta Hue. Försök igen.</p>}
+      {hueResult === 'ok' && <p role="status" className="rounded-[0.875rem] bg-card px-4 py-2 text-[1rem] font-semibold text-ok">Hue är anslutet.</p>}
+      {hueResult === 'fel' && <p role="alert" className="rounded-[0.875rem] bg-card px-4 py-2 text-[1rem] font-semibold text-danger">Det gick inte att ansluta Hue. Försök igen.</p>}
 
       {routines.length > 0 && (
-        <section className="flex flex-col gap-3 rounded-[20px] bg-card p-5 lg:p-6">
-          <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim"><Icon name="home" size={22} />Rutiner</h2>
+        <section className="flex flex-col gap-3 rounded-[1.25rem] bg-card p-5 lg:p-6">
+          <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim"><Icon name="home" size={22} />Rutiner</h2>
           <ActionTiles items={routines} cols={2} />
         </section>
       )}
@@ -67,35 +67,35 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
       {roomList.length > 0 ? (
         <div className="columns-1 gap-4 md:columns-2 lg:gap-6 xl:columns-3">
           {roomList.map((r) => (
-            <section key={r.name} className="mb-4 flex break-inside-avoid flex-col gap-1 rounded-[20px] bg-card p-5 lg:mb-6 lg:p-6">
-              <h2 className="text-[18px] font-semibold text-dim">{r.name}</h2>
+            <section key={r.name} className="mb-4 flex break-inside-avoid flex-col gap-1 rounded-[1.25rem] bg-card p-5 lg:mb-6 lg:p-6">
+              <h2 className="text-[1.125rem] font-semibold text-dim">{r.name}</h2>
               <ActionTiles items={r.items} />
             </section>
           ))}
         </div>
       ) : routines.length === 0 && (
-        <p className="rounded-[20px] bg-card p-5 text-[17px] text-dim">
+        <p className="rounded-[1.25rem] bg-card p-5 text-[1.0625rem] text-dim">
           {hueMode ? 'Inga scener än. Anslut Philips Hue nedan.' : 'Inga favoriter än. Markera moods och flows som favoriter i Homey-appen så dyker de upp här.'}
         </p>
       )}
 
       {!hue.connected && (
-        <a href={`${BASE_PATH}/api/hue/login`} className="flex min-h-14 items-center justify-between gap-3 rounded-[20px] bg-card px-5 text-[17px] font-semibold">
+        <a href={`${BASE_PATH}/api/hue/login`} className="flex min-h-14 items-center justify-between gap-3 rounded-[1.25rem] bg-card px-5 text-[1.0625rem] font-semibold">
           Anslut Philips Hue för att använda Hue-scener
           <span className="rounded-full bg-sun px-4 py-1.5 text-ink">Anslut</span>
         </a>
       )}
 
       {!hueMode && allMoods.length > 0 && (
-        <div id="alla-moods" popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,820px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
+        <div id="alla-moods" popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,51.25rem)] overflow-hidden rounded-[1.25rem] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
           <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-            <h2 className="text-[20px] font-semibold">Alla moods</h2>
+            <h2 className="text-[1.25rem] font-semibold">Alla moods</h2>
             <button type="button" popoverTarget="alla-moods" popoverTargetAction="hide" className="pill">Stäng</button>
           </div>
-          <div className="grid max-h-[calc(88dvh-72px)] grid-cols-1 gap-x-6 overflow-y-auto px-5 py-3 md:grid-cols-2">
+          <div className="grid max-h-[calc(88dvh-4.5rem)] grid-cols-1 gap-x-6 overflow-y-auto px-5 py-3 md:grid-cols-2">
             {allRooms.map((room) => (
               <section key={room} className="py-2">
-                <h3 className="text-[16px] font-semibold text-dim">{room}</h3>
+                <h3 className="text-[1rem] font-semibold text-dim">{room}</h3>
                 <ActionTiles items={allMoods.filter((m) => m.room === room).map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const }))} />
               </section>
             ))}

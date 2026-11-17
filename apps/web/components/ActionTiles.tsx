@@ -65,13 +65,13 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
                 type="button" onClick={() => run(a)} disabled={state?.status === 'busy'}
                 className={`relative flex w-full min-w-0 text-left ${layout === 'compact' ? 'gap-2' : 'gap-3'} transition-colors ${
                   layout === 'grid'
-                    ? 'h-[108px] flex-col items-start justify-center overflow-hidden rounded-[16px] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[76px] sm:flex-row sm:items-center sm:px-4'
+                    ? 'h-[6.75rem] flex-col items-start justify-center overflow-hidden rounded-[1rem] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[4.75rem] sm:flex-row sm:items-center sm:px-4'
                     : layout === 'compact'
-                      ? 'h-full min-h-12 items-center rounded-[14px] border border-line bg-white/[0.04] px-2.5 py-2 hover:bg-white/[0.08]'
+                      ? 'h-full min-h-12 items-center rounded-[0.875rem] border border-line bg-white/[0.04] px-2.5 py-2 hover:bg-white/[0.08]'
                       : 'h-14 items-center'
                 } ${st === 'busy' ? 'animate-pulse' : ''}`}
               >
-                <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' ? 'h-5 min-w-5 text-dim' : 'size-10 rounded-[12px] bg-white/[0.06]'}`}>
+                <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' ? 'h-5 min-w-5 text-dim' : 'size-10 rounded-[0.75rem] bg-white/[0.06]'}`}>
                   {a.kind === 'hue' && a.colors?.length ? (
                     <span className="flex -space-x-1.5">
                       {a.colors.slice(0, 3).map((c, i) => <span key={i} className="size-3.5 rounded-full ring-2 ring-[#131A22]" style={{ background: c }} />)}
@@ -79,13 +79,13 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
                   ) : <Icon name={iconFor(a.name)} size={layout === 'compact' ? 20 : 24} />}
                 </span>
                 <span className="flex min-w-0 grow flex-col leading-tight">
-                  <span className={`font-semibold ${layout === 'grid' ? 'text-[17px] line-clamp-1 sm:line-clamp-2' : layout === 'compact' ? 'text-[15px] break-words hyphens-auto' : 'text-[17px] truncate'}`}>{a.name}</span>
-                  <span className={`truncate text-[15px] text-dim ${layout === 'compact' ? 'hidden' : ''}`}>
+                  <span className={`font-semibold ${layout === 'grid' ? 'text-[1.0625rem] line-clamp-1 sm:line-clamp-2' : layout === 'compact' ? 'text-[0.9375rem] break-words hyphens-auto' : 'text-[1.0625rem] truncate'}`}>{a.name}</span>
+                  <span className={`truncate text-[0.9375rem] text-dim ${layout === 'compact' ? 'hidden' : ''}`}>
                     {KIND[a.kind]}{a.dynamic ? ' · dynamisk' : ''}{a.active ? ' · på' : ''}
                   </span>
                 </span>
                 {st && st !== 'busy' && (
-                  <span className={`text-[20px] font-bold ${layout === 'grid' ? 'absolute top-2 right-3' : 'shrink-0'}`} aria-live="polite">
+                  <span className={`text-[1.25rem] font-bold ${layout === 'grid' ? 'absolute top-2 right-3' : 'shrink-0'}`} aria-live="polite">
                     {st === 'ok' ? <span className="text-ok">✓</span> : <span className="text-danger">!</span>}
                   </span>
                 )}
@@ -94,7 +94,7 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
           );
         })}
       </ul>
-      {state?.status === 'error' && <p role="alert" className="text-[16px] font-semibold text-danger">{state.msg ?? 'Det gick inte att starta.'}</p>}
+      {state?.status === 'error' && <p role="alert" className="text-[1rem] font-semibold text-danger">{state.msg ?? 'Det gick inte att starta.'}</p>}
     </div>
   );
 }

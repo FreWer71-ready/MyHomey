@@ -31,12 +31,12 @@ export function HueScenes({ scenes }: { scenes: HueScene[] }) {
         {scenes.map((s) => {
           const bg = s.colors.length > 1 ? `linear-gradient(120deg, ${s.colors.join(', ')})` : (s.colors[0] ?? '#FFE9C7');
           return (
-            <li key={s.id} className={`flex overflow-hidden rounded-[20px] border border-line bg-card transition-shadow ${ring(s.id)}`}>
+            <li key={s.id} className={`flex overflow-hidden rounded-[1.25rem] border border-line bg-card transition-shadow ${ring(s.id)}`}>
               <button type="button" onClick={() => run(s.id, false)} disabled={state?.status === 'busy'} className="flex min-h-16 min-w-0 grow items-center gap-3 px-3 text-left">
                 <span className="size-9 shrink-0 rounded-full shadow-[inset_0_0_0_2px_rgb(255_255_255/0.3)]" style={{ background: bg }} />
                 <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-[17px] font-extrabold">{s.name}</span>
-                  {s.active && <span className="text-[13px] font-bold text-ok">På nu</span>}
+                  <span className="truncate text-[1.0625rem] font-extrabold">{s.name}</span>
+                  {s.active && <span className="text-[0.8125rem] font-bold text-ok">På nu</span>}
                 </span>
               </button>
               {s.dynamic && (

@@ -98,7 +98,7 @@ export function SortableCards({ items, storageKey, className, style, ...rest }: 
             {edit && (
               // Skydd över kortet i redigeringsläget: fångar dragningen i stället för kortets länk/knapp.
               <div
-                className="absolute inset-0 cursor-grab touch-none rounded-[22px] ring-2 ring-sun"
+                className="absolute inset-0 cursor-grab touch-none rounded-[1.375rem] ring-2 ring-sun"
                 onPointerDown={(e) => { e.preventDefault(); (e.target as HTMLElement).releasePointerCapture?.(e.pointerId); setDrag(it.id); }}
               />
             )}
