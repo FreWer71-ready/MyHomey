@@ -50,7 +50,8 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
     return !o;
   });
   const next = days.flatMap((d) => d.timed).find((e) => e.end! > now);
-  const todayCount = days[0]?.date === cal?.days[0]?.date ? days[0].timed.filter((e) => e.end! > now).length : 0;
+  // Säker även medan kalendern laddas (cal och days tomma).
+  const todayCount = cal && days[0] && days[0].date === cal.days[0]?.date ? days[0].timed.filter((e) => e.end! > now).length : 0;
   const summary = !cal ? '' : next
     ? `${todayCount ? `Idag ${todayCount} · ` : ''}nästa ${dayOf(next.start!) === dayOf(now) ? '' : `${dayInfo(dayOf(next.start!), now).main.toLowerCase()} `}${hm(next.start!)} ${shortTitle(next.title)}`
     : 'Inget inplanerat de närmaste 7 dagarna';
