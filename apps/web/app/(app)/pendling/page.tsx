@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/Icon';
-import { loadCommute, loadLocate } from '@/lib/data';
+import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
 import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitTripCard } from '@/components/TransitTrip';
@@ -125,7 +125,11 @@ export default async function CommutePage() {
   // Kollektivt till TRANSIT_DESTINATION (ResRobot): de två närmaste resorna härifrån eller hemifrån, om man inte redan är där.
   const tg = transitConfigured() ? transitGoal() : null;
   const o = origin(locate.members);
-  const transit = tg && !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
+  // Eftermiddag (riktning hem): hem från positionen, annars från jobbet. Annars till jobbet om man inte redan är där.
+  const goingHome = !!tg && direction() === 'home' && (o.away || !o.pos);
+  const transit = !tg ? []
+    : goingHome ? await loadTransit(o.away ? o.pos! : tg.at, PLACE, Date.now(), 2, false, true)
+    : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
   const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
@@ -137,12 +141,12 @@ export default async function CommutePage() {
         {c && <span className="text-[13px] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
       </h1>
       {goal && (
-        <section aria-label={`Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-3 rounded-2xl glass p-4">
+        <section aria-label={goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-3 rounded-2xl glass p-4">
           <Icon name="road" size={28} />
           <span className="flex min-w-0 grow flex-col leading-tight">
-            <span className="text-[17px] font-bold">Tid till {goal.label.toLowerCase()}</span>
+            <span className="text-[17px] font-bold">{goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`}</span>
             <span className="truncate text-[14px] text-dim">
-              Framme {hhmm(goal.eta.arrive)} om du åker nu · {Math.round(goal.eta.km)} km{goal.fromHere ? ' härifrån' : ''}
+              {goal.home ? 'Hemma' : 'Framme'} {hhmm(goal.eta.arrive)} om du åker nu · {Math.round(goal.eta.km)} km{goal.fromHere ? ' härifrån' : ''}
             </span>
           </span>
           <span className="flex shrink-0 flex-col items-end leading-tight">
@@ -152,10 +156,10 @@ export default async function CommutePage() {
         </section>
       )}
       {tg && transit.length > 0 && (
-        <section aria-label={`Resa till ${tg.label.toLowerCase()}`} className="flex flex-col gap-2">
-          <h2 className="text-[18px] font-bold">Resa till {tg.label.toLowerCase()}{o.away ? ' · härifrån' : ''}</h2>
+        <section aria-label={goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`} className="flex flex-col gap-2">
+          <h2 className="text-[18px] font-bold">{goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`}{o.away ? ' · härifrån' : ''}</h2>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {transit.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={rtTrains} first={i === 0} />)}
+            {transit.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={rtTrains} first={i === 0} home={goingHome} />)}
           </div>
         </section>
       )}

@@ -23,14 +23,18 @@ export async function defaultGoal(): Promise<{ label: string; address: string; a
   return at ? { label: process.env.DEFAULT_DESTINATION_LABEL || 'Jobbet', address, at } : null;
 }
 
-export type GoalEta = { label: string; address: string; eta: Eta; fromHere: boolean; km: number };
+export type GoalEta = { label: string; address: string; eta: Eta; fromHere: boolean; km: number; home?: boolean };
 
-/** Restid nu ("åk nu", aktuell trafik) till standardmålet, eller null om det saknas eller personen redan är där. */
+/** Restid nu ("åk nu", aktuell trafik) till standardmålet, eller hem om personen är vid målet. Null om målet saknas. */
 export async function goalEta(members: Member[], now = Date.now()): Promise<GoalEta | null> {
   const goal = await defaultGoal();
   if (!goal) return null;
   const o = origin(members);
-  if (o.pos && km(o.pos, goal.at) <= 1) return null;
+  // På plats vid målet (t.ex. jobbet): restiden hem i stället.
+  if (o.pos && km(o.pos, goal.at) <= 1) {
+    const eta = await routeEta(o.pos, PLACE, null, now);
+    return eta ? { label: 'Hem', address: '', eta, fromHere: true, km: km(o.pos, PLACE), home: true } : null;
+  }
   const eta = await routeEta(o.from, goal.at, null, now);
   return eta ? { label: goal.label, address: goal.address, eta, fromHere: o.away, km: km(o.from, goal.at) } : null;
 }

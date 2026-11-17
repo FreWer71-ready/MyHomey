@@ -237,10 +237,17 @@ export default async function HomePage() {
   // Restid till standardmålet (DEFAULT_DESTINATION, t.ex. Ulrikas jobb) i vägkortet, som på Trafik.
   const homeGoal = etaConfigured() && process.env.DEFAULT_DESTINATION && commute && !commute.trains ? await goalEta(locate.members, now) : null;
   // Kollektivt till jobbet (ResRobot) på väg mot Stockholm en arbetsdag: nästa resa i pendlingskortet.
-  const tg = transitConfigured() && commute?.trains && !weekend && dir === 'out' && !dayInfo(dayOf(now), now).free ? transitGoal() : null;
+  // Mot Stockholm: till jobbet hemifrån. Mot Eskilstuna: hem från positionen (Life360), annars från jobbet.
+  const tg = transitConfigured() && commute?.trains && !weekend && !dayInfo(dayOf(now), now).free ? transitGoal() : null;
   const o2 = tg ? origin(locate.members) : null;
-  const nextTransit = tg && o2 && !(o2.pos && km(o2.pos, tg.at) <= 1) ? (await loadTransit(o2.from, tg.at, now, 1, !o2.away))[0] ?? null : null;
-  const transitLate = nextTransit && commute ? tripDelay(nextTransit, [...commute.out, ...commute.all]) : null;
+  let nextTransit: Awaited<ReturnType<typeof loadTransit>>[number] | null = null;
+  const transitHome = !!tg && dir === 'home';
+  if (tg && o2) {
+    if (!transitHome && !(o2.pos && km(o2.pos, tg.at) <= 1)) nextTransit = (await loadTransit(o2.from, tg.at, now, 1, !o2.away))[0] ?? null;
+    if (transitHome && (o2.away || !o2.pos)) nextTransit = (await loadTransit(o2.away ? o2.pos! : tg.at, PLACE, now, 1, false, true))[0] ?? null;
+  }
+  const transitLate = nextTransit && commute ? tripDelay(nextTransit, [...commute.out, ...commute.home, ...commute.all]) : null;
+  const leaveIn = nextTransit ? Math.round((nextTransit.dep - now) / 60_000) : 0;
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
   const tripLine = tripEta && (() => {
     const { eta, trip: t } = tripEta;
@@ -457,8 +464,11 @@ export default async function HomePage() {
               <HomeTrains trains={trains} serverNow={now} />
               {nextTransit && tg && (
                 <p className="flex items-baseline gap-2 border-t border-line pt-3 text-[16px]">
-                  <span className="font-semibold">{tg.label}:</span>
-                  <span>åk {hhmm(nextTransit.dep)} · framme {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}</span>
+                  <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
+                  <span>
+                    <span className="font-semibold">{leaveIn <= 0 ? 'gå nu' : `gå om ${leaveIn} min`}</span>
+                    {' · '}{transitHome ? 'hemma' : 'framme'} {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}
+                  </span>
                   {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
                 </p>
               )}
@@ -490,9 +500,9 @@ export default async function HomePage() {
             <Card title="Väg 56/E18 · Eskilstuna–Västerås" icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
               {homeGoal && (
                 <p className="flex flex-wrap items-baseline gap-x-2 border-b border-line pb-3 text-[16px]">
-                  <span className="font-semibold">Tid till {homeGoal.label.toLowerCase()}:</span>
+                  <span className="font-semibold">{homeGoal.home ? 'Tid hem:' : `Tid till ${homeGoal.label.toLowerCase()}:`}</span>
                   <span className="text-[22px] font-extrabold tabular-nums">{homeGoal.eta.minutes} min</span>
-                  <span className="text-dim">framme {hhmm(homeGoal.eta.arrive)}</span>
+                  <span className="text-dim">{homeGoal.home ? 'hemma' : 'framme'} {hhmm(homeGoal.eta.arrive)}</span>
                   {homeGoal.eta.trafficMin > 0 && <span className="ml-auto font-semibold" style={{ color: C.warn }}>+{homeGoal.eta.trafficMin} min trafik</span>}
                 </p>
               )}

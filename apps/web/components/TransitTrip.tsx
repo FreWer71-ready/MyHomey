@@ -20,15 +20,18 @@ export function tripDelay(trip: TransitTrip, trains: Train[]): { delay: number; 
 }
 
 /** En kollektivresa: avresa, ankomst och benen (gång, buss, tåg, SL) med spår och tågens realtid. */
-export function TransitTripCard({ trip, trains, first }: { trip: TransitTrip; trains: Train[]; first: boolean }) {
+export function TransitTripCard({ trip, trains, first, home = false }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean }) {
   const { delay, canceled } = tripDelay(trip, trains);
   const total = Math.round((trip.arr - trip.dep) / 60_000);
+  // Serverrenderat per sidvisning (sidan är dynamisk), så "om X min" stämmer när sidan laddas.
+  const leaveIn = Math.round((trip.dep - Date.now()) / 60_000);
   return (
     <section className={`flex flex-col gap-2 rounded-2xl glass p-4 ${first ? '' : 'opacity-80'}`}>
       <div className="flex flex-wrap items-baseline gap-x-3">
-        <span className="text-[22px] font-extrabold tabular-nums">Åk {hhmm(trip.dep)}</span>
+        <span className="text-[22px] font-extrabold tabular-nums">{leaveIn <= 0 ? 'Gå nu' : `Gå om ${leaveIn} min`}</span>
+        <span className="text-[15px] text-dim tabular-nums">kl {hhmm(trip.dep)}</span>
         <span className="text-[17px] font-semibold">
-          framme {delay ? <>ca <span style={{ color: TONE_COLOR.warn }}>{hhmm(trip.arr + delay * 60_000)}</span></> : hhmm(trip.arr)}
+          {home ? 'hemma' : 'framme'} {delay ? <>ca <span style={{ color: TONE_COLOR.warn }}>{hhmm(trip.arr + delay * 60_000)}</span></> : hhmm(trip.arr)}
         </span>
         <span className="ml-auto text-[14px] text-dim">{dur(total)}</span>
       </div>
