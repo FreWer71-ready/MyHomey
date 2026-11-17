@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/Icon';
-import { loadCommute } from '@/lib/data';
+import { loadCommute, loadLocate } from '@/lib/data';
+import { goalEta } from '@/lib/goal';
+import { etaConfigured } from '@/lib/route';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
 import { PageTrainList } from '@/components/TrainFocus';
 import { tint } from '@/lib/scale';
@@ -114,7 +116,9 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
 
 export default async function CommutePage() {
   if (process.env.COMMUTE === 'off') notFound();
-  const c = await loadCommute();
+  const [c, locate] = await Promise.all([loadCommute(), etaConfigured() && process.env.DEFAULT_DESTINATION ? loadLocate().catch(() => ({ members: [] })) : Promise.resolve({ members: [] })]);
+  // Tid till standardmålet (DEFAULT_DESTINATION, t.ex. jobbet) med aktuell trafik, om det är inställt.
+  const goal = etaConfigured() && process.env.DEFAULT_DESTINATION ? await goalEta(locate.members) : null;
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
@@ -124,6 +128,21 @@ export default async function CommutePage() {
         {c && !c.trains ? 'Trafik' : 'Pendling'}
         {c && <span className="text-[13px] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
       </h1>
+      {goal && (
+        <section aria-label={`Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-3 rounded-2xl glass p-4">
+          <Icon name="road" size={28} />
+          <span className="flex min-w-0 grow flex-col leading-tight">
+            <span className="text-[17px] font-bold">Tid till {goal.label.toLowerCase()}</span>
+            <span className="truncate text-[14px] text-dim">
+              Framme {hhmm(goal.eta.arrive)} om du åker nu · {Math.round(goal.eta.km)} km{goal.fromHere ? ' härifrån' : ''}
+            </span>
+          </span>
+          <span className="flex shrink-0 flex-col items-end leading-tight">
+            <span className="text-[28px] font-extrabold tabular-nums">{goal.eta.minutes} min</span>
+            {goal.eta.trafficMin > 0 && <span className="text-[14px] font-bold" style={{ color: TONE_COLOR.warn }}>+{goal.eta.trafficMin} min trafik</span>}
+          </span>
+        </section>
+      )}
       {!c ? (
         <p className="rounded-2xl glass p-4 font-bold text-dim">Trafikinformationen är inte tillgänglig just nu.</p>
       ) : (

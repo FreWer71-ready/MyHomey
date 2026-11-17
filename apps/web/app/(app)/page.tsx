@@ -6,6 +6,7 @@ import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type Trip } from '@/lib/trip';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
+import { goalEta, origin } from '@/lib/goal';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
@@ -221,28 +222,17 @@ export default async function HomePage() {
   // om hen inte redan är där. Rubrik i DEFAULT_DESTINATION_LABEL (standard "Jobbet").
   let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean; fallback: boolean } | null = null;
   if (etaConfigured()) {
-    const me = locate.members.find((m) => m.first.toLowerCase() === process.env.HOUSEHOLD?.toLowerCase());
-    const pos = me?.lat != null && me.lon != null ? { lat: me.lat, lon: me.lon } : null;
-    const away = !!pos && km(PLACE, pos) > 1;
-    const from = away ? pos! : PLACE;
+    const o = origin(locate.members);
     const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
     const t = cal ? nextTrip(cal.days, now) : null;
     const dest = t ? await geocode(t.location) : null;
     const dist = dest ? km(PLACE, dest) : 0;
     if (t && dest && dist > 3 && dist < 400) {
-      const eta = await routeEta(from, dest, t.start, now);
-      if (eta) tripEta = { trip: { ...t, km: dist }, eta, fromHere: away, fallback: false };
-    } else if (process.env.DEFAULT_DESTINATION) {
-      const { hour } = stockholm(now);
-      const workday = !dayInfo(dayOf(now), now).free;
-      const coords = process.env.DEFAULT_DESTINATION.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
-      const goal = !(workday && hour >= 5 && hour < 12) ? null
-        : coords ? { lat: Number(coords[1]), lon: Number(coords[2]) } : await geocode(process.env.DEFAULT_DESTINATION);
-      if (goal && (!pos || km(pos, goal) > 1)) {
-        const eta = await routeEta(from, goal, null, now);
-        const label = process.env.DEFAULT_DESTINATION_LABEL || 'Jobbet';
-        if (eta) tripEta = { trip: { title: label, location: process.env.DEFAULT_DESTINATION, place: label, start: null, km: km(PLACE, goal) }, eta, fromHere: away, fallback: true };
-      }
+      const eta = await routeEta(o.from, dest, t.start, now);
+      if (eta) tripEta = { trip: { ...t, km: dist }, eta, fromHere: o.away, fallback: false };
+    } else if (!dayInfo(dayOf(now), now).free && stockholm(now).hour >= 5 && stockholm(now).hour < 12) {
+      const g = await goalEta(locate.members, now);
+      if (g) tripEta = { trip: { title: g.label, location: g.address, place: g.label, start: null, km: g.km }, eta: g.eta, fromHere: g.fromHere, fallback: true };
     }
   }
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
