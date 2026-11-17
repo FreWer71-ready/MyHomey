@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cheapestWindow, hourly, levelOf, summarize, type Price } from './prices.ts';
+import { compareFixed } from './prices.ts';
 
 const t0 = Date.parse('2026-11-11T00:00:00+01:00');
 const q = (i: number, ore: number): Price => ({ start: t0 + i * 900_000, end: t0 + (i + 1) * 900_000, ore });
@@ -29,4 +30,17 @@ test('sammanfattning', () => {
   assert.equal(s.level!.key, 'high');
   assert.equal(s.todayMin!.ore, 50);
   assert.equal(s.hasTomorrow, false);
+});
+
+test('fast pris: jämförelse per period, bara med data', () => {
+  const now = Date.parse('2026-11-17T12:00:00+01:00');
+  // 8 dygn bakåt + i dag, 100 öre exkl. moms per timme = 125 öre inkl. moms.
+  const ps = Array.from({ length: 9 * 24 }, (_, i) => {
+    const start = Date.parse('2026-11-09T00:00:00+01:00') + i * 3600_000;
+    return { start, end: start + 3600_000, ore: 100 };
+  });
+  const r = compareFixed(ps, 230, now);
+  assert.deepEqual(r.map((x) => x.key), ['idag', '7d']);
+  assert.equal(Math.round(r[0].variable), 125);
+  assert.ok(r[0].diff < 0);
 });
