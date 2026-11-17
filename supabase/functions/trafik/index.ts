@@ -1,5 +1,6 @@
 // Pendling via Trafikverkets (plus alla avgångar från Eskilstuna C) öppna API (avgångar 24 h framåt, så att måndagens morgontåg syns redan söndag eftermiddag): tåg Eskilstuna C <-> Stockholm C, händelser på bilvägen (väg 56 + E18 till Västerås)
 // och vägväderstationen Eskilstuna Ö.
+// Med { train: "950" }: tågets alla passager (även driftplatser mellan stationerna) och stationsnamn.
 // Med { area: [minLon, minLat, maxLon, maxLat] }: vägärenden inom rutan (helgtrafik och resor från kalendern).
 // Anropas av webben med användarens JWT (eller x-cron-secret vid test). Nyckeln ligger i Vault (trafikverket_api_key).
 // Svarar med Trafikverkets rådata i nedbantad form; tolkningen görs i webben (lib/commute.ts).
@@ -21,6 +22,8 @@ const json = (body: unknown, status = 200) =>
 let key: string | null = null;
 let cache: { at: number; body: unknown } | null = null;
 const areas = new Map<string, { at: number; body: unknown }>();
+const trains = new Map<string, { at: number; body: unknown }>();
+const stationNames = new Map<string, string>();
 
 async function query(xml: string) {
   if (!key) key = (await db.rpc("get_secret", { secret_name: "trafikverket_api_key" })).data as string;
@@ -117,6 +120,37 @@ Deno.serve(async (req) => {
       const body = { situations: r.Situation ?? [], fetched: new Date().toISOString() };
       if (areas.size > 50) areas.clear();
       areas.set(k, { at: Date.now(), body });
+      return json(body);
+    }
+    // Ett tåg: alla passager idag (även driftplatser mellan stationerna, Advertised=false) + stationsnamn. Cache 45 s.
+    if (typeof p.train === "string") {
+      if (!/^\d{1,6}$/.test(p.train)) return json({ error: "ogiltigt tåg" }, 400);
+      const hit = trains.get(p.train);
+      if (hit && Date.now() - hit.at < 45_000) return json(hit.body);
+      const [r] = await query(`
+<QUERY objecttype="TrainAnnouncement" schemaversion="1.9" limit="300" orderby="AdvertisedTimeAtLocation">
+  <FILTER><AND><EQ name="AdvertisedTrainIdent" value="${p.train}"/>
+    <GT name="AdvertisedTimeAtLocation" value="$dateadd(-08:00:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(08:00:00)"/></AND></FILTER>
+  <INCLUDE>LocationSignature</INCLUDE><INCLUDE>ActivityType</INCLUDE><INCLUDE>Advertised</INCLUDE><INCLUDE>Canceled</INCLUDE>
+  <INCLUDE>AdvertisedTimeAtLocation</INCLUDE><INCLUDE>EstimatedTimeAtLocation</INCLUDE><INCLUDE>TimeAtLocation</INCLUDE><INCLUDE>TrackAtLocation</INCLUDE>
+  <INCLUDE>ScheduledDepartureDateTime</INCLUDE>
+</QUERY>`);
+      const anns = (r.TrainAnnouncement ?? []) as { LocationSignature: string }[];
+      const sigs = [...new Set(anns.map((x) => x.LocationSignature))];
+      const missing = sigs.filter((sig) => !stationNames.has(sig));
+      if (missing.length) {
+        const [st] = await query(`
+<QUERY objecttype="TrainStation" namespace="rail.infrastructure" schemaversion="1.5" limit="500">
+  <FILTER><IN name="LocationSignature" value="${missing.join(",")}"/></FILTER>
+  <INCLUDE>LocationSignature</INCLUDE><INCLUDE>AdvertisedShortLocationName</INCLUDE><INCLUDE>AdvertisedLocationName</INCLUDE>
+</QUERY>`);
+        for (const x of (st.TrainStation ?? []) as { LocationSignature: string; AdvertisedShortLocationName?: string; AdvertisedLocationName?: string }[]) {
+          stationNames.set(x.LocationSignature, x.AdvertisedShortLocationName ?? x.AdvertisedLocationName ?? x.LocationSignature);
+        }
+      }
+      const body = { announcements: anns, names: Object.fromEntries(sigs.map((sig) => [sig, stationNames.get(sig) ?? sig])), fetched: new Date().toISOString() };
+      if (trains.size > 100) trains.clear();
+      trains.set(p.train, { at: Date.now(), body });
       return json(body);
     }
     if (cache && Date.now() - cache.at < 60_000) return json(cache.body);

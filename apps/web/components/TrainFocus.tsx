@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { FOCUS_MIN, TONE_COLOR, countdown, countdownTone, departsAt, focusTrain, trainStatus, trainTone, type Train } from '@/lib/commute';
 import { MinutesTo } from '@/components/MinutesTo';
+import { TrainProgress } from '@/components/TrainProgress';
 import { hhmm } from '@/lib/prices';
 import { dayOf } from '@/lib/calendar-view';
 import { tint } from '@/lib/scale';
@@ -48,6 +49,8 @@ function Focus({ t, now, large }: { t: Train; now: number; large?: boolean }) {
           </span>
         </span>
       </div>
+      {/* Var tåget är nu (stationer och driftplatser), tryck för hela sträckan. */}
+      <TrainProgress ident={t.ident} />
       <div className="h-1.5 overflow-hidden rounded-full bg-glass-2" role="presentation">
         <div className="h-full rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${andel * 100}%`, background: farg }} suppressHydrationWarning />
       </div>
