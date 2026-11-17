@@ -8,7 +8,7 @@ import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type 
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
 import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
-import { tripDelay } from '@/components/TransitTrip';
+import { TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
@@ -458,7 +458,7 @@ export default async function HomePage() {
             </Card>
           )}
           {commute?.trains && !weekend && (
-            <Card title={<>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[17px] font-bold text-fg">{dir === 'out' ? 'Eskilstuna → Stockholm' : 'Stockholm → Eskilstuna'}</span></>} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
+            <Card title={<>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[17px] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${nextTransit ? '' : COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[18px] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               <HomeTrains trains={trains} serverNow={now} />
@@ -472,6 +472,8 @@ export default async function HomePage() {
                   {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
                 </p>
               )}
+              {/* Resebeskrivningen för förslaget (gång, tåg, SL) med spår och förseningar. */}
+              {nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact />}
               {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). */}
               <ul className="flex flex-col gap-1.5 border-t border-line pt-3">
                 {roads.length === 0 && (
