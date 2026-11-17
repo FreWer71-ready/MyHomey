@@ -54,23 +54,23 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
             <li key={`${a.kind}-${a.id}`} className={layout === 'list' ? `border-b border-line last:border-b-0 ${cols === 2 ? 'md:[&:nth-last-child(2):nth-child(odd)]:border-b-0' : ''}` : ''}>
               <button
                 type="button" onClick={() => run(a)} disabled={state?.status === 'busy'}
-                className={`relative flex w-full min-w-0 gap-3 text-left transition-colors ${
+                className={`relative flex w-full min-w-0 text-left ${layout === 'compact' ? 'gap-2' : 'gap-3'} transition-colors ${
                   layout === 'grid'
                     ? 'h-[108px] flex-col items-start justify-center overflow-hidden rounded-[16px] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[76px] sm:flex-row sm:items-center sm:px-4'
                     : layout === 'compact'
-                      ? 'h-12 items-center overflow-hidden rounded-[14px] border border-line bg-white/[0.04] px-2.5 hover:bg-white/[0.08]'
+                      ? 'h-full min-h-12 items-center rounded-[14px] border border-line bg-white/[0.04] px-2.5 py-2 hover:bg-white/[0.08]'
                       : 'h-14 items-center'
                 } ${st === 'busy' ? 'animate-pulse' : ''}`}
               >
-                <span className={`flex shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06] ${layout === 'compact' ? 'size-8' : 'size-10'}`}>
+                <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' ? 'h-5 min-w-5 text-dim' : 'size-10 rounded-[12px] bg-white/[0.06]'}`}>
                   {a.kind === 'hue' && a.colors?.length ? (
                     <span className="flex -space-x-1.5">
                       {a.colors.slice(0, 3).map((c, i) => <span key={i} className="size-3.5 rounded-full ring-2 ring-[#131A22]" style={{ background: c }} />)}
                     </span>
-                  ) : <Icon name={iconFor(a.name)} size={24} />}
+                  ) : <Icon name={iconFor(a.name)} size={layout === 'compact' ? 20 : 24} />}
                 </span>
                 <span className="flex min-w-0 grow flex-col leading-tight">
-                  <span className={`text-[17px] font-semibold ${layout === 'grid' ? 'line-clamp-1 sm:line-clamp-2' : 'truncate'}`}>{a.name}</span>
+                  <span className={`font-semibold ${layout === 'grid' ? 'text-[17px] line-clamp-1 sm:line-clamp-2' : layout === 'compact' ? 'text-[15px] break-words hyphens-auto' : 'text-[17px] truncate'}`}>{a.name}</span>
                   <span className={`truncate text-[15px] text-dim ${layout === 'compact' ? 'hidden' : ''}`}>
                     {KIND[a.kind]}{a.dynamic ? ' · dynamisk' : ''}{a.active ? ' · på' : ''}
                   </span>
