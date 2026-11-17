@@ -150,7 +150,7 @@ function Row({ e, now }: { e: CalEvent; now: number }) {
   const own = isOwnTeam(e.title);
   const loc = e.location?.split(',')[0];
   return (
-    <div className={`flex min-w-0 gap-3 rounded-[0.75rem] py-1.5 pr-3 pl-3 ${live ? 'bg-[#E6EDF3] text-[#0B0F14]' : ''} ${past ? 'opacity-45' : ''}`}
+    <div className={`flex min-w-0 gap-3 rounded-[0.75rem] py-1.5 pr-3 pl-3 ${live ? 'bg-[#E6EDF3] text-[#0B0F14]' : ''} ${past ? 'text-dim' : ''}`}
       style={bar(e)}>
       <span className="flex w-[3.25rem] shrink-0 flex-col leading-tight tabular-nums">
         <span className="text-[1.0625rem] font-bold">{hm(e.start!)}</span>

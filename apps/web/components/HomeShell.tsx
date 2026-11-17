@@ -38,7 +38,7 @@ export function HomeShell({ temp, alarms, children }: { temp: string | null; ala
             {temp && <span className="text-[3.5rem] font-semibold text-[#F0D9B5] tabular-nums">Ute {temp}</span>}
             {alarms > 0 && <span className="rounded-full bg-[#F85149] px-5 py-1 text-[1.5rem] font-semibold text-white">{alarms} {alarms === 1 ? 'varning' : 'varningar'}</span>}
           </span>
-          <span className="absolute bottom-6 text-[1rem] text-[#8B98A5] opacity-40">Tryck för att visa allt</span>
+          <span className="absolute bottom-6 text-[1rem] text-[#8B98A5] opacity-80">Tryck för att visa allt</span>
         </button>
       )}
     </>

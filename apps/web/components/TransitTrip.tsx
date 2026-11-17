@@ -26,7 +26,7 @@ export function TransitTripCard({ trip, trains, first, home = false }: { trip: T
   // Serverrenderat per sidvisning (sidan är dynamisk), så "om X min" stämmer när sidan laddas.
   const leaveIn = Math.round((trip.dep - Date.now()) / 60_000);
   return (
-    <section className={`flex flex-col gap-2 rounded-2xl glass p-4 ${first ? '' : 'opacity-80'}`}>
+    <section className={`flex flex-col gap-2 rounded-2xl glass p-4 ${first ? '' : 'border border-line'}`}>
       <div className="flex flex-wrap items-baseline gap-x-3">
         <span className="text-[1.375rem] font-extrabold tabular-nums">{leaveIn <= 0 ? 'Gå nu' : `Gå om ${leaveIn} min`}</span>
         <span className="text-[0.9375rem] text-dim tabular-nums">kl {hhmm(trip.dep)}</span>
