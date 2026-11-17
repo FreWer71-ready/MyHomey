@@ -170,3 +170,10 @@ export function smhiDays(json: SmhiJson, now: number, count = 5): WeatherDay[] {
       precip: Math.round(g.precip * 10) / 10, symbol: smhiSymbol(g.best!.code, true),
     }));
 }
+
+/** Timetikett i prognosen: "14", vid midnatt veckodagen ("ons") så att dagskiftet syns. */
+export function hourLabel(ms: number): string {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', weekday: 'short', hourCycle: 'h23' })
+    .formatToParts(ms).map((x) => [x.type, x.value]));
+  return p.hour === '00' ? p.weekday.replace('.', '') : p.hour;
+}

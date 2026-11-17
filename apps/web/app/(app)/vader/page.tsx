@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import { Icon } from '@/components/Icon';
 import { WeatherIcon } from '@/components/WeatherIcon';
 import { loadWeather } from '@/lib/data';
-import { hhmm } from '@/lib/prices';
+import { hourLabel } from '@/lib/weather';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { FREE_BG, FREE_CHIP, FREE_FG, dayInfo } from '@/lib/calendar-view';
 
@@ -22,10 +22,11 @@ export default async function WeatherPage() {
       <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight lg:col-span-12">Väder{w.source ? ` · ${w.source}` : ''}</h1>
       <section aria-label="Kommande timmar" className={`${card} lg:col-span-7`}>
         <h2 className={h2}><Icon name="thermo" size={22} />24 timmar</h2>
-        <ol className="grid grid-cols-4 gap-y-3 sm:grid-cols-6 lg:grid-cols-8">
+        <ol className="grid grid-cols-4 gap-x-1 gap-y-2 sm:grid-cols-6 lg:grid-cols-8">
           {w.hours.slice(0, 24).map((x) => (
-            <li key={x.time} className="flex flex-col items-center">
-              <span className="text-[0.9375rem] text-dim tabular-nums">{hhmm(x.time).slice(0, 2)}</span>
+            // Varannan timme med svag ton (jämnt antal kolumner ger raka band); vid midnatt veckodagen.
+            <li key={x.time} className="flex flex-col items-center rounded-[0.75rem] py-1.5 even:bg-white/[0.04]">
+              <span className="text-[0.9375rem] text-dim tabular-nums">{hourLabel(x.time)}</span>
               <WeatherIcon kind={weatherKind(x.symbol)} size={34} label={symbolInfo(x.symbol).label} />
               <span className="text-[1.0625rem] font-semibold tabular-nums">{Number.isFinite(x.temp) ? `${Math.round(x.temp)}°` : '–'}</span>
               {x.precip >= 0.1 && <span className="text-[0.8125rem] text-[#4FA3FF] tabular-nums">{num(x.precip)} mm</span>}

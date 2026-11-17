@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMet, summarizeWeather, symbolInfo, weatherKind } from './weather.ts';
+import { hourLabel, parseMet, summarizeWeather, symbolInfo, weatherKind } from './weather.ts';
 
 const t0 = Date.parse('2026-11-11T18:00:00Z');
 const ts = (h: number, symbol: string, precip: number) => ({
@@ -34,4 +34,9 @@ test('färgade vädersymboler', () => {
   assert.equal(weatherKind('heavysleet'), 'sleet');
   assert.equal(weatherKind('snowandthunder'), 'thunder');
   assert.equal(weatherKind('fog'), 'fog');
+});
+
+test('väder: timetikett visar veckodagen vid midnatt', () => {
+  assert.equal(hourLabel(Date.parse('2026-11-18T14:00:00+01:00')), '14');
+  assert.equal(hourLabel(Date.parse('2026-11-19T00:00:00+01:00')), 'tors');
 });
