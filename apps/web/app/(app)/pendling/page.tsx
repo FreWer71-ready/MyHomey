@@ -167,15 +167,13 @@ export default async function CommutePage() {
         <p className="rounded-2xl glass p-4 font-bold text-dim">Trafikinformationen är inte tillgänglig just nu.</p>
       ) : (
         <>
-          {c.trains && (
-            <div className={`grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start ${dir === 'home' ? '[&>*:first-child]:order-2' : ''}`}>
-              <Trains title="Eskilstuna → Stockholm" icon="train" list={soon(c.out)} active={dir === 'out'} />
-              <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active={dir === 'home'} />
-            </div>
-          )}
+          {/* Bara aktuell riktning: mot Stockholm före kl 12, hem efter. */}
+          {c.trains && (dir === 'out'
+            ? <Trains title="Eskilstuna → Stockholm" icon="train" list={soon(c.out)} active />
+            : <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active />)}
           {/* Utan tågpendling (COMMUTE=road) är vägen viktigast: vägdata först, sedan tågen från Eskilstuna C. */}
           {!c.trains && <Road list={c.road} stations={c.stations ?? []} />}
-          {(c.trains || c.all.length > 0) && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
+          {((c.trains && dir === 'out') || (!c.trains && c.all.length > 0)) && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
           {c.trains && <Road list={c.road} stations={c.stations ?? []} />}
         </>
       )}

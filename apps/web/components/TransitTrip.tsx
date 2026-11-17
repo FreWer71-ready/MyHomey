@@ -36,14 +36,22 @@ export function TransitTripCard({ trip, trains, first, home = false }: { trip: T
         <span className="ml-auto text-[14px] text-dim">{dur(total)}</span>
       </div>
       {canceled && <p className="text-[15px] font-bold" style={{ color: TONE_COLOR.bad }}>Ett tåg på resan är inställt – välj nästa resa.</p>}
-      <ol className="flex flex-col gap-1">
+      <TransitLegs trip={trip} trains={trains} />
+    </section>
+  );
+}
+
+/** Benen i en resa (gång, buss, tåg, SL) med spår och tågens realtid. `compact` för kortet på Hem. */
+export function TransitLegs({ trip, trains, compact = false }: { trip: TransitTrip; trains: Train[]; compact?: boolean }) {
+  return (
+      <ol className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1'}`}>
         {trip.legs.map((l, i) => {
           const rt = legRealtime(l, trains);
           return (
             <li key={i} className="flex min-w-0 items-baseline gap-3">
-              <span className="w-12 shrink-0 text-[16px] font-bold tabular-nums">{hhmm(l.dep)}</span>
+              <span className={`w-12 shrink-0 ${compact ? 'text-[14px]' : 'text-[16px]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
               <span className="w-14 shrink-0 rounded-md bg-white/[0.08] px-1.5 text-center text-[12px] font-bold uppercase">{KIND[l.kind]}</span>
-              <span className="min-w-0 grow truncate text-[15px]">
+              <span className={`min-w-0 grow truncate ${compact ? 'text-[14px]' : 'text-[15px]'}`}>
                 {l.kind === 'walk'
                   ? <>{l.minutes} min → {l.to}</>
                   : <><span className="font-semibold">{l.label}</span> → {l.to}{l.track ? <span className="text-dim"> · spår {l.track}</span> : null}</>}
@@ -57,6 +65,5 @@ export function TransitTripCard({ trip, trains, first, home = false }: { trip: T
           );
         })}
       </ol>
-    </section>
   );
 }
