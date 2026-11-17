@@ -29,3 +29,11 @@ test('enheter offline och firmwareuppdateringar', () => {
   const n = summarizeNet(status, [row('2026-11-12T07:45:00Z')], [dev('a', 'offline'), dev('b', 'online', { firmware_status: 'updateAvailable' })], now)!;
   assert.deepEqual([n.offline.map((d) => d.id), n.updates.map((d) => d.id)], [['a'], ['b']]);
 });
+
+test('gamla internetproblem ger inte larm', () => {
+  const old = { ...status, checked_at: new Date(now).toISOString(), internet_issues: [{ index: Math.floor(now / 300_000) - 70, wanDowntime: true }] };
+  const recent = { ...old, internet_issues: [{ index: Math.floor(now / 300_000) - 1, wanDowntime: true }] };
+  const fresh = [row(new Date(now - 300_000).toISOString())];
+  assert.notEqual(summarizeNet(old, fresh, [], now)!.state, 'down');
+  assert.equal(summarizeNet(recent, fresh, [], now)!.state, 'down');
+});

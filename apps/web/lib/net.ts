@@ -44,7 +44,11 @@ export function summarizeNet(status: NetStatusRow | null, isp: NetIsp[], devices
   const syncStale = now - Date.parse(status.checked_at) > SYNC_STALE_MIN * 60_000;
   const metricStale = !last || now - Date.parse(last.ts) > METRIC_STALE_MIN * 60_000;
   const lastDown = !!last && ((last.downtime ?? 0) > 0 || (last.uptime ?? 100) < 100);
-  const issues = (status.internet_issues ?? []).length > 0;
+  // UniFi listar historiska problem (index = 5-minutersperiod sedan 1970). Bara nertid de senaste 15 min räknas som avbrott.
+  const issues = (status.internet_issues ?? []).some((i) => {
+    const x = i as { index?: number; wanDowntime?: boolean };
+    return !!x.wanDowntime && typeof x.index === 'number' && now - x.index * 300_000 < 15 * 60_000;
+  });
 
   const state: Net['state'] = syncStale ? 'unknown'
     : consoleDown || lastDown || issues ? 'down'
