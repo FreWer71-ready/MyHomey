@@ -2,15 +2,15 @@ import 'server-only';
 import { isBusyOnly, mergeCalendars, parseCalendar, summarizeBusy, withoutAllDay, type Calendar } from './calendar';
 
 // Hämtar och tolkar installationens kalendrar. Bara på servern.
-// CALENDAR_ICAL_URL (privat) plus valfria CALENDAR_ICAL_URL_<NAMN> (t.ex. _WORK för jobbets Outlook); för Ulrika ULRIKA_ICAL_URL.
+// CALENDAR_ICAL_URL (privat) plus valfria CALENDAR_ICAL_URL_<NAMN> (t.ex. _WORK för jobbets Outlook); för Ulrika ULRIKA_ICAL_URL(_<NAMN>).
 // Adresserna får aldrig hamna i loggar, felmeddelanden eller svar.
 export const CAL_TTL = 600; // 10 minuter
 let memo: { at: number; cal: Calendar } | null = null;
 
 /** Alla kalenderadresser i fast ordning (grundinställningen först, sedan extra efter namn) – ordningen ger färgen. */
 export function calendarUrls(): string[] {
-  const keys = Object.keys(process.env).filter((k) => /^CALENDAR_ICAL_URL(_[A-Z0-9]+)?$/.test(k)).sort();
-  const raw = keys.length ? keys.map((k) => process.env[k] ?? '') : [process.env.ULRIKA_ICAL_URL ?? ''];
+  const keys = Object.keys(process.env).filter((k) => /^(CALENDAR|ULRIKA)_ICAL_URL(_[A-Z0-9]+)?$/.test(k)).sort();
+  const raw = keys.map((k) => process.env[k] ?? '');
   // Varje inställning kan ha flera adresser (mellanslag, komma eller radbrytning). webcal:// hämtas som https://.
   return raw.join(' ').split(/[\s,]+/).filter(Boolean).map((u) => u.replace(/^webcal:\/\//i, 'https://'));
 }
