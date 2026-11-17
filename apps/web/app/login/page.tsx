@@ -13,8 +13,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { status } = await searchParams;
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
-      <form action={signIn} className="flex w-full max-w-md flex-col gap-5 rounded-[32px] glass p-8">
-        <span className="flex size-16 items-center justify-center rounded-[20px] bg-sun">
+      <form action={signIn} className="flex w-full max-w-md flex-col gap-5 rounded-[2rem] glass p-8">
+        <span className="flex size-16 items-center justify-center rounded-[1.25rem] bg-sun">
           <Icon name="logo" size={34} />
         </span>
         <h1 className="text-4xl font-extrabold tracking-tight">MyHomey</h1>

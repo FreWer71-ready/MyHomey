@@ -39,18 +39,18 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
       ))}
     </nav>
   );
-  const card = 'flex flex-col gap-3 rounded-[20px] bg-card p-5 lg:p-6';
-  const h2 = 'flex items-center gap-2.5 text-[18px] font-semibold text-dim';
+  const card = 'flex flex-col gap-3 rounded-[1.25rem] bg-card p-5 lg:p-6';
+  const h2 = 'flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim';
 
   if (!room) {
     return (
       <>
         {nav}
         <header className={`${card} flex-row items-center`}>
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-[14px] bg-white/[0.06]"><Icon name="home" size={30} /></span>
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-[0.875rem] bg-white/[0.06]"><Icon name="home" size={30} /></span>
           <div className="grow">
-            <h1 className="text-[28px] leading-tight font-bold tracking-tight">Hela hemmet</h1>
-            <p className="text-[16px] text-dim">{home.homeMoods.length} moods</p>
+            <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight">Hela hemmet</h1>
+            <p className="text-[1rem] text-dim">{home.homeMoods.length} moods</p>
           </div>
         </header>
         <section className={card}>
@@ -72,8 +72,8 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
   const hot = room.temp != null && room.temp >= 26 ? '#F85149' : room.temp != null && room.temp < 18 ? '#4FA3FF' : undefined;
   const Stat = ({ value, unit, color }: { value: React.ReactNode; unit: string; color?: string }) => (
     <span className="flex min-w-16 flex-col items-end leading-none">
-      <span className="text-[32px] font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
-      <span className="mt-1 text-[14px] text-dim">{unit}</span>
+      <span className="text-[2rem] font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
+      <span className="mt-1 text-[0.875rem] text-dim">{unit}</span>
     </span>
   );
 
@@ -83,10 +83,10 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
 
       {/* Rummet: ikon, namn och nyckeltal med enhet under (färg bara när något avviker). */}
       <header className={`${card} flex-row flex-wrap items-center gap-x-6`}>
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-[14px] bg-white/[0.06]"><Icon name={room.icon} size={30} /></span>
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-[0.875rem] bg-white/[0.06]"><Icon name={room.icon} size={30} /></span>
         <div className="min-w-0 grow">
-          <h1 className="truncate text-[28px] leading-tight font-bold tracking-tight">{room.name}</h1>
-          <p className="text-[16px] text-dim">{room.deviceCount} enheter · {room.lights.length} lampor</p>
+          <h1 className="truncate text-[1.75rem] leading-tight font-bold tracking-tight">{room.name}</h1>
+          <p className="text-[1rem] text-dim">{room.deviceCount} enheter · {room.lights.length} lampor</p>
         </div>
         {room.temp != null && <Stat value={<>{fmtTemp(room.temp).replace('°', '')}<TrendArrow trend={room.tempTrend} /></>} unit="°C" color={hot} />}
         {room.humidity != null && <Stat value={fmtPercent(room.humidity).replace(/\s?%/, '')} unit="% fukt" color={room.humidity >= 70 ? '#E3A008' : undefined} />}
@@ -114,7 +114,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
           </ul>
         </section>
       ) : (
-        <p className={`${card} text-[17px] text-dim`}>Inga lampor i det här rummet.</p>
+        <p className={`${card} text-[1.0625rem] text-dim`}>Inga lampor i det här rummet.</p>
       )}
     </>
   );

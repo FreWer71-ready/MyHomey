@@ -35,15 +35,15 @@ function Focus({ t, now, large }: { t: Train; now: number; large?: boolean }) {
       {/* Får tid och nedräkning inte plats bredvid varandra hamnar nedräkningen på egen rad, till höger. */}
       <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
         <span className="flex min-w-[9rem] flex-1 flex-col leading-tight">
-          <span className={`${large ? 'text-[40px]' : 'text-[34px]'} font-extrabold leading-none tabular-nums`}>{hhmm(departsAt(t))}</span>
-          <span className="truncate text-[15px] font-semibold text-dim">
+          <span className={`${large ? 'text-[2.5rem]' : 'text-[2.125rem]'} font-extrabold leading-none tabular-nums`}>{hhmm(departsAt(t))}</span>
+          <span className="truncate text-[0.9375rem] font-semibold text-dim">
             {[t.track && `spår ${t.track}`, t.dest, large && t.arr ? `framme ${hhmm(t.arr)}` : null, t.delay >= 3 ? `ord. ${hhmm(t.dep)}` : null].filter(Boolean).join(' · ')}
             <span className="font-bold" style={{ color: ton === 'ok' ? MUTE : TONE_COLOR[ton] }}> · {s.text}</span>
           </span>
         </span>
         <span className="ml-auto flex shrink-0 flex-col items-end leading-none">
-          <span className="text-[12px] font-bold uppercase tracking-wider text-dim">Avgår om</span>
-          <span className={`${large ? 'text-[52px]' : 'text-[44px]'} font-extrabold leading-none tabular-nums`} style={{ color: farg }} suppressHydrationWarning>
+          <span className="text-[0.75rem] font-bold uppercase tracking-wider text-dim">Avgår om</span>
+          <span className={`${large ? 'text-[3.25rem]' : 'text-[2.75rem]'} font-extrabold leading-none tabular-nums`} style={{ color: farg }} suppressHydrationWarning>
             {countdown(kvar)}
           </span>
         </span>
@@ -68,10 +68,10 @@ export function HomeTrains({ trains, serverNow }: { trains: Train[]; serverNow: 
         {efter.length > 0 && (
           <ul className="grid grid-cols-1 gap-x-5 gap-y-1 lg:grid-cols-2">
             {efter.map((t) => (
-              <li key={t.id} className="flex min-w-0 items-baseline gap-2 text-[16px] leading-tight">
+              <li key={t.id} className="flex min-w-0 items-baseline gap-2 text-[1rem] leading-tight">
                 <span className={`font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : departsAt(t))}</span>
                 <span className="truncate text-dim">{t.canceled ? '' : <MinutesTo at={departsAt(t)} className="tabular-nums" />}{t.track ? ` · spår ${t.track}` : ''}</span>
-                <span className="ml-auto shrink-0 text-[14px] font-semibold" style={{ color: trainTone(t) === 'ok' ? MUTE : TONE_COLOR[trainTone(t)] }}>{trainStatus(t).text}</span>
+                <span className="ml-auto shrink-0 text-[0.875rem] font-semibold" style={{ color: trainTone(t) === 'ok' ? MUTE : TONE_COLOR[trainTone(t)] }}>{trainStatus(t).text}</span>
               </li>
             ))}
           </ul>
@@ -86,10 +86,10 @@ export function HomeTrains({ trains, serverNow }: { trains: Train[]; serverNow: 
         return (
           <li key={t.id} className="flex min-w-0 flex-col leading-tight">
             <span className="flex items-baseline gap-2">
-              <span className={`text-[28px] font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : departsAt(t))}</span>
-              <span className="ml-auto shrink-0 text-[15px] font-semibold" style={{ color: tone === 'ok' ? MUTE : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
+              <span className={`text-[1.75rem] font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : departsAt(t))}</span>
+              <span className="ml-auto shrink-0 text-[0.9375rem] font-semibold" style={{ color: tone === 'ok' ? MUTE : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
             </span>
-            <span className="truncate text-[15px] text-dim">
+            <span className="truncate text-[0.9375rem] text-dim">
               {!t.canceled && (dayOf(t.dep) !== dayOf(now) ? <span className="font-semibold text-fg">imorgon</span> : <MinutesTo at={departsAt(t)} className="font-semibold text-fg tabular-nums" />)}
               {t.canceled ? '' : ' · '}{t.track ? `spår ${t.track}` : t.dest}
             </span>
@@ -111,20 +111,20 @@ export function PageTrainList({ trains, serverNow }: { trains: Train[]; serverNo
         const s = trainStatus(t);
         return (
           <li key={t.id} className="flex items-center gap-3 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[trainTone(t)], 0.4) }}>
-            <span className="flex w-[64px] shrink-0 flex-col leading-tight">
+            <span className="flex w-[4rem] shrink-0 flex-col leading-tight">
               <span className={`text-xl font-extrabold tabular-nums ${t.canceled || t.delay >= 3 ? 'line-through decoration-2 opacity-70' : ''}`}>{hhmm(t.dep)}</span>
-              {dayOf(t.dep) !== dayOf(now) && <span className="text-[13px] font-semibold text-dim">imorgon</span>}
+              {dayOf(t.dep) !== dayOf(now) && <span className="text-[0.8125rem] font-semibold text-dim">imorgon</span>}
               {!t.canceled && t.delay >= 3 && t.est && <span className="text-lg font-extrabold tabular-nums">{hhmm(t.est)}</span>}
             </span>
             <span className="flex min-w-0 grow flex-col leading-tight">
               <span className="truncate font-extrabold">
                 {t.dest}{t.arr && !t.canceled ? <span className="font-bold opacity-85"> · framme {hhmm(t.arr)}</span> : null}
               </span>
-              <span className="truncate text-[14px] font-bold opacity-85">
+              <span className="truncate text-[0.875rem] font-bold opacity-85">
                 {[t.product, `tåg ${t.ident}`, t.track && `spår ${t.track}`, ...t.notes].filter(Boolean).join(' · ')}
               </span>
             </span>
-            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[14px] font-extrabold ${s.cls}`}>{s.text}</span>
+            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.875rem] font-extrabold ${s.cls}`}>{s.text}</span>
           </li>
         );
       })}

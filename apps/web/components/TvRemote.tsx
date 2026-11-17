@@ -38,7 +38,7 @@ export function TvRemote({ r, title }: { r: Remote; title?: string | null }) {
   const Btn = ({ k, icon, label, onClick, active }: { k: string; icon: IconName; label: string; onClick: () => void; active?: boolean }) => (
     <button
       type="button" aria-label={label} title={label} onClick={onClick} disabled={busy}
-      className={`flex size-11 shrink-0 items-center justify-center rounded-[14px] transition-shadow ${active ? 'bg-white text-ink' : 'bg-[rgb(10_13_24/0.55)] text-white'} ${
+      className={`flex size-11 shrink-0 items-center justify-center rounded-[0.875rem] transition-shadow ${active ? 'bg-white text-ink' : 'bg-[rgb(10_13_24/0.55)] text-white'} ${
         flash?.key === k ? (flash.ok ? 'shadow-[0_0_0_3px_var(--color-ok)]' : 'shadow-[0_0_0_3px_var(--color-danger)]') : ''}`}
     >
       <Icon name={icon} size={22} />
@@ -46,10 +46,10 @@ export function TvRemote({ r, title }: { r: Remote; title?: string | null }) {
   );
 
   return (
-    <div className={`np-card np-tv relative flex min-h-16 items-center gap-2 overflow-hidden rounded-[20px] border border-line px-2.5 py-2 ${on ? '' : 'opacity-90 saturate-50'}`}>
+    <div className={`np-card np-tv relative flex min-h-16 items-center gap-2 overflow-hidden rounded-[1.25rem] border border-line px-2.5 py-2 ${on ? '' : 'opacity-90 saturate-50'}`}>
       <span className="relative flex min-w-0 grow flex-col pl-1">
-        <span className="truncate text-[13px] font-bold text-white/85">TV · {r.tv?.name}{vol != null ? ` · volym ${Math.round(vol * 100)}` : ''}</span>
-        <span className="truncate text-[17px] leading-tight font-extrabold text-white">{on ? title || 'På' : 'Av'}</span>
+        <span className="truncate text-[0.8125rem] font-bold text-white/85">TV · {r.tv?.name}{vol != null ? ` · volym ${Math.round(vol * 100)}` : ''}</span>
+        <span className="truncate text-[1.0625rem] leading-tight font-extrabold text-white">{on ? title || 'På' : 'Av'}</span>
       </span>
       {r.tv && (
         <Btn k="power" icon="powerLine" label={on ? 'Stäng av TV:n' : 'Slå på TV:n'} active={on}

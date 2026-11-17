@@ -34,11 +34,11 @@ export function HomeShell({ temp, alarms, children }: { temp: string | null; ala
           className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-[#0B0F14]"
         >
           <span className="flex flex-col items-center gap-3 opacity-30" style={{ transform: `translate(${x * 4}px, ${y * 4}px)` }}>
-            <Clock show="time" className="text-[160px] leading-none font-bold tracking-tight text-[#F5B544] tabular-nums" />
-            {temp && <span className="text-[56px] font-semibold text-[#F0D9B5] tabular-nums">Ute {temp}</span>}
-            {alarms > 0 && <span className="rounded-full bg-[#F85149] px-5 py-1 text-[24px] font-semibold text-white">{alarms} {alarms === 1 ? 'varning' : 'varningar'}</span>}
+            <Clock show="time" className="text-[10rem] leading-none font-bold tracking-tight text-[#F5B544] tabular-nums" />
+            {temp && <span className="text-[3.5rem] font-semibold text-[#F0D9B5] tabular-nums">Ute {temp}</span>}
+            {alarms > 0 && <span className="rounded-full bg-[#F85149] px-5 py-1 text-[1.5rem] font-semibold text-white">{alarms} {alarms === 1 ? 'varning' : 'varningar'}</span>}
           </span>
-          <span className="absolute bottom-6 text-[16px] text-[#8B98A5] opacity-40">Tryck för att visa allt</span>
+          <span className="absolute bottom-6 text-[1rem] text-[#8B98A5] opacity-40">Tryck för att visa allt</span>
         </button>
       )}
     </>

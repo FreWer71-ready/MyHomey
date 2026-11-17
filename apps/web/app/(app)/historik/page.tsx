@@ -26,7 +26,7 @@ const ROAD_STATIONS: [string, string][] = [['429', 'Eskilstuna Ö'], ['418', 'Gr
 
 /** Grafer för en vägväderstation: temperatur, nederbörd, vind, luftfuktighet. */
 function RoadCharts({ rows, long }: { rows: RoadHistRow[]; long: boolean }) {
-  if (!rows.length) return <p className="rounded-[24px] glass p-10 text-center text-lg font-bold text-dim">Ingen vägväderdata för perioden.</p>;
+  if (!rows.length) return <p className="rounded-[1.5rem] glass p-10 text-center text-lg font-bold text-dim">Ingen vägväderdata för perioden.</p>;
   const col = (i: number) => rows.filter((r) => r[i] != null).map((r) => [r[0], r[i] as number] as [number, number]);
   const rain = rows.reduce((a, r) => a + (r[7] ?? 0), 0);
   const charts: { title: string; extra?: string; unit: string; decimals: number; bars: boolean; series: { id: string; label: string; color: string; points: [number, number][] }[] }[] = [
@@ -47,14 +47,14 @@ function RoadCharts({ rows, long }: { rows: RoadHistRow[]; long: boolean }) {
   return (
     <>
       {charts.filter((c) => c.series.some((x) => x.points.length)).map((c) => (
-        <section key={c.title} className="rounded-[24px] glass p-3">
+        <section key={c.title} className="rounded-[1.5rem] glass p-3">
           <h2 className="mb-1 flex items-baseline justify-between gap-2 px-1 text-xl font-extrabold">
-            {c.title}{c.extra && <span className="text-[13px] font-bold text-dim">{c.extra}</span>}
+            {c.title}{c.extra && <span className="text-[0.8125rem] font-bold text-dim">{c.extra}</span>}
           </h2>
           <HistoryChart series={c.series} unit={c.unit} decimals={c.decimals} bars={c.bars} longPeriod={long} fit={760} />
         </section>
       ))}
-      <p className="px-1 text-[13px] font-bold text-dim">Källa: Trafikverket (VViS). Vägväder sparas ca 7 dygn bakåt.</p>
+      <p className="px-1 text-[0.8125rem] font-bold text-dim">Källa: Trafikverket (VViS). Vägväder sparas ca 7 dygn bakåt.</p>
     </>
   );
 }
@@ -95,7 +95,7 @@ export default async function HistoryPage({
     <>
       <ScrollActive />
       <header className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3">
-        <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Historik</h1>
+        <h1 className="text-[2rem] leading-tight font-extrabold tracking-tight">Historik</h1>
         {view !== 'wine' && <nav aria-label="Period" className={scrollRow}>
           {(Object.keys(PERIODS) as PeriodKey[]).map((k) => (
             <Link key={k} href={href(view, k, sel)} aria-current={k === period ? 'page' : undefined} className={chip(k === period)}>
@@ -135,7 +135,7 @@ export default async function HistoryPage({
 
       {view === 'wine' && (
         <section className="flex flex-col gap-3">
-          <div className="rounded-[24px] glass p-3">
+          <div className="rounded-[1.5rem] glass p-3">
             <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 px-1">
               <h2 className="text-xl font-extrabold">Flaskor i källaren</h2>
               <a href="https://wine.trand.se" target="_blank" rel="noopener noreferrer" className="font-bold text-sun">Öppna Trandvine ↗</a>
@@ -159,8 +159,8 @@ export default async function HistoryPage({
                 })()],
                 ['Senast tillagd', [wine.latest?.producer, wine.latest?.year].filter(Boolean).join(' ') || '–'],
               ].map(([k, v]) => (
-                <div key={k} className="flex flex-col rounded-[20px] glass px-3 py-2">
-                  <span className="text-[13px] font-bold text-dim">{k}</span>
+                <div key={k} className="flex flex-col rounded-[1.25rem] glass px-3 py-2">
+                  <span className="text-[0.8125rem] font-bold text-dim">{k}</span>
                   <span className="truncate text-xl leading-tight font-extrabold">{v}</span>
                 </div>
               ))}
@@ -181,7 +181,7 @@ export default async function HistoryPage({
       )}
 
       {!timeline && view !== 'wine' && view !== 'road' && (
-        <section className="rounded-[24px] glass p-3">
+        <section className="rounded-[1.5rem] glass p-3">
           {chartSeries.length ? (
             <HistoryChart
               series={chartSeries.map(({ id, label, color, points }) => ({ id, label, color, points }))}
@@ -198,7 +198,7 @@ export default async function HistoryPage({
       )}
 
       {series.length > 0 && (
-        <section aria-label="Filtrera på rum" className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
+        <section aria-label="Filtrera på rum" className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fill,minmax(10.625rem,1fr))]">
           {series.map((s) => {
             const active = sel === s.id;
             return (
@@ -206,7 +206,7 @@ export default async function HistoryPage({
                 key={s.id}
                 href={active ? href(view, period) : href(view, period, s.id)}
                 aria-pressed={active}
-                className={`flex flex-col rounded-[20px] glass px-3 py-2 ${
+                className={`flex flex-col rounded-[1.25rem] glass px-3 py-2 ${
                   active ? 'shadow-[inset_0_0_0_3px_var(--color-ink)]' : sel ? 'opacity-55' : ''
                 }`}
               >
@@ -217,7 +217,7 @@ export default async function HistoryPage({
                 <span className="text-xl leading-tight font-extrabold tracking-tight">
                   {fmtValue(metric, cfg.delta ? s.total : s.latest)}
                 </span>
-                <span className="truncate text-[13px] font-bold text-dim">
+                <span className="truncate text-[0.8125rem] font-bold text-dim">
                   {cfg.delta
                     ? `förbrukat ${PERIODS[period].label}`
                     : `min ${fmtValue(metric, s.min)} · max ${fmtValue(metric, s.max)}`}

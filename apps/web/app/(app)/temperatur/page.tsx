@@ -11,8 +11,8 @@ export const dynamic = 'force-dynamic';
 const COMFORT = { low: 18, high: 26 };
 const tone = (t: number | null) => (t == null ? undefined : t >= COMFORT.high ? '#F85149' : t < COMFORT.low ? '#4FA3FF' : undefined);
 const n1 = (v: number) => v.toLocaleString('sv-SE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const card = 'flex min-w-0 flex-col gap-3 rounded-[20px] bg-card p-5 lg:p-6';
-const h2 = 'flex items-center gap-2.5 text-[18px] font-semibold text-dim';
+const card = 'flex min-w-0 flex-col gap-3 rounded-[1.25rem] bg-card p-5 lg:p-6';
+const h2 = 'flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim';
 
 /** 24 h-kurva med min/max-skala per givare. */
 function Curve({ points, color = '#8B98A5', className = 'h-9 w-24' }: { points: [number, number][]; color?: string; className?: string }) {
@@ -31,17 +31,17 @@ function Curve({ points, color = '#8B98A5', className = 'h-9 w-24' }: { points: 
 function SensorRow({ s, hum }: { s: Series; hum: number | null }) {
   const c = tone(s.latest);
   return (
-    <li className="flex min-h-[64px] items-center gap-3 border-b border-line py-2 last:border-b-0">
+    <li className="flex min-h-[4rem] items-center gap-3 border-b border-line py-2 last:border-b-0">
       <span className="flex min-w-0 grow flex-col leading-tight">
-        <span className="truncate text-[17px] font-semibold">{s.label}</span>
-        <span className="truncate text-[15px] text-dim">
+        <span className="truncate text-[1.0625rem] font-semibold">{s.label}</span>
+        <span className="truncate text-[0.9375rem] text-dim">
           {s.min != null && s.max != null ? `Min ${n1(s.min)}° · max ${n1(s.max)}°` : '–'}
         </span>
       </span>
       <Curve points={s.points} color={c ?? '#8B98A5'} className="h-9 w-16 sm:w-20" />
-      <span className="flex w-[76px] shrink-0 flex-col items-end leading-none">
-        <span className="text-[28px] font-bold tracking-tight tabular-nums" style={{ color: c }}>{s.latest != null ? `${n1(s.latest)}°` : '–'}</span>
-        {hum != null && <span className="mt-1 text-[14px] text-dim tabular-nums">{Math.round(hum)} % fukt</span>}
+      <span className="flex w-[4.75rem] shrink-0 flex-col items-end leading-none">
+        <span className="text-[1.75rem] font-bold tracking-tight tabular-nums" style={{ color: c }}>{s.latest != null ? `${n1(s.latest)}°` : '–'}</span>
+        {hum != null && <span className="mt-1 text-[0.875rem] text-dim tabular-nums">{Math.round(hum)} % fukt</span>}
       </span>
     </li>
   );
@@ -70,18 +70,18 @@ export default async function TemperaturePage() {
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
-      <h1 className="text-[28px] leading-tight font-bold tracking-tight lg:col-span-12">Temperatur</h1>
+      <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight lg:col-span-12">Temperatur</h1>
 
       {/* UTE */}
       <section aria-label="Ute" className={`${card} lg:col-span-4`}>
         <h2 className={h2}><Icon name="thermo" size={22} />Ute{source ? ` · ${source}` : ''}</h2>
         <div className="flex items-end justify-between gap-3">
-          <span className="text-[64px] leading-none font-bold tracking-tight tabular-nums">
+          <span className="text-[4rem] leading-none font-bold tracking-tight tabular-nums">
             {fmtTemp(out, h.outdoorStale)}<TrendArrow trend={h.outdoorTrend} />
           </span>
           {outSeries && <Curve points={outSeries.points} className="h-12 w-28" />}
         </div>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[16px]">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[1rem]">
           {outSeries?.min != null && outSeries.max != null && (<><dt className="text-dim">Senaste 24 h</dt><dd className="text-right font-semibold tabular-nums">{n1(outSeries.min)}–{n1(outSeries.max)}°</dd></>)}
           {fc.length > 0 && (<><dt className="text-dim">Prognos 24 h</dt><dd className="text-right font-semibold tabular-nums">{n1(Math.min(...fc))}–{n1(Math.max(...fc))}°</dd></>)}
           {smhi != null && source !== (weather?.source ?? 'Prognos') && (<><dt className="text-dim">{weather?.source ?? 'Prognos'} nu</dt><dd className="text-right font-semibold tabular-nums">{n1(smhi)}°</dd></>)}
@@ -95,19 +95,19 @@ export default async function TemperaturePage() {
       <section aria-label="Inne" className={`${card} lg:col-span-8`}>
         <h2 className={`${h2} justify-between`}>
           <span className="flex items-center gap-2.5"><Icon name="home" size={22} />Inne · {inside.length} givare</span>
-          {avg != null && <span className="text-fg"><span className="text-[22px] font-bold tabular-nums">{n1(avg)}°</span> <span className="text-[15px] font-normal text-dim">snitt</span></span>}
+          {avg != null && <span className="text-fg"><span className="text-[1.375rem] font-bold tabular-nums">{n1(avg)}°</span> <span className="text-[0.9375rem] font-normal text-dim">snitt</span></span>}
         </h2>
         {inside.length ? (
           <ul className="flex flex-col">
             {inside.map((s) => <SensorRow key={s.id} s={s} hum={humOf.get(s.id) ?? null} />)}
           </ul>
-        ) : <p className="text-[16px] text-dim">Inga temperaturgivare med värden.</p>}
+        ) : <p className="text-[1rem] text-dim">Inga temperaturgivare med värden.</p>}
         {dead.length > 0 && (
-          <p className="flex items-center gap-2 text-[15px] text-dim">
+          <p className="flex items-center gap-2 text-[0.9375rem] text-dim">
             <span className="size-2 rounded-full bg-danger" />Ej nåbara: {dead.map((r) => r.name).join(', ')}
           </p>
         )}
-        <p className="text-[14px] text-dim">Kurvor, min och max: senaste 24 h. Rött ≥ {COMFORT.high}°, blått under {COMFORT.low}°.</p>
+        <p className="text-[0.875rem] text-dim">Kurvor, min och max: senaste 24 h. Rött ≥ {COMFORT.high}°, blått under {COMFORT.low}°.</p>
       </section>
     </div>
   );

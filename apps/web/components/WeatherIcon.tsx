@@ -61,7 +61,7 @@ const flake = (x: number) => <circle cx={x} cy={54} r={2.6} fill="#FFFFFF" />;
 export function WeatherIcon({ kind, size = 64, label }: { kind: WeatherKind; size?: number; label: string }) {
   const lanes = [{ x: 24, delay: 0 }, { x: 33, delay: 0.5 }, { x: 42, delay: 0.95 }];
   return (
-    <svg viewBox="0 0 64 64" width={size} height={size} role="img" aria-label={label} className="shrink-0 overflow-visible">
+    <svg viewBox="0 0 64 64" width={`${size / 16}rem`} height={`${size / 16}rem`} role="img" aria-label={label} className="shrink-0 overflow-visible">
       {kind === 'sun' && <Sun />}
       {kind === 'moon' && <Moon />}
       {kind === 'partly-day' && (<><Sun x={21} y={20} r={9} /><Cloud dx={11} dy={10} scale={0.78} /></>)}

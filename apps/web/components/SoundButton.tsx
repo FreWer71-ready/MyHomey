@@ -11,7 +11,7 @@ export function SoundButton({ id }: { id: string }) {
     <button
       type="button" disabled={busy}
       onClick={() => start(async () => { const r = await runDevice(id, 'send_sound', true); setSt(r.ok ? 'ok' : 'error'); setTimeout(() => setSt(null), 4000); })}
-      className={`pill h-11 shrink-0 px-4 text-[15px] ${busy ? 'animate-pulse' : ''} ${st === 'ok' ? 'text-ok' : st === 'error' ? 'text-danger' : ''}`}
+      className={`pill h-11 shrink-0 px-4 text-[0.9375rem] ${busy ? 'animate-pulse' : ''} ${st === 'ok' ? 'text-ok' : st === 'error' ? 'text-danger' : ''}`}
     >
       {st === 'ok' ? 'Ljud skickat ✓' : st === 'error' ? 'Gick inte' : 'Spela ljud'}
     </button>

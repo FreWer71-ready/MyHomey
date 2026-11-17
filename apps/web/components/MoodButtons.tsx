@@ -40,12 +40,12 @@ export function MoodButtons({ moods, large = false, kind = 'mood' }: { moods: It
               type="button"
               onClick={() => run(m.id)}
               disabled={state?.status === 'busy'}
-              className={`flex items-center gap-2.5 rounded-[20px] ${kind === 'flow' ? 'bg-teal-btn' : 'bg-violet-btn'} text-lg font-extrabold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18),0_2px_10px_rgb(0_0_0/0.3)] transition-shadow ${large ? 'min-h-16 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
+              className={`flex items-center gap-2.5 rounded-[1.25rem] ${kind === 'flow' ? 'bg-teal-btn' : 'bg-violet-btn'} text-lg font-extrabold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18),0_2px_10px_rgb(0_0_0/0.3)] transition-shadow ${large ? 'min-h-16 w-full px-4 text-left' : 'min-h-14 px-5'} ${ring(m.id)}`}
             >
               {m.room ? (
                 <span className="flex flex-col items-start leading-tight">
                   {m.name}
-                  <span className="text-[13px] font-bold text-fg/80">{m.room}</span>
+                  <span className="text-[0.8125rem] font-bold text-fg/80">{m.room}</span>
                 </span>
               ) : m.name}
             </button>

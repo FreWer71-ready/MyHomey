@@ -63,25 +63,25 @@ export function LightControl({ light }: { light: Light }) {
   const lamp = light.can.color && light.hue != null && light.sat != null && light.sat > 0.3 ? hsl(light.hue, light.sat) : '#F5B544';
 
   return (
-    <li className="flex flex-col gap-3 rounded-[20px] bg-card p-4">
+    <li className="flex flex-col gap-3 rounded-[1.25rem] bg-card p-4">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => { setOn(!on); send({ on: !on }); }}
           aria-pressed={on}
           aria-label={`${light.name} ${on ? 'släck' : 'tänd'}`}
-          className={`flex size-12 shrink-0 items-center justify-center rounded-[14px] transition ${on ? '' : 'bg-white/[0.06] opacity-45 grayscale'} ${status === 'busy' ? 'animate-pulse' : ''}`}
+          className={`flex size-12 shrink-0 items-center justify-center rounded-[0.875rem] transition ${on ? '' : 'bg-white/[0.06] opacity-45 grayscale'} ${status === 'busy' ? 'animate-pulse' : ''}`}
           style={on ? { background: `color-mix(in srgb, ${lamp} 28%, transparent)`, boxShadow: `0 0 18px color-mix(in srgb, ${lamp} 35%, transparent)` } : undefined}
         >
           <Icon name="bulb" size={28} />
         </button>
         <span className="flex min-w-0 grow flex-col leading-tight">
-          <span className="truncate text-[17px] font-semibold">{light.name}</span>
-          <span className="text-[15px] text-dim">{on ? 'Tänd' : 'Släckt'}</span>
+          <span className="truncate text-[1.0625rem] font-semibold">{light.name}</span>
+          <span className="text-[0.9375rem] text-dim">{on ? 'Tänd' : 'Släckt'}</span>
         </span>
         <span className="flex w-14 shrink-0 flex-col items-end leading-none">
-          <span className="text-[24px] font-bold tabular-nums">{on ? (light.can.dim ? dim : 'På') : 'Av'}</span>
-          {on && light.can.dim && <span className="mt-1 text-[13px] text-dim">%</span>}
+          <span className="text-[1.5rem] font-bold tabular-nums">{on ? (light.can.dim ? dim : 'På') : 'Av'}</span>
+          {on && light.can.dim && <span className="mt-1 text-[0.8125rem] text-dim">%</span>}
         </span>
         {canColor && (
           <button
@@ -89,7 +89,7 @@ export function LightControl({ light }: { light: Light }) {
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label="Färg och vit ton"
-            className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-white/[0.06]"
+            className="flex size-11 shrink-0 items-center justify-center rounded-[0.875rem] bg-white/[0.06]"
           >
             <span className="size-6 rounded-full" style={{ background: 'conic-gradient(#FF5A5A, #FFC21A, #5AD07A, #4FA3FF, #B07AFF, #FF5A5A)' }} />
           </button>
@@ -107,7 +107,7 @@ export function LightControl({ light }: { light: Light }) {
       )}
 
       {open && canColor && (
-        <div className="flex flex-col gap-2.5 rounded-[14px] bg-white/[0.04] p-3">
+        <div className="flex flex-col gap-2.5 rounded-[0.875rem] bg-white/[0.04] p-3">
           {light.can.temp && (
             <>
               <input
@@ -120,7 +120,7 @@ export function LightControl({ light }: { light: Light }) {
               <div className="flex flex-wrap gap-1.5">
                 {WHITES.map((w) => (
                   <button key={w.label} type="button" onClick={() => { setTemp(w.temp); setOn(true); send({ temp: w.temp }); }}
-                    className="flex min-h-10 items-center gap-1.5 rounded-full bg-white/[0.08] px-3 text-[15px] font-semibold">
+                    className="flex min-h-10 items-center gap-1.5 rounded-full bg-white/[0.08] px-3 text-[0.9375rem] font-semibold">
                     <span className="size-4 rounded-full" style={{ background: w.css }} />{w.label}
                   </button>
                 ))}
@@ -140,7 +140,7 @@ export function LightControl({ light }: { light: Light }) {
         </div>
       )}
 
-      {status === 'error' && <p role="alert" className="text-[15px] font-semibold text-danger">{error}</p>}
+      {status === 'error' && <p role="alert" className="text-[0.9375rem] font-semibold text-danger">{error}</p>}
     </li>
   );
 }

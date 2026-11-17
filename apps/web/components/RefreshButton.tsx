@@ -27,10 +27,10 @@ export function RefreshButton() {
       onClick={refresh}
       aria-label="Uppdatera"
       aria-busy={pending}
-      className={`flex flex-1 flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] font-bold text-dim md:w-full md:flex-none`}
+      className={`flex flex-1 flex-col items-center gap-1 rounded-[1.125rem] py-2.5 text-[0.75rem] font-bold text-dim md:w-full md:flex-none`}
     >
       <Icon name="refresh" size={24} className={spin ? 'animate-spin' : ''} />
-      <span className="md:sr-only">Uppdatera</span>
+      <span className="md:sr-only big:max-md:sr-only">Uppdatera</span>
     </button>
   );
 }

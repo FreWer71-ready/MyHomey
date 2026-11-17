@@ -28,14 +28,14 @@ export function TransitTripCard({ trip, trains, first, home = false }: { trip: T
   return (
     <section className={`flex flex-col gap-2 rounded-2xl glass p-4 ${first ? '' : 'opacity-80'}`}>
       <div className="flex flex-wrap items-baseline gap-x-3">
-        <span className="text-[22px] font-extrabold tabular-nums">{leaveIn <= 0 ? 'Gå nu' : `Gå om ${leaveIn} min`}</span>
-        <span className="text-[15px] text-dim tabular-nums">kl {hhmm(trip.dep)}</span>
-        <span className="text-[17px] font-semibold">
+        <span className="text-[1.375rem] font-extrabold tabular-nums">{leaveIn <= 0 ? 'Gå nu' : `Gå om ${leaveIn} min`}</span>
+        <span className="text-[0.9375rem] text-dim tabular-nums">kl {hhmm(trip.dep)}</span>
+        <span className="text-[1.0625rem] font-semibold">
           {home ? 'hemma' : 'framme'} {delay ? <>ca <span style={{ color: TONE_COLOR.warn }}>{hhmm(trip.arr + delay * 60_000)}</span></> : hhmm(trip.arr)}
         </span>
-        <span className="ml-auto text-[14px] text-dim">{dur(total)}</span>
+        <span className="ml-auto text-[0.875rem] text-dim">{dur(total)}</span>
       </div>
-      {canceled && <p className="text-[15px] font-bold" style={{ color: TONE_COLOR.bad }}>Ett tåg på resan är inställt – välj nästa resa.</p>}
+      {canceled && <p className="text-[0.9375rem] font-bold" style={{ color: TONE_COLOR.bad }}>Ett tåg på resan är inställt – välj nästa resa.</p>}
       <TransitLegs trip={trip} trains={trains} />
     </section>
   );
@@ -49,15 +49,15 @@ export function TransitLegs({ trip, trains, compact = false }: { trip: TransitTr
           const rt = legRealtime(l, trains);
           return (
             <li key={i} className="flex min-w-0 items-baseline gap-3">
-              <span className={`w-12 shrink-0 ${compact ? 'text-[14px]' : 'text-[16px]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
-              <span className="w-14 shrink-0 rounded-md bg-white/[0.08] px-1.5 text-center text-[12px] font-bold uppercase">{KIND[l.kind]}</span>
-              <span className={`min-w-0 grow truncate ${compact ? 'text-[14px]' : 'text-[15px]'}`}>
+              <span className={`w-12 shrink-0 ${compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
+              <span className="w-14 shrink-0 rounded-md bg-white/[0.08] px-1.5 text-center text-[0.75rem] font-bold uppercase">{KIND[l.kind]}</span>
+              <span className={`min-w-0 grow truncate ${compact ? 'text-[0.875rem]' : 'text-[0.9375rem]'}`}>
                 {l.kind === 'walk'
                   ? <>{l.minutes} min → {l.to}</>
                   : <><span className="font-semibold">{l.label}</span> → {l.to}{l.track ? <span className="text-dim"> · spår {l.track}</span> : null}</>}
               </span>
               {rt && (rt.canceled || rt.delay > 0) && (
-                <span className="shrink-0 text-[14px] font-bold" style={{ color: rt.canceled ? TONE_COLOR.bad : TONE_COLOR.warn }}>
+                <span className="shrink-0 text-[0.875rem] font-bold" style={{ color: rt.canceled ? TONE_COLOR.bad : TONE_COLOR.warn }}>
                   {rt.canceled ? 'Inställt' : `+${rt.delay} min`}
                 </span>
               )}

@@ -23,16 +23,16 @@ export function AlertChips({ alerts, max = 3 }: { alerts: Alert[]; max?: number 
       {shown.map((a) => {
         const st = STYLE[a.level];
         return (
-          <Link key={a.id} href={a.href} role="alert" className={`flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-[14px] border px-3.5 text-[16px] font-semibold ${st.box}`}>
+          <Link key={a.id} href={a.href} role="alert" className={`flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-[0.875rem] border px-3.5 text-[1rem] font-semibold ${st.box}`}>
             {a.icon === '!'
-              ? <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full text-[14px] font-black text-[#0B0F14]" style={{ background: st.icon }}>!</span>
+              ? <span className="flex size-[1.375rem] shrink-0 items-center justify-center rounded-full text-[0.875rem] font-black text-[#0B0F14]" style={{ background: st.icon }}>!</span>
               : <span className="shrink-0" style={{ color: st.icon }}><Icon name={a.icon} size={22} /></span>}
             <span className="truncate">{a.text}</span>
           </Link>
         );
       })}
       {rest > 0 && (
-        <Link href="/larm" className="flex h-11 shrink-0 items-center justify-center rounded-[14px] border border-line bg-card px-4 text-[16px] font-semibold text-dim">+{rest}</Link>
+        <Link href="/larm" className="flex h-11 shrink-0 items-center justify-center rounded-[0.875rem] border border-line bg-card px-4 text-[1rem] font-semibold text-dim">+{rest}</Link>
       )}
     </div>
   );

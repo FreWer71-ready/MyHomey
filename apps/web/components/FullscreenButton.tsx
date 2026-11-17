@@ -41,7 +41,7 @@ export function FullscreenButton() {
       type="button"
       onClick={toggle}
       aria-label={full ? 'Avsluta helskärm' : 'Helskärm'}
-      className="flex w-full flex-col items-center gap-1 rounded-[18px] py-2.5 text-[12px] font-bold text-dim"
+      className="flex w-full flex-col items-center gap-1 rounded-[1.125rem] py-2.5 text-[0.75rem] font-bold text-dim"
     >
       <Icon name={full ? 'shrink' : 'expand'} size={24} />
       <span className="md:sr-only">{full ? 'Avsluta' : 'Helskärm'}</span>

@@ -418,13 +418,13 @@ export type IconName = keyof typeof FLAT | keyof typeof LINE;
 export function Icon({ name, size = 24, className }: { name: IconName; size?: number; className?: string }) {
   if (name in FLAT) {
     return (
-      <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" className={`shrink-0 overflow-visible ${className ?? ''}`}>
+      <svg viewBox="0 0 24 24" width={`${size / 16}rem`} height={`${size / 16}rem`} aria-hidden="true" className={`shrink-0 overflow-visible ${className ?? ''}`}>
         {FLAT[name as keyof typeof FLAT]}
       </svg>
     );
   }
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" className={`ico ${className ?? ''}`}>
+    <svg viewBox="0 0 24 24" width={`${size / 16}rem`} height={`${size / 16}rem`} aria-hidden="true" className={`ico ${className ?? ''}`}>
       <path d={LINE[name as keyof typeof LINE]} />
     </svg>
   );

@@ -10,13 +10,13 @@ export const dynamic = 'force-dynamic';
 
 function Card({ bg, icon, label, value, sub }: { bg: string; icon: IconName; label: string; value: string; sub: string }) {
   return (
-    <div className="glass flex flex-col gap-0.5 rounded-[22px] px-3.5 py-3" style={{ background: bg }}>
+    <div className="glass flex flex-col gap-0.5 rounded-[1.375rem] px-3.5 py-3" style={{ background: bg }}>
       <span className="flex items-center gap-2.5">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-glass-hi"><Icon name={icon} size={20} /></span>
-        <span className="text-[15px] font-bold">{label}</span>
+        <span className="text-[0.9375rem] font-bold">{label}</span>
       </span>
-      <span className="text-[34px] leading-tight font-extrabold tracking-tight">{value}</span>
-      <span className="text-[15px] font-bold">{sub}</span>
+      <span className="text-[2.125rem] leading-tight font-extrabold tracking-tight">{value}</span>
+      <span className="text-[0.9375rem] font-bold">{sub}</span>
     </div>
   );
 }
@@ -46,7 +46,7 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
     <>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Energi</h1>
+          <h1 className="text-[2rem] leading-tight font-extrabold tracking-tight">Energi</h1>
           {hasUse && <nav aria-label="Vy" className="flex gap-1.5">
             <Link href={href('pris')} aria-current={view === 'pris' ? 'page' : undefined} className={chip(view === 'pris')}>
               <Icon name="money" size={20} /> Elpris
@@ -58,18 +58,18 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
         </div>
         {/* Den andra vyns nyckeltal, tydligt och klickbart. */}
         {!hasUse ? null : view === 'pris' ? (
-          <Link href={href('forbrukning')} className="glass flex items-center gap-3 rounded-[20px] py-2 pr-5 pl-2" style={{ background: tint('#8B5CF6', 0.5) }}>
-            <span className="flex size-11 items-center justify-center rounded-[14px] bg-glass-hi"><Icon name="bolt" size={24} /></span>
+          <Link href={href('forbrukning')} className="glass flex items-center gap-3 rounded-[1.25rem] py-2 pr-5 pl-2" style={{ background: tint('#8B5CF6', 0.5) }}>
+            <span className="flex size-11 items-center justify-center rounded-[0.875rem] bg-glass-hi"><Icon name="bolt" size={24} /></span>
             <span className="flex flex-col leading-tight">
-              <span className="text-[13px] font-bold tracking-wider uppercase">Effekt nu</span>
+              <span className="text-[0.8125rem] font-bold tracking-wider uppercase">Effekt nu</span>
               <span className="text-2xl font-extrabold">{fmtWatt(h.powerW)}</span>
             </span>
           </Link>
         ) : (
-          <Link href={href('pris')} className="glass flex items-center gap-3 rounded-[20px] py-2 pr-5 pl-2" style={{ background: s.level?.bg ?? 'var(--color-glass)' }}>
-            <span className="flex size-11 items-center justify-center rounded-[14px] bg-glass-hi"><Icon name="money" size={24} /></span>
+          <Link href={href('pris')} className="glass flex items-center gap-3 rounded-[1.25rem] py-2 pr-5 pl-2" style={{ background: s.level?.bg ?? 'var(--color-glass)' }}>
+            <span className="flex size-11 items-center justify-center rounded-[0.875rem] bg-glass-hi"><Icon name="money" size={24} /></span>
             <span className="flex flex-col leading-tight">
-              <span className="text-[13px] font-bold tracking-wider uppercase">Elpris nu{s.level ? ` · ${s.level.label}` : ''}</span>
+              <span className="text-[0.8125rem] font-bold tracking-wider uppercase">Elpris nu{s.level ? ` · ${s.level.label}` : ''}</span>
               <span className="text-2xl font-extrabold">{fmtOre(s.now?.ore)}</span>
             </span>
           </Link>
@@ -110,7 +110,7 @@ async function UseView({ period, powerW, meters, estimated, href, kwhChart }: { 
       </section>
 
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
-        <div className="min-w-0 rounded-[24px] glass p-3">
+        <div className="min-w-0 rounded-[1.5rem] glass p-3">
           <div className="mb-1 flex flex-wrap gap-1.5">
             {([[false, 'Effekt (W)'], [true, 'kWh per intervall']] as const).map(([g, label]) => (
               <Link key={label} href={href('forbrukning', period, g)} aria-current={kwhChart === g ? 'page' : undefined}
@@ -127,7 +127,7 @@ async function UseView({ period, powerW, meters, estimated, href, kwhChart }: { 
         </div>
         {/* Panelen tar grafens höjd på plattan (absolut inuti) och listan scrollar om den är längre. */}
         <div className="relative min-h-60 lg:min-h-0">
-          <div className="flex flex-col gap-1.5 rounded-[24px] glass p-3 lg:absolute lg:inset-0">
+          <div className="flex flex-col gap-1.5 rounded-[1.5rem] glass p-3 lg:absolute lg:inset-0">
             <h2 className="flex items-baseline justify-between gap-2 text-xl font-extrabold">
               Drar mest nu <span className="text-sm font-bold text-dim">{top.length} enheter</span>
             </h2>
@@ -136,7 +136,7 @@ async function UseView({ period, powerW, meters, estimated, href, kwhChart }: { 
                 {top.map((x) => {
                   const w = Math.max(0, x.latest ?? 0);
                   return (
-                    <li key={x.id} className={`relative shrink-0 overflow-hidden rounded-[12px] bg-glass-hi px-3 py-1 ${w < 0.5 ? 'opacity-55' : ''}`}>
+                    <li key={x.id} className={`relative shrink-0 overflow-hidden rounded-[0.75rem] bg-glass-hi px-3 py-1 ${w < 0.5 ? 'opacity-55' : ''}`}>
                       <span className="absolute inset-y-0 left-0 bg-violet/25" style={{ width: `${sumNow ? (w / sumNow) * 100 : 0}%` }} />
                       <span className="relative flex items-center justify-between gap-3">
                         <span className="truncate font-bold">{x.label}</span>
@@ -178,7 +178,7 @@ function PriceView({ prices, s, now }: { prices: Price[]; s: ReturnType<typeof s
         <Card bg={tint('#F0503C')} icon="bolt" label="Högst i dag" value={fmtOre(s.todayMax?.ore)} sub={s.todayMax ? `kl ${hhmm(s.todayMax.start)}` : '–'} />
       </section>
 
-      <section className="rounded-[24px] glass p-3">
+      <section className="rounded-[1.5rem] glass p-3">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-extrabold">Pris per timme</h2>
           <span className="font-bold text-dim">{s.hasTomorrow ? 'I dag och i morgon' : 'I dag · morgondagens priser kommer ca 13'} · spotpris SE3 exkl. moms och nät</span>
@@ -191,7 +191,7 @@ function PriceView({ prices, s, now }: { prices: Price[]; s: ReturnType<typeof s
       </section>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="flex items-center gap-3 rounded-[22px] glass px-3.5 py-2.5">
+        <div className="flex items-center gap-3 rounded-[1.375rem] glass px-3.5 py-2.5">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-ok-soft text-ok"><Icon name="bolt" size={30} /></span>
           <span className="flex flex-col">
             <span className="font-bold text-dim">Billigaste timmen</span>
@@ -199,7 +199,7 @@ function PriceView({ prices, s, now }: { prices: Price[]; s: ReturnType<typeof s
             <span className="font-bold">{fmtOre(s.cheapest1h?.ore)} i snitt</span>
           </span>
         </div>
-        <div className="flex items-center gap-3 rounded-[22px] glass px-3.5 py-2.5">
+        <div className="flex items-center gap-3 rounded-[1.375rem] glass px-3.5 py-2.5">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-ok-soft text-ok"><Icon name="power" size={30} /></span>
           <span className="flex flex-col">
             <span className="font-bold text-dim">Bästa 3 timmarna · tvätt, disk, laddning</span>
@@ -243,7 +243,7 @@ function FixedPriceView({ prices, history, fixed, now }: { prices: Price[]; hist
         <Card bg="var(--color-glass)" icon="power" label="Rörligt högst i dag" value={fmtOre(maxVar)} sub={vs(maxVar)} />
       </section>
 
-      <section className="rounded-[24px] glass p-3">
+      <section className="rounded-[1.5rem] glass p-3">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-extrabold">Rörligt per timme</h2>
           <span className="font-bold text-dim">Spotpris SE3 inkl. moms, exkl. nät och påslag · grönt = under fast pris</span>
@@ -256,13 +256,13 @@ function FixedPriceView({ prices, history, fixed, now }: { prices: Price[]; hist
       </section>
 
       {periods.length > 0 && (
-        <section className="flex flex-col gap-1.5 rounded-[24px] glass p-3">
+        <section className="flex flex-col gap-1.5 rounded-[1.5rem] glass p-3">
           <h2 className="text-xl font-extrabold">Fast mot rörligt</h2>
           <ul className="flex flex-col gap-1.5">
             {periods.map((x) => {
               const fixedWins = x.diff > 0;
               return (
-                <li key={x.key} className="flex flex-wrap items-baseline justify-between gap-x-3 rounded-[14px] px-3 py-2" style={{ background: tint(fixedWins ? green : red, 0.35) }}>
+                <li key={x.key} className="flex flex-wrap items-baseline justify-between gap-x-3 rounded-[0.875rem] px-3 py-2" style={{ background: tint(fixedWins ? green : red, 0.35) }}>
                   <span className="font-bold">{x.label}</span>
                   <span className="text-dim">rörligt {fmtOre(x.variable)} i snitt</span>
                   <span className="font-extrabold">
@@ -272,7 +272,7 @@ function FixedPriceView({ prices, history, fixed, now }: { prices: Price[]; hist
               );
             })}
           </ul>
-          <p className="text-[14px] text-dim">Tidsviktat snitt, inte efter förbrukning. Rörligt räknat som spotpris + 25 % moms, utan elhandlarens påslag.</p>
+          <p className="text-[0.875rem] text-dim">Tidsviktat snitt, inte efter förbrukning. Rörligt räknat som spotpris + 25 % moms, utan elhandlarens påslag.</p>
         </section>
       )}
     </>
