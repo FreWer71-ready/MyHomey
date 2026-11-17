@@ -30,9 +30,11 @@ const span = (w: { start: number; end: number } | null) => (w ? `${hhmm(w.start)
 
 export default async function EnergyPage({ searchParams }: { searchParams: Promise<{ vy?: string; p?: string; g?: string }> }) {
   const q = await searchParams;
-  const view: View = q.vy === 'forbrukning' ? 'forbrukning' : 'pris';
   const period: PeriodKey = USE_PERIODS.includes(q.p as PeriodKey) ? (q.p as PeriodKey) : '24h';
   const [prices, h] = await Promise.all([loadPrices(), loadHome()]);
+  // Förbrukning visas bara när hemmet har något som mäter eller uppskattar effekt (t.ex. inte i Hue-hushåll).
+  const hasUse = h.powerMeters + h.powerEstimated > 0;
+  const view: View = hasUse && q.vy === 'forbrukning' ? 'forbrukning' : 'pris';
   const now = Date.now();
   const s = summarize(prices, now);
   const kwhChart = q.g === 'kwh';
@@ -43,17 +45,17 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">Energi</h1>
-          <nav aria-label="Vy" className="flex gap-1.5">
+          {hasUse && <nav aria-label="Vy" className="flex gap-1.5">
             <Link href={href('pris')} aria-current={view === 'pris' ? 'page' : undefined} className={chip(view === 'pris')}>
               <Icon name="money" size={20} /> Elpris
             </Link>
             <Link href={href('forbrukning')} aria-current={view === 'forbrukning' ? 'page' : undefined} className={chip(view === 'forbrukning')}>
               <Icon name="bolt" size={20} /> Förbrukning
             </Link>
-          </nav>
+          </nav>}
         </div>
         {/* Den andra vyns nyckeltal, tydligt och klickbart. */}
-        {view === 'pris' ? (
+        {!hasUse ? null : view === 'pris' ? (
           <Link href={href('forbrukning')} className="glass flex items-center gap-3 rounded-[20px] py-2 pr-5 pl-2" style={{ background: tint('#8B5CF6', 0.5) }}>
             <span className="flex size-11 items-center justify-center rounded-[14px] bg-glass-hi"><Icon name="bolt" size={24} /></span>
             <span className="flex flex-col leading-tight">
