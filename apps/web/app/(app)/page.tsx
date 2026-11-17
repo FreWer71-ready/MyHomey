@@ -5,6 +5,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type Trip } from '@/lib/trip';
+import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
@@ -214,6 +215,32 @@ export default async function HomePage() {
     }
   }
 
+  // Nästa resa: kalenderhändelse med adress inom 30 h. TomTom räknar restid med trafik och när man bör åka.
+  // Startpunkt: hemmet, eller dashboardens person (HOUSEHOLD = förnamnet i Life360) om hen är borta.
+  let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean } | null = null;
+  if (hasCal && etaConfigured()) {
+    const cal = await loadCalendarServer().catch(() => null);
+    const t = cal ? nextTrip(cal.days, now) : null;
+    const dest = t ? await geocode(t.location) : null;
+    const dist = dest ? km(PLACE, dest) : 0;
+    if (t && dest && dist > 3 && dist < 400) {
+      const me = locate.members.find((m) => m.first.toLowerCase() === process.env.HOUSEHOLD?.toLowerCase());
+      const pos = me?.lat != null && me.lon != null ? { lat: me.lat, lon: me.lon } : null;
+      const away = !!pos && km(PLACE, pos) > 1;
+      const eta = await routeEta(away ? pos! : PLACE, dest, t.start, now);
+      if (eta) tripEta = { trip: { ...t, km: dist }, eta, fromHere: away };
+    }
+  }
+  const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
+  const tripLine = tripEta && (() => {
+    const { eta, trip: t } = tripEta;
+    const late = t.start != null && eta.arrive > t.start ? Math.round((eta.arrive - t.start) / 60_000) : 0;
+    const extra = `${eta.minutes} min${eta.trafficMin > 0 ? ` (+${eta.trafficMin} trafik)` : ''} · ${Math.round(eta.km)} km${tripEta.fromHere ? ' härifrån' : ''}`;
+    return eta.live
+      ? <p className="text-[16px]"><span className="font-semibold" style={{ color: late ? C.warn : C.ok }}>Åk nu · framme {hhmm(eta.arrive)}{late ? ` (${late} min sen)` : ''}</span> <span className="text-dim">· {extra}</span></p>
+      : <p className="text-[16px]"><span className="font-semibold">Åk senast {when(eta.depart)}</span> <span className="text-dim">· {extra}</span></p>;
+  })();
+
   // ---- Hemmet ----
   const tempRooms = h.rooms.filter((r) => r.temp != null);
   const tempAvg = tempRooms.length ? tempRooms.reduce((a, r) => a + r.temp!, 0) / tempRooms.length : null;
@@ -371,6 +398,15 @@ export default async function HomePage() {
 
         {/* HÄRNÄST: pendling och kalender. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6">
+          {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
+          {tripEta && !(weekend && trip) && (
+            <Card title={`Resa · ${tripEta.trip.place}`} icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
+              <p className="truncate text-[16px] text-dim">
+                <span className="font-semibold text-fg">{tripEta.trip.start != null ? when(tripEta.trip.start) : 'Idag'}</span> · {tripEta.trip.title}
+              </p>
+              {tripLine}
+            </Card>
+          )}
           {weekend && (
             <Card title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
               <p className="truncate text-[16px] text-dim">
@@ -378,6 +414,7 @@ export default async function HomePage() {
                   ? <>{trip.start != null ? <span className="font-semibold text-fg">{dayOf(trip.start) === dayOf(now) ? hhmm(trip.start) : `imorgon ${hhmm(trip.start)}`}</span> : <span className="font-semibold text-fg">Idag</span>} · {trip.title} · {Math.round(trip.km)} km</>
                   : 'Vägar inom 2 mil hemifrån'}
               </p>
+              {trip && tripLine}
               <ul className="flex flex-col gap-2 border-t border-line pt-3">
                 {weekendRoads.length === 0 && (
                   <li className="flex items-center gap-3 text-[18px]">
