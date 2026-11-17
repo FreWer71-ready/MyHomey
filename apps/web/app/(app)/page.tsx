@@ -23,7 +23,7 @@ import { compass } from '@/lib/home';
 import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, slip, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
-import { addDays, dayOf } from '@/lib/calendar-view';
+import { addDays, dayInfo, dayOf } from '@/lib/calendar-view';
 import { zoned } from '@/lib/calendar';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -217,18 +217,32 @@ export default async function HomePage() {
 
   // Nästa resa: kalenderhändelse med adress inom 30 h. TomTom räknar restid med trafik och när man bör åka.
   // Startpunkt: hemmet, eller dashboardens person (HOUSEHOLD = förnamnet i Life360) om hen är borta.
-  let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean } | null = null;
-  if (hasCal && etaConfigured()) {
-    const cal = await loadCalendarServer().catch(() => null);
+  // Utan kalenderhändelse: DEFAULT_DESTINATION (adress eller "lat,lon", t.ex. Ulrikas jobb) på arbetsdagar 05–12,
+  // om hen inte redan är där. Rubrik i DEFAULT_DESTINATION_LABEL (standard "Jobbet").
+  let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean; fallback: boolean } | null = null;
+  if (etaConfigured()) {
+    const me = locate.members.find((m) => m.first.toLowerCase() === process.env.HOUSEHOLD?.toLowerCase());
+    const pos = me?.lat != null && me.lon != null ? { lat: me.lat, lon: me.lon } : null;
+    const away = !!pos && km(PLACE, pos) > 1;
+    const from = away ? pos! : PLACE;
+    const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
     const t = cal ? nextTrip(cal.days, now) : null;
     const dest = t ? await geocode(t.location) : null;
     const dist = dest ? km(PLACE, dest) : 0;
     if (t && dest && dist > 3 && dist < 400) {
-      const me = locate.members.find((m) => m.first.toLowerCase() === process.env.HOUSEHOLD?.toLowerCase());
-      const pos = me?.lat != null && me.lon != null ? { lat: me.lat, lon: me.lon } : null;
-      const away = !!pos && km(PLACE, pos) > 1;
-      const eta = await routeEta(away ? pos! : PLACE, dest, t.start, now);
-      if (eta) tripEta = { trip: { ...t, km: dist }, eta, fromHere: away };
+      const eta = await routeEta(from, dest, t.start, now);
+      if (eta) tripEta = { trip: { ...t, km: dist }, eta, fromHere: away, fallback: false };
+    } else if (process.env.DEFAULT_DESTINATION) {
+      const { hour } = stockholm(now);
+      const workday = !dayInfo(dayOf(now), now).free;
+      const coords = process.env.DEFAULT_DESTINATION.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+      const goal = !(workday && hour >= 5 && hour < 12) ? null
+        : coords ? { lat: Number(coords[1]), lon: Number(coords[2]) } : await geocode(process.env.DEFAULT_DESTINATION);
+      if (goal && (!pos || km(pos, goal) > 1)) {
+        const eta = await routeEta(from, goal, null, now);
+        const label = process.env.DEFAULT_DESTINATION_LABEL || 'Jobbet';
+        if (eta) tripEta = { trip: { title: label, location: process.env.DEFAULT_DESTINATION, place: label, start: null, km: km(PLACE, goal) }, eta, fromHere: away, fallback: true };
+      }
     }
   }
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
@@ -402,7 +416,9 @@ export default async function HomePage() {
           {tripEta && !(weekend && trip) && (
             <Card title={`Resa · ${tripEta.trip.place}`} icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
               <p className="truncate text-[16px] text-dim">
-                <span className="font-semibold text-fg">{tripEta.trip.start != null ? when(tripEta.trip.start) : 'Idag'}</span> · {tripEta.trip.title}
+                {tripEta.fallback
+                  ? <>Ingen kalenderhändelse · {tripEta.trip.location.split(',')[0]}</>
+                  : <><span className="font-semibold text-fg">{tripEta.trip.start != null ? when(tripEta.trip.start) : 'Idag'}</span> · {tripEta.trip.title}</>}
               </p>
               {tripLine}
             </Card>
