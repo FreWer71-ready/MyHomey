@@ -50,7 +50,7 @@ export function TransitLegs({ trip, trains, compact = false }: { trip: TransitTr
           return (
             <li key={i} className="flex min-w-0 items-baseline gap-3">
               <span className={`w-12 shrink-0 ${compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
-              <span className="w-14 shrink-0 rounded-md bg-white/[0.08] px-1.5 text-center text-[0.75rem] font-bold uppercase">{KIND[l.kind]}</span>
+              <span className="w-[4.25rem] shrink-0 whitespace-nowrap rounded-md bg-white/[0.08] px-1.5 text-center text-[0.75rem] font-bold uppercase">{KIND[l.kind]}</span>
               <span className={`min-w-0 grow truncate ${compact ? 'text-[0.875rem]' : 'text-[0.9375rem]'}`}>
                 {l.kind === 'walk'
                   ? <>{l.minutes} min → {l.to}</>
