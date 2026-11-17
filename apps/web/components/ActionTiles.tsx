@@ -14,6 +14,11 @@ const KIND: Record<Action['kind'], string> = { mood: 'Mood', flow: 'Flow', hue: 
 /** Ikon efter namnet, så att knapparna går att skilja åt med en blick. */
 export function iconFor(name: string): IconName {
   const n = name.toLowerCase();
+  if (/bajen|hammarby/.test(n)) return 'bajen';
+  if (/sverige|svensk/.test(n)) return 'sweden';
+  if (/villa/.test(n)) return 'villa';
+  if (/visningsläge|husförsäljning/.test(n)) return 'forsale';
+  if (/override/.test(n)) return 'toggle';
   if (/natt|sov|godnatt|släck/.test(n)) return 'moon';
   if (/morgon|dag|ljust|vakna/.test(n)) return 'sun';
   if (/lämna|borta|går|semester/.test(n)) return 'door';
