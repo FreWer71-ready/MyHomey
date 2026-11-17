@@ -68,7 +68,7 @@ function Row({ icon, label, value, unit, detail, color, href, extra }: {
   const Box = href ? (href.startsWith('http') ? 'a' : Link) : 'div';
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <Box href={href!} {...ext} className="flex h-[var(--row-h,60px)] min-w-0 shrink-0 lg:h-auto lg:max-h-[72px] lg:min-h-[var(--row-h,60px)] lg:flex-1 items-center gap-3 border-b border-line last:border-b-0">
+    <Box href={href!} {...ext} className="flex h-[var(--row-h,60px)] min-w-0 shrink-0 lg:h-[68px] items-center gap-3 border-b border-line last:border-b-0">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
       <span className="flex min-w-0 grow flex-col gap-0.5 leading-tight">
         <span className="truncate text-[17px] font-semibold text-fg">{label}</span>
@@ -388,7 +388,7 @@ export default async function HomePage() {
           </Card>
 
           {quick.length > 0 && (
-            <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0 lg:grow">
+            <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0">
               <div className="flex min-h-0 flex-col overflow-y-auto">
                 <ActionTiles items={quick} layout="compact" />
               </div>
@@ -482,13 +482,13 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow lg:basis-0"><CalendarWidget /></div>}
+          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px]"><CalendarWidget /></div>}
           {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
-          {hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow lg:basis-0"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
+          {hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
-        <Card className="order-6 lg:order-none lg:col-span-4 lg:py-3">
+        <Card className="order-6 lg:order-none lg:col-span-4 lg:self-start lg:py-3 lg:max-h-full">
           <h2 className="sr-only">Hemmet</h2>
           <div className="scroll-x flex min-h-0 flex-col overflow-y-auto lg:grow" style={{ '--row-h': rowCount > 6 ? '51px' : '58px' } as React.CSSProperties}>
             {tempAvg != null && (
