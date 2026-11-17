@@ -69,3 +69,41 @@ export function boxFor(points: LatLon[], padKm: number): [number, number, number
   const f = (x: number) => Math.round(x * 100) / 100;
   return [f(Math.min(...lon) - dLon), f(Math.min(...lat) - dLat), f(Math.max(...lon) + dLon), f(Math.max(...lat) + dLat)];
 }
+
+/** Kommande tidsatta händelser inom `hours` timmar (pågående räknas inte), med eller utan plats, i tidsordning. */
+export function upcoming(days: CalDay[], now = Date.now(), hours = 30): { title: string; location: string | null; start: number }[] {
+  return days.flatMap((d) => d.timed)
+    .filter((e) => e.start != null && e.start >= now - 10 * 60_000 && e.start <= now + hours * 3600_000 && !(e.location && ONLINE.test(e.location)))
+    .sort((a, b) => a.start! - b.start!)
+    .map((e) => ({ title: e.title, location: e.location || null, start: e.start! }));
+}
+
+const NOT_PLACE = new Set(['möte', 'möten', 'träning', 'match', 'matcher', 'lunch', 'middag', 'frukost', 'kalas', 'fest', 'samtal',
+  'jobbet', 'arbete', 'semester', 'ledig', 'påminnelse', 'tandläkare', 'läkare', 'frisör', 'fotboll', 'innebandy', 'hockey',
+  'handboll', 'simning', 'gymnastik', 'konsert', 'resa', 'utvecklingssamtal', 'föräldramöte', 'veckomöte', 'fredagsfika']);
+
+/** Platsnamn att pröva ur en titel: ord (eller ordföljd) med versal, minst 5 bokstäver, utom vanliga ord. */
+export function placeCandidates(title: string): string[] {
+  const words = title.split(/[\s,·:;/()–—-]+/).filter(Boolean);
+  const out: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (!/^[A-ZÅÄÖÉ][\wåäöéü]{4,}$/.test(w) || NOT_PLACE.has(w.toLowerCase())) continue;
+    const next = words[i + 1];
+    if (next && /^[A-ZÅÄÖÉ][\wåäöéü]{2,}$/.test(next) && !NOT_PLACE.has(next.toLowerCase())) out.push(`${w} ${next}`);
+    out.push(w);
+  }
+  return [...new Set(out)].slice(0, 3);
+}
+
+/** Antal ändringar (Levenshtein) mellan två ord, utan hänsyn till versaler. */
+export function editDistance(a: string, b: string): number {
+  const s = a.toLowerCase(), t = b.toLowerCase();
+  let prev = Array.from({ length: t.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= s.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= t.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (s[i - 1] === t[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[t.length];
+}

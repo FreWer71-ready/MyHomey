@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { alongRoute, boxFor, isWeekend, km, nearHome, nextTrip, placeLabel } from './trip.ts';
+import { alongRoute, boxFor, editDistance, isWeekend, km, nearHome, nextTrip, placeCandidates, placeLabel } from './trip.ts';
 import type { RoadEvent } from './commute.ts';
 
 const home = { lat: 59.371, lon: 16.51 }; // Eskilstuna
@@ -41,4 +41,12 @@ test('korridor längs vägen och närområde', () => {
   assert.deepEqual(nearHome([strangnas, sala, torshalla], home).map((e) => e.id), ['t']);
   const [x0, y0, x1, y1] = boxFor([home, mariefred], 8);
   assert.ok(x0 < 16.51 && x1 > 17.22 && y0 < 59.26 && y1 > 59.371);
+});
+
+test('resa: platsnamn ur titel', () => {
+  assert.deepEqual(placeCandidates('Tunahallen W fotboll'), ['Tunahallen']);
+  assert.deepEqual(placeCandidates('Match Nykvarns IF – Tyresö Trollbäcken IBK'), ['Nykvarns', 'Tyresö Trollbäcken', 'Tyresö']);
+  assert.deepEqual(placeCandidates('Möte med Anna'), []);
+  assert.equal(editDistance('Tunavallen', 'Tunahallen'), 1);
+  assert.ok(editDistance('Refreshments by Anna', 'Anna') > 2);
 });

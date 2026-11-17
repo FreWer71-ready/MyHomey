@@ -4,7 +4,8 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
-import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type Trip } from '@/lib/trip';
+import { alongRoute, boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nextTrip, upcoming, type Trip } from '@/lib/trip';
+import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
 import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
@@ -222,16 +223,24 @@ export default async function HomePage() {
   // Startpunkt: hemmet, eller dashboardens person (HOUSEHOLD = förnamnet i Life360) om hen är borta.
   // Utan kalenderhändelse: DEFAULT_DESTINATION (adress eller "lat,lon", t.ex. Ulrikas jobb) på arbetsdagar 05–12,
   // om hen inte redan är där. Rubrik i DEFAULT_DESTINATION_LABEL (standard "Jobbet").
-  let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean; fallback: boolean } | null = null;
+  // Plats: kalenderns platsfält, annars gissad ur titeln (TomTom Search, t.ex. "Tunahallen W fotboll"). Minst 1 km bort.
+  // Marginal: 5 min, och 15 min när bilresan tar minst 30 min.
+  let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean; fallback: boolean; guessed: boolean; margin: number } | null = null;
   if (etaConfigured()) {
     const o = origin(locate.members);
     const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
-    const t = cal ? nextTrip(cal.days, now) : null;
-    const dest = t ? await geocode(t.location) : null;
-    const dist = dest ? km(PLACE, dest) : 0;
-    if (t && dest && dist > 3 && dist < 400) {
-      const eta = await routeEta(o.from, dest, t.start, now);
-      if (eta) tripEta = { trip: { ...t, km: dist }, eta, fromHere: o.away, fallback: false };
+    for (const e of cal ? upcoming(cal.days, now).slice(0, 3) : []) {
+      const guess = e.location ? null : await guessPlace(e.title, PLACE);
+      const dest = e.location ? (await geocode(e.location)) ?? (await guessPlace(e.location, PLACE))?.at ?? null : guess?.at ?? null;
+      const dist = dest ? km(PLACE, dest) : 0;
+      if (!dest || dist <= 1 || dist >= 400) continue;
+      const first = await routeEta(o.from, dest, e.start - 5 * 60_000, now);
+      if (!first) break;
+      const margin = first.minutes >= 30 ? 15 : 5;
+      const eta = margin === 15 ? { ...first, depart: first.depart - 10 * 60_000 } : first;
+      const place = e.location ? placeLabel(e.location) : `${guess!.name}?`;
+      tripEta = { trip: { title: e.title, location: e.location ?? guess!.name, place, start: e.start, km: dist }, eta, fromHere: o.away, fallback: false, guessed: !e.location, margin };
+      break;
     }
   }
   // Restid till standardmålet (DEFAULT_DESTINATION, t.ex. Ulrikas jobb) i vägkortet, som på Trafik.
@@ -251,8 +260,9 @@ export default async function HomePage() {
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
   const tripLine = tripEta && (() => {
     const { eta, trip: t } = tripEta;
-    const late = t.start != null && eta.arrive > t.start ? Math.round((eta.arrive - t.start) / 60_000) : 0;
-    const extra = `${eta.minutes} min${eta.trafficMin > 0 ? ` (+${eta.trafficMin} trafik)` : ''} · ${Math.round(eta.km)} km${tripEta.fromHere ? ' härifrån' : ''}`;
+    const goal = t.start != null ? t.start - tripEta.margin * 60_000 : null;
+    const late = goal != null && eta.arrive > goal ? Math.round((eta.arrive - goal) / 60_000) : 0;
+    const extra = `${eta.minutes} min${eta.trafficMin > 0 ? ` (+${eta.trafficMin} trafik)` : ''} + ${tripEta.margin} min marginal · ${Math.round(eta.km)} km${tripEta.fromHere ? ' härifrån' : ''}`;
     return eta.live
       ? <p className="text-[1rem]"><span className="font-semibold" style={{ color: late ? C.warn : C.ok }}>Åk nu · framme {hhmm(eta.arrive)}{late ? ` (${late} min sen)` : ''}</span> <span className="text-dim">· {extra}</span></p>
       : <p className="text-[1rem]"><span className="font-semibold">Åk senast {when(eta.depart)}</span> <span className="text-dim">· {extra}</span></p>;
