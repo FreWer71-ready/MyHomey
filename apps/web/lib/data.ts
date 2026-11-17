@@ -372,13 +372,14 @@ export async function loadWarnings(weather: WeatherSummary | null): Promise<Warn
 }
 
 /**
- * Pendling (Trafikverket via edge-funktionen trafik). COMMUTE=off stänger av, COMMUTE=road ger bara vägen (t.ex. Ulrikas).
+ * Pendling (Trafikverket via edge-funktionen trafik). COMMUTE=off stänger av, COMMUTE=road ger vägen och alla tåg
+ * från Eskilstuna C, men ingen tågpendling (t.ex. Ulrikas).
  * Null om avstängt
  * eller om källan inte svarar.
  */
 export async function loadCommute(): Promise<Commute | null> {
   if (process.env.COMMUTE === 'off') return null;
-  const roadOnly = (c: Commute): Commute => (process.env.COMMUTE === 'road' ? { ...c, out: [], home: [], all: [], trains: false } : c);
+  const roadOnly = (c: Commute): Commute => (process.env.COMMUTE === 'road' ? { ...c, out: [], home: [], trains: false } : c);
   if (DEMO) {
     const at = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
     return roadOnly(parseCommute({

@@ -134,7 +134,7 @@ export default async function CommutePage() {
               <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active={dir === 'home'} />
             </div>
           )}
-          {c.trains && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
+          {(c.trains || c.all.length > 0) && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
           <Road list={c.road} stations={c.stations ?? []} />
         </>
       )}
