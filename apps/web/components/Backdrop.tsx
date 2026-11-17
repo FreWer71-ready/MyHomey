@@ -29,6 +29,13 @@ export function Backdrop({ condition, sky, el0, lat, lon }: { condition: Conditi
   const [override, setOverride] = useState<{ sky: SkyState; el: number } | null>(null);
   const [layers, setLayers] = useState([{ condition, key: 0 }]);
 
+  // Timprognosen (HourStrip) kan visa en annan timmes väder och ljus: 'wx-preview' med { sky, el }, eller null = nu.
+  useEffect(() => {
+    const on = (e: Event) => setOverride((e as CustomEvent<{ sky: SkyState; el: number } | null>).detail ?? devOverride(sky));
+    window.addEventListener('wx-preview', on);
+    return () => window.removeEventListener('wx-preview', on);
+  }, [sky]);
+
   useEffect(() => {
     setOverride(devOverride(sky));
     const tick = () => setEl(solarElevation(Date.now(), lat, lon));
@@ -50,6 +57,15 @@ export function Backdrop({ condition, sky, el0, lat, lon }: { condition: Conditi
     return () => clearTimeout(t);
   }, [layers]);
 
+  // Snabb övergång (1,2 s) när timprognosen byter timme, annars långsam efter dygnet (60 s).
+  const [fast, setFast] = useState(false);
+  useEffect(() => {
+    setFast(true);
+    const t = setTimeout(() => setFast(false), 2500);
+    return () => clearTimeout(t);
+  }, [override]);
+  const dur = fast ? '1.2s ease-out' : '60s linear';
+
   const e = override?.el ?? el;
   const w = phaseWeights(e);
   // Rätt blandning: första synliga bilden täcker helt, nästa läggs på med sin andel av summan hittills.
@@ -69,13 +85,13 @@ export function Backdrop({ condition, sky, el0, lat, lon }: { condition: Conditi
               <img
                 src={`${BASE_PATH}/bg/${l.condition}-${s.phase}.jpg`}
                 alt="" decoding="async" className="backdrop-img"
-                style={{ opacity: s.opacity, transition: 'opacity 60s linear' }}
+                style={{ opacity: s.opacity, transition: `opacity ${dur}` }}
               />
             </picture>
           ))}
         </div>
       ))}
-      <div className="absolute inset-0" style={{ background: skyTint(e), transition: 'background 60s linear' }} />
+      <div className="absolute inset-0" style={{ background: skyTint(e), transition: `background ${dur}` }} />
       <SkyCanvas sky={override?.sky ?? sky} el={e} />
       <div className="backdrop-veil" />
     </div>
