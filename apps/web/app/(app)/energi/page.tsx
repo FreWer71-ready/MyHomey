@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { HistoryChart } from '@/components/HistoryChart';
 import { Icon, type IconName } from '@/components/Icon';
-import { loadHistory, loadHome, loadPrices } from '@/lib/data';
+import { loadHistory, loadHome, loadPriceHistory, loadPrices } from '@/lib/data';
 import { PERIODS, fmtValue, sumSeries, type PeriodKey } from '@/lib/history';
 import { fmtWatt, tint } from '@/lib/scale';
-import { LEVELS, avg, dayKey, fmtOre, hhmm, hourly, levelOf, summarize, type Price } from '@/lib/prices';
+import { LEVELS, VAT, avg, compareFixed, dayKey, fixedPriceOre, fmtOre, hhmm, hourly, levelOf, summarize, type Price } from '@/lib/prices';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +31,9 @@ const span = (w: { start: number; end: number } | null) => (w ? `${hhmm(w.start)
 export default async function EnergyPage({ searchParams }: { searchParams: Promise<{ vy?: string; p?: string; g?: string }> }) {
   const q = await searchParams;
   const period: PeriodKey = USE_PERIODS.includes(q.p as PeriodKey) ? (q.p as PeriodKey) : '24h';
-  const [prices, h] = await Promise.all([loadPrices(), loadHome()]);
+  // Fast elpris (FIXED_PRICE_ORE): pris-vyn jämför rörligt mot det i stället för mot dygnets snitt.
+  const fixed = fixedPriceOre();
+  const [prices, h, history] = await Promise.all([loadPrices(), loadHome(), fixed ? loadPriceHistory(360).catch(() => []) : Promise.resolve([])]);
   // Förbrukning visas bara när hemmet har något som mäter eller uppskattar effekt (t.ex. inte i Hue-hushåll).
   const hasUse = h.powerMeters + h.powerEstimated > 0;
   const view: View = hasUse && q.vy === 'forbrukning' ? 'forbrukning' : 'pris';
@@ -74,7 +76,7 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
         )}
       </header>
 
-      {view === 'pris' ? <PriceView prices={prices} s={s} now={now} /> : <UseView period={period} powerW={h.powerW} meters={h.powerMeters} estimated={h.powerEstimated} href={href} kwhChart={kwhChart} />}
+      {view === 'pris' ? (fixed ? <FixedPriceView prices={prices} history={history} fixed={fixed} now={now} /> : <PriceView prices={prices} s={s} now={now} />) : <UseView period={period} powerW={h.powerW} meters={h.powerMeters} estimated={h.powerEstimated} href={href} kwhChart={kwhChart} />}
     </>
   );
 }
@@ -206,6 +208,73 @@ function PriceView({ prices, s, now }: { prices: Price[]; s: ReturnType<typeof s
           </span>
         </div>
       </section>
+    </>
+  );
+}
+
+/** Fast pris: rörligt (spot inkl. moms) jämfört med det fasta priset, nu, per timme och över perioder. */
+function FixedPriceView({ prices, history, fixed, now }: { prices: Price[]; history: Price[]; fixed: number; now: number }) {
+  const cur = prices.find((p) => p.start <= now && now < p.end) ?? null;
+  const curVar = cur ? cur.ore * VAT : null;
+  const today = prices.filter((p) => dayKey(p.start) === dayKey(now));
+  const todayVar = today.length ? avg(today) * VAT : null;
+  const maxVar = today.length ? Math.max(...today.map((p) => p.ore)) * VAT : null;
+  const green = '#34C27A', red = '#F0503C';
+  const vs = (v: number | null) => (v == null ? '–' : v < fixed ? `${Math.round(fixed - v)} öre billigare än fast` : `${Math.round(v - fixed)} öre dyrare än fast`);
+
+  // Timstaplar inkl. moms: gröna under det fasta priset, röda över.
+  const hours = hourly(prices.filter((p) => dayKey(p.start) >= dayKey(now)));
+  const series = [
+    { id: 'under', label: 'Under fast pris', color: green, pick: (o: number) => o < fixed },
+    { id: 'over', label: 'Över fast pris', color: red, pick: (o: number) => o >= fixed },
+  ].map(({ pick, ...x }) => ({ ...x, points: hours.filter((hp) => pick(hp.ore * VAT)).map((hp) => [hp.start / 1000, hp.ore * VAT] as [number, number]) }))
+    .filter((x) => x.points.length);
+
+  // Perioder: hela dygn före i dag som dygnssnitt (historiken), i dag och i morgon från dagens hämtning.
+  const merged = [...history, ...prices.filter((p) => dayKey(p.start) >= dayKey(now))];
+  const periods = compareFixed(merged, fixed, now);
+
+  return (
+    <>
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card bg="var(--color-glass)" icon="money" label="Fast pris" value={fmtOre(fixed)} sub="per kWh inkl. moms" />
+        <Card bg={curVar == null ? 'var(--color-glass)' : tint(curVar < fixed ? green : red)} icon="bolt" label="Rörligt nu" value={fmtOre(curVar)} sub={vs(curVar)} />
+        <Card bg={todayVar == null ? 'var(--color-glass)' : tint(todayVar < fixed ? green : red)} icon="chart" label="Rörligt snitt i dag" value={fmtOre(todayVar)} sub={vs(todayVar)} />
+        <Card bg="var(--color-glass)" icon="power" label="Rörligt högst i dag" value={fmtOre(maxVar)} sub={vs(maxVar)} />
+      </section>
+
+      <section className="rounded-[24px] glass p-3">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xl font-extrabold">Rörligt per timme</h2>
+          <span className="font-bold text-dim">Spotpris SE3 inkl. moms, exkl. nät och påslag · grönt = under fast pris</span>
+        </div>
+        {series.length ? (
+          <HistoryChart series={series} unit=" öre" decimals={0} bars longPeriod={false} fit={500} mark={Math.floor(now / 3600_000) * 3600} />
+        ) : (
+          <p className="p-10 text-center text-lg font-bold text-dim">Inga priser hämtade än.</p>
+        )}
+      </section>
+
+      {periods.length > 0 && (
+        <section className="flex flex-col gap-1.5 rounded-[24px] glass p-3">
+          <h2 className="text-xl font-extrabold">Fast mot rörligt</h2>
+          <ul className="flex flex-col gap-1.5">
+            {periods.map((x) => {
+              const fixedWins = x.diff > 0;
+              return (
+                <li key={x.key} className="flex flex-wrap items-baseline justify-between gap-x-3 rounded-[14px] px-3 py-2" style={{ background: tint(fixedWins ? green : red, 0.35) }}>
+                  <span className="font-bold">{x.label}</span>
+                  <span className="text-dim">rörligt {fmtOre(x.variable)} i snitt</span>
+                  <span className="font-extrabold">
+                    {fixedWins ? 'Fast billigare' : 'Rörligt billigare'} · {Math.round(Math.abs(x.diff))} öre ({Math.round(Math.abs(x.pct))} %)
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="text-[14px] text-dim">Tidsviktat snitt, inte efter förbrukning. Rörligt räknat som spotpris + 25 % moms, utan elhandlarens påslag.</p>
+        </section>
+      )}
     </>
   );
 }

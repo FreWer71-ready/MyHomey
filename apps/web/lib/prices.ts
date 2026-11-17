@@ -83,3 +83,35 @@ export function summarize(ps: Price[], now: number): PriceSummary {
 
 export const fmtOre = (ore: number | null | undefined) =>
   ore == null ? '–' : `${Math.round(ore).toLocaleString('sv-SE')} öre`;
+
+/** Moms på spotpriset när rörligt jämförs med ett fast pris (fasta priser anges inkl. moms). */
+export const VAT = 1.25;
+
+/** Fast elpris i öre/kWh inkl. moms (FIXED_PRICE_ORE, t.ex. 230), eller null. Bara på servern. */
+export const fixedPriceOre = () => {
+  const v = Number(process.env.FIXED_PRICE_ORE);
+  return Number.isFinite(v) && v > 0 ? v : null;
+};
+
+export type FixedCompare = { key: string; label: string; variable: number; diff: number; pct: number };
+
+/**
+ * Rörligt (spot inkl. moms, tidsviktat snitt) mot fast pris per period. Bara perioder där minst 90 % av tiden har pris.
+ * diff > 0: rörligt hade varit dyrare (det fasta priset lönar sig).
+ */
+export function compareFixed(ps: Price[], fixed: number, now: number): FixedCompare[] {
+  const DAY = 86400_000;
+  const periods: { key: string; label: string; pick: (p: Price) => boolean; span: number }[] = [
+    { key: 'idag', label: 'I dag', pick: (p) => dayKey(p.start) === dayKey(now), span: DAY },
+    { key: 'imorgon', label: 'I morgon', pick: (p) => dayKey(p.start) === dayKey(now + DAY), span: DAY },
+    { key: '7d', label: 'Senaste 7 dagarna', pick: (p) => p.start >= now - 7 * DAY && p.start < now, span: 7 * DAY },
+    ...[30, 90, 180, 360].map((n) => ({ key: `${n}d`, label: `Senaste ${n} dagarna`, pick: (p: Price) => p.start >= now - n * DAY && p.start < now, span: n * DAY })),
+  ];
+  return periods.flatMap(({ key, label, pick, span }) => {
+    const list = ps.filter(pick);
+    const dur = list.reduce((a, p) => a + (p.end - p.start), 0);
+    if (dur < span * 0.9) return [];
+    const variable = (list.reduce((a, p) => a + p.ore * (p.end - p.start), 0) / dur) * VAT;
+    return [{ key, label, variable, diff: variable - fixed, pct: ((variable - fixed) / fixed) * 100 }];
+  });
+}

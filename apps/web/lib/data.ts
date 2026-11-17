@@ -151,6 +151,21 @@ export async function loadPrices(): Promise<Price[]> {
   return (data ?? []).map((p) => ({ start: Date.parse(p.start_ts), end: Date.parse(p.end_ts), ore: p.sek_per_kwh * 100 }));
 }
 
+/**
+ * Dygnssnitt för de senaste `days` hela dygnen före i dag (databasfunktionen spot_daily), för jämförelse med fast pris.
+ * Varje dygn blir ett "pris" från midnatt med dygnets täckta tid som längd.
+ */
+export async function loadPriceHistory(days = 360): Promise<Price[]> {
+  if (DEMO) return [];
+  const sb = await createClient();
+  const { data, error } = await sb.rpc('spot_daily', { p_area: PRICE_AREA, p_days: days });
+  if (error) throw new Error(`Kunde inte läsa elprishistorik: ${error.message}`);
+  return ((data ?? []) as { day: string; ore: number; covered_s: number }[]).map((d) => {
+    const start = Date.parse(`${d.day}T00:00:00+01:00`);
+    return { start, end: start + d.covered_s * 1000, ore: d.ore };
+  });
+}
+
 /** Plats för väder och bakgrund (WEATHER_LAT/WEATHER_LON i Vercel, annars Eskilstuna). */
 export const PLACE = { lat: Number(process.env.WEATHER_LAT ?? 59.3712), lon: Number(process.env.WEATHER_LON ?? 16.5098) };
 

@@ -1,5 +1,6 @@
 // Hämtar spotpriser för i dag och i morgon (SE3) från elprisetjustnu.se.
 // Anropas av pg_cron varje timme med headern x-cron-secret. Morgondagens priser finns från ca 13.
+// Påfyllning bakåt: body {"backfill_from": 360, "backfill_to": 301} hämtar dagarna 360–301 dagar tillbaka (högst 60 per anrop).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const AREA = "SE3";
@@ -21,8 +22,13 @@ Deno.serve(async (req) => {
   const { data: cron } = await db.rpc("get_secret", { secret_name: "cron_secret" });
   if (!cron || req.headers.get("x-cron-secret") !== cron) return json({ error: "unauthorized" }, 401);
 
+  const body = await req.json().catch(() => ({}));
+  const from = Math.min(400, Math.max(0, Number(body?.backfill_from) || 0));
+  const to = Math.max(1, Number(body?.backfill_to) || 1);
+  const offsets = from >= to ? Array.from({ length: Math.min(60, from - to + 1) }, (_, i) => -(from - i)) : [0, 1];
+
   const result: Record<string, number | string> = {};
-  for (const offset of [0, 1]) {
+  for (const offset of offsets) {
     const day = stockholmDate(new Date(Date.now() + offset * 86400_000));
     const [y, m, d] = day.split("-");
     const res = await fetch(`https://www.elprisetjustnu.se/api/v1/prices/${y}/${m}-${d}_${AREA}.json`);

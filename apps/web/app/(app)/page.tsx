@@ -26,7 +26,7 @@ import { addDays, dayOf } from '@/lib/calendar-view';
 import { zoned } from '@/lib/calendar';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
-import { hhmm, hourly, summarize } from '@/lib/prices';
+import { hhmm, hourly, summarize, VAT, fixedPriceOre } from '@/lib/prices';
 import { fmtTemp } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
@@ -222,6 +222,7 @@ export default async function HomePage() {
   const price = summarize(prices, now);
   const hours = hourly(prices);
   const cheap = price.cheapest3h;
+  const fixed = fixedPriceOre();
   const priceColor = price.level?.key === 'peak' ? C.bad : price.level?.key === 'high' ? C.warn : price.level?.key === 'cheap' ? C.ok : undefined;
   // Effekt: totalen de senaste 12 timmarna och förbrukning/kostnad sedan midnatt.
   const powerLine = powerHist.length ? sumSeries(powerHist, 'Effekt', C.mute).points.filter(([t]) => t * 1000 > now - 6 * 3600_000) : [];
@@ -494,9 +495,17 @@ export default async function HomePage() {
               />
             )}
             {price.now && (
+              fixed ? (
+                // Fast pris: rörligt nu (inkl. moms) jämfört med det fasta.
+                <Row icon="money" label="Elpris rörligt" href="/energi?vy=pris" value={Math.round(price.now.ore * VAT)} unit="öre/kWh"
+                  color={price.now.ore * VAT < fixed ? C.ok : C.bad}
+                  detail={`Fast ${Math.round(fixed)} öre · rörligt ${Math.round(Math.abs(price.now.ore * VAT - fixed))} öre ${price.now.ore * VAT < fixed ? 'billigare' : 'dyrare'}`}
+                />
+              ) : (
               <Row icon="money" label="Elpris" href="/energi?vy=pris" value={Math.round(price.now.ore)} unit="öre/kWh" color={priceColor}
                 detail={cheap ? `Billigast ${hhmm(cheap.start).slice(0, 2)}–${hhmm(cheap.end).slice(0, 2)} · ${Math.round(cheap.ore)} öre` : price.level?.label}
               />
+              )
             )}
             {wine && (
               <Row icon="wine" label="Vinkällaren" href="https://wine.trand.se" value={wine.total} unit="flaskor"
