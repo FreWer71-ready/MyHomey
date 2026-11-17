@@ -502,12 +502,18 @@ export default async function HomePage() {
           {commute && !commute.trains && (
             <Card title="Väg 56/E18 · Eskilstuna–Västerås" icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
               {homeGoal && (
-                <p className="flex flex-wrap items-baseline gap-x-2 border-b border-line pb-3 text-[1rem]">
-                  <span className="font-semibold">{homeGoal.home ? 'Hemma' : 'Framme'}</span>
-                  <span className="text-[1.75rem] leading-none font-extrabold tabular-nums">{hhmm(homeGoal.eta.arrive)}</span>
-                  <span className="text-dim">{homeGoal.eta.minutes} min{homeGoal.home ? '' : ` till ${homeGoal.label.toLowerCase()}`}</span>
-                  {homeGoal.eta.trafficMin > 0 && <span className="ml-auto font-semibold" style={{ color: C.warn }}>+{homeGoal.eta.trafficMin} min trafik</span>}
-                </p>
+                // Samma upplägg som på Trafik: liten rubrik, ETA störst, restid/avstånd/trafik mindre under.
+                <div className="flex flex-col gap-0.5 border-b border-line pb-3">
+                  <span className="text-[0.8125rem] font-bold tracking-wide text-dim uppercase">{homeGoal.home ? 'Hem' : homeGoal.label} · om du åker nu</span>
+                  <span className="flex items-baseline gap-2 leading-none">
+                    <span className="text-[1.0625rem] font-semibold">{homeGoal.home ? 'Hemma' : 'Framme'}</span>
+                    <span className="text-[2.25rem] font-extrabold tabular-nums">{hhmm(homeGoal.eta.arrive)}</span>
+                  </span>
+                  <span className="text-[0.875rem] text-dim">
+                    {homeGoal.eta.minutes} min · {Math.round(homeGoal.eta.km)} km{homeGoal.fromHere ? ' härifrån' : ''}
+                    {homeGoal.eta.trafficMin > 0 && <span className="font-bold" style={{ color: C.warn }}> · +{homeGoal.eta.trafficMin} min trafik</span>}
+                  </span>
+                </div>
               )}
               {roads.length === 0 ? <p className="text-[1.5rem] font-semibold" style={{ color: C.ok }}>Fritt</p> : (
                 <ul className="flex flex-col gap-1.5">
