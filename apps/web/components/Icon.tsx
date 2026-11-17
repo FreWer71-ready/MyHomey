@@ -44,6 +44,12 @@ const FLAT = {
       <circle cx={17} cy={12} r={3.6} fill="#FFFFFF" />
     </>
   ),
+  toggleOff: (
+    <>
+      <rect x={2} y={7} width={20} height={10} rx={5} fill={C.dark} />
+      <circle cx={7} cy={12} r={3.6} fill={C.grey} />
+    </>
+  ),
   home: (
     <>
       <path d="M5 11 12 5l7 6v9H5z" fill={C.cloud} />
