@@ -44,6 +44,35 @@ const FLAT = {
       <circle cx={17} cy={12} r={3.6} fill="#FFFFFF" />
     </>
   ),
+  clean: (
+    <>
+      <path d="M8.6 9.5h6.8l1.1 11.5H7.5z" fill={C.teal} />
+      <rect x={9.6} y={5.2} width={4.8} height={4.3} rx={0.8} fill={C.grey} />
+      <path d="M14.4 5.8h3.3l-1.3 2.2h-2z" fill={C.grey} />
+      <rect x={9.8} y={12.5} width={4.4} height={5} rx={0.8} fill="#FFFFFF" opacity={0.35} />
+      <path className="wx-twinkle" d="M19.6 2.6l.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55z" fill={C.sun} />
+      <path className="wx-twinkle" style={{ animationDelay: '0.8s' }} d="M4.4 11.4l.42 1.08 1.08.42-1.08.42-.42 1.08-.42-1.08-1.08-.42 1.08-.42z" fill={C.cloud} />
+    </>
+  ),
+  evening: (
+    <>
+      <path d="M5 16a7 7 0 0 1 14 0z" fill={C.orange} />
+      <path d="M12 4.5v2.2M5 7.8l1.5 1.5M19 7.8l-1.5 1.5" fill="none" stroke={C.ray} strokeWidth={1.8} strokeLinecap="round" />
+      <path d="M2.5 16h19" fill="none" stroke={C.ray} strokeWidth={1.8} strokeLinecap="round" />
+      <path d="M6 19.2h12M8.5 22h7" fill="none" stroke={C.violet} strokeWidth={1.8} strokeLinecap="round" />
+    </>
+  ),
+  tvsofa: (
+    <>
+      <rect x={6} y={2.5} width={12} height={8} rx={1.3} fill={C.dark} />
+      <rect x={7} y={3.5} width={10} height={6} rx={0.7} fill={C.blue} />
+      <path className="wx-twinkle" d="M11 5l2.6 1.5L11 8z" fill={C.cloud} />
+      <rect x={5} y={13} width={14} height={5} rx={1.8} fill="#A78BFA" />
+      <rect x={3} y={15} width={3.5} height={6} rx={1.5} fill={C.violet} />
+      <rect x={17.5} y={15} width={3.5} height={6} rx={1.5} fill={C.violet} />
+      <rect x={6} y={16.5} width={12} height={4} rx={1.2} fill={C.violet} />
+    </>
+  ),
   toggleOff: (
     <>
       <rect x={2} y={7} width={20} height={10} rx={5} fill={C.dark} />

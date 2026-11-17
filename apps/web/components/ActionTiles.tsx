@@ -21,6 +21,9 @@ export function iconFor(name: string): IconName {
   if (/villa/.test(n)) return 'villa';
   if (/visningsläge|husförsäljning/.test(n)) return 'forsale';
   if (/override/.test(n)) return /\b(off|av)\b/.test(n) ? 'toggleOff' : 'toggle';
+  if (/städ/.test(n)) return 'clean';
+  if (/chill/.test(n)) return 'evening';
+  if (/\bkväll\b/.test(n)) return 'tvsofa';
   if (/natt|sov|godnatt|släck/.test(n)) return 'moon';
   if (/mys/.test(n)) return 'sofa';
   if (/morgon|dag|ljust|vakna/.test(n)) return 'sun';
