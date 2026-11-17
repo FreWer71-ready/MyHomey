@@ -1,0 +1,129 @@
+{
+ "Trip": [
+  {
+   "LegList": {
+    "Leg": [
+     {
+      "type": "WALK",
+      "name": "Promenad",
+      "Origin": {
+       "name": "59.375900, 16.509699",
+       "date": "2026-11-18",
+       "time": "06:45:00"
+      },
+      "Destination": {
+       "name": "Drottninggatan (Eskilstuna kn)",
+       "date": "2026-11-18",
+       "time": "06:55:00"
+      },
+      "Product": [
+       {
+        "name": "Promenad"
+       }
+      ]
+     },
+     {
+      "type": "JNY",
+      "name": "Länstrafik buss 3",
+      "direction": "Hällbybrunn Blåklocksvägen (Eskilstuna kn)",
+      "Origin": {
+       "name": "Drottninggatan (Eskilstuna kn)",
+       "date": "2026-11-18",
+       "time": "06:55:00"
+      },
+      "Destination": {
+       "name": "Eskilstuna Centralstation",
+       "date": "2026-11-18",
+       "time": "06:57:00"
+      },
+      "Product": [
+       {
+        "name": "Länstrafik buss 3",
+        "num": "3",
+        "catOutL": "Länstrafik buss"
+       },
+       {
+        "name": "Länstrafik buss 3",
+        "num": "3",
+        "catOutL": "Länstrafik buss"
+       }
+      ]
+     },
+     {
+      "type": "JNY",
+      "name": "Regional tåg 914",
+      "direction": "Uppsala Centralstation",
+      "Origin": {
+       "name": "Eskilstuna Centralstation",
+       "date": "2026-11-18",
+       "time": "07:04:00"
+      },
+      "Destination": {
+       "name": "Flemingsberg station (Huddinge kn)",
+       "date": "2026-11-18",
+       "time": "07:54:00"
+      },
+      "Product": [
+       {
+        "name": "Regional tåg 914",
+        "num": "914",
+        "catOutL": "Regional tåg"
+       },
+       {
+        "name": "Regional tåg 914",
+        "num": "914",
+        "catOutL": "Regional tåg"
+       }
+      ]
+     },
+     {
+      "type": "JNY",
+      "name": "Länstrafik tåg 41",
+      "direction": "Märsta station (Sigtuna kn)",
+      "Origin": {
+       "name": "Flemingsberg station (Huddinge kn)",
+       "date": "2026-11-18",
+       "time": "08:09:00"
+      },
+      "Destination": {
+       "name": "Årstaberg station (Stockholm kn)",
+       "date": "2026-11-18",
+       "time": "08:22:00"
+      },
+      "Product": [
+       {
+        "name": "Länstrafik tåg 41",
+        "num": "41",
+        "catOutL": "Länstrafik tåg"
+       },
+       {
+        "name": "Länstrafik tåg 41",
+        "num": "41",
+        "catOutL": "Länstrafik tåg"
+       }
+      ]
+     },
+     {
+      "type": "WALK",
+      "name": "Promenad",
+      "Origin": {
+       "name": "Årstaberg station (Stockholm kn)",
+       "date": "2026-11-18",
+       "time": "08:22:00"
+      },
+      "Destination": {
+       "name": "Fredsborgsgatan 24, Liljeholmen",
+       "date": "2026-11-18",
+       "time": "08:35:00"
+      },
+      "Product": [
+       {
+        "name": "Promenad"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
