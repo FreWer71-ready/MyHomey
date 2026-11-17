@@ -49,12 +49,12 @@ function RoadCharts({ rows, long }: { rows: RoadHistRow[]; long: boolean }) {
       {charts.filter((c) => c.series.some((x) => x.points.length)).map((c) => (
         <section key={c.title} className="rounded-[1.5rem] glass p-3">
           <h2 className="mb-1 flex items-baseline justify-between gap-2 px-1 text-xl font-extrabold">
-            {c.title}{c.extra && <span className="text-[0.8125rem] font-bold text-dim">{c.extra}</span>}
+            {c.title}{c.extra && <span className="text-[0.875rem] font-bold text-dim">{c.extra}</span>}
           </h2>
           <HistoryChart series={c.series} unit={c.unit} decimals={c.decimals} bars={c.bars} longPeriod={long} fit={760} />
         </section>
       ))}
-      <p className="px-1 text-[0.8125rem] font-bold text-dim">Källa: Trafikverket (VViS). Vägväder sparas ca 7 dygn bakåt.</p>
+      <p className="px-1 text-[0.875rem] font-bold text-dim">Källa: Trafikverket (VViS). Vägväder sparas ca 7 dygn bakåt.</p>
     </>
   );
 }
@@ -160,7 +160,7 @@ export default async function HistoryPage({
                 ['Senast tillagd', [wine.latest?.producer, wine.latest?.year].filter(Boolean).join(' ') || '–'],
               ].map(([k, v]) => (
                 <div key={k} className="flex flex-col rounded-[1.25rem] glass px-3 py-2">
-                  <span className="text-[0.8125rem] font-bold text-dim">{k}</span>
+                  <span className="text-[0.875rem] font-bold text-dim">{k}</span>
                   <span className="truncate text-xl leading-tight font-extrabold">{v}</span>
                 </div>
               ))}
@@ -207,8 +207,8 @@ export default async function HistoryPage({
                 href={active ? href(view, period) : href(view, period, s.id)}
                 aria-pressed={active}
                 className={`flex flex-col rounded-[1.25rem] glass px-3 py-2 ${
-                  active ? 'shadow-[inset_0_0_0_3px_var(--color-ink)]' : sel ? 'text-dim [&_*]:!text-dim' : ''
-                }`}
+ active ? 'shadow-[inset_0_0_0_3px_var(--color-ink)]' : sel ? 'text-dim [&_*]:!text-dim' : ''
+ }`}
               >
                 <span className="flex items-center gap-2 font-extrabold">
                   <span className="size-3.5 shrink-0 rounded-full" style={{ background: cfg.delta ? '#8B5CF6' : s.color }} />
@@ -217,7 +217,7 @@ export default async function HistoryPage({
                 <span className="text-xl leading-tight font-extrabold tracking-tight">
                   {fmtValue(metric, cfg.delta ? s.total : s.latest)}
                 </span>
-                <span className="truncate text-[0.8125rem] font-bold text-dim">
+                <span className="truncate text-[0.875rem] font-bold text-dim">
                   {cfg.delta
                     ? `förbrukat ${PERIODS[period].label}`
                     : `min ${fmtValue(metric, s.min)} · max ${fmtValue(metric, s.max)}`}

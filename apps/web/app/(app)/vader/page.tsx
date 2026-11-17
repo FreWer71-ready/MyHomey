@@ -29,7 +29,7 @@ export default async function WeatherPage() {
               <span className="text-[0.9375rem] text-dim tabular-nums">{hourLabel(x.time)}</span>
               <WeatherIcon kind={weatherKind(x.symbol)} size={34} label={symbolInfo(x.symbol).label} />
               <span className="text-[1.0625rem] font-semibold tabular-nums">{Number.isFinite(x.temp) ? `${Math.round(x.temp)}°` : '–'}</span>
-              {x.precip >= 0.1 && <span className="text-[0.8125rem] text-[#4FA3FF] tabular-nums">{num(x.precip)} mm</span>}
+              {x.precip >= 0.1 && <span className="text-[0.875rem] text-[#4FA3FF] tabular-nums">{num(x.precip)} mm</span>}
             </li>
           ))}
         </ol>
@@ -45,15 +45,15 @@ export default async function WeatherPage() {
               return (
                 <Fragment key={d.date}>
                 {prev && prev.week !== info.week && (
-                  <li aria-hidden="true" className="flex items-center gap-2 pt-2 pb-1 text-[0.8125rem] font-bold tracking-wide text-dim uppercase">
+                  <li aria-hidden="true" className="flex items-center gap-2 pt-2 pb-1 text-[0.875rem] font-bold text-dim">
                     <span>v. {info.week}</span><span className="h-px grow bg-line" />
                   </li>
                 )}
                 <li className={`flex h-14 items-center gap-3 text-[1.0625rem] ${info.free ? '-mx-2.5 rounded-[0.875rem] px-2.5' : ''}`} style={info.free ? { background: FREE_BG } : undefined}>
                   <span className="flex w-32 shrink-0 flex-col leading-tight big:w-auto big:min-w-0 big:shrink">
-                    <span className="text-[0.9375rem] font-bold tracking-wide uppercase" style={info.free ? { color: FREE_FG } : undefined}>{info.main}</span>
+                    <span className="text-[0.9375rem] font-bold" style={info.free ? { color: FREE_FG } : undefined}>{info.main}</span>
                     {info.holiday
-                      ? <span className="w-fit rounded-full px-2 text-[0.75rem] font-bold uppercase" style={{ color: FREE_FG, background: FREE_CHIP }}>{info.holiday}</span>
+                      ? <span className="w-fit rounded-full px-2 text-[0.875rem] font-bold" style={{ color: FREE_FG, background: FREE_CHIP }}>{info.holiday}</span>
                       : <span className="text-[0.875rem] text-dim">{info.sub}</span>}
                   </span>
                   <WeatherIcon kind={weatherKind(d.symbol)} size={34} label={symbolInfo(d.symbol).label} />

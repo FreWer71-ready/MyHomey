@@ -14,7 +14,7 @@ export function NowPlayingCard({ p }: { p: NowPlaying }) {
         <Icon name={tv ? 'tv' : 'music'} size={24} />
       </span>
       <span className="relative flex min-w-0 grow flex-col">
-        <span className="truncate text-[0.8125rem] font-bold text-white/85">{tv ? 'På TV:n' : 'Spelas nu'} · {p.device}</span>
+        <span className="truncate text-[0.875rem] font-bold text-white/85">{tv ? 'På TV:n' : 'Spelas nu'} · {p.device}</span>
         <span className="truncate text-[1.125rem] leading-tight font-extrabold text-white">
           {p.title}{p.subtitle && <span className="font-bold text-white/80"> · {p.subtitle}</span>}
         </span>

@@ -64,12 +64,12 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
               <button
                 type="button" onClick={() => run(a)} disabled={state?.status === 'busy'}
                 className={`relative flex w-full min-w-0 text-left ${layout === 'compact' ? 'gap-2' : 'gap-3'} transition-colors ${
-                  layout === 'grid'
-                    ? 'h-[6.75rem] flex-col items-start justify-center overflow-hidden rounded-[1rem] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[4.75rem] sm:flex-row sm:items-center sm:px-4'
-                    : layout === 'compact'
-                      ? 'h-full min-h-12 items-center rounded-[0.875rem] border border-line bg-white/[0.04] px-2.5 py-2 hover:bg-white/[0.08]'
-                      : 'h-14 items-center'
-                } ${st === 'busy' ? 'animate-pulse' : ''}`}
+ layout === 'grid'
+ ? 'h-[6.75rem] flex-col items-start justify-center overflow-hidden rounded-[1rem] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[4.75rem] sm:flex-row sm:items-center sm:px-4'
+ : layout === 'compact'
+ ? 'h-full min-h-12 items-center rounded-[0.875rem] border border-line bg-white/[0.04] px-2.5 py-2 hover:bg-white/[0.08]'
+ : 'h-14 items-center'
+ } ${st === 'busy' ? 'animate-pulse' : ''}`}
               >
                 <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' ? 'h-5 min-w-5 text-dim' : 'size-10 rounded-[0.75rem] bg-white/[0.06]'}`}>
                   {a.kind === 'hue' && a.colors?.length ? (

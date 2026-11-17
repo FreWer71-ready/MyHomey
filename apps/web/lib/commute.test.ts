@@ -85,6 +85,8 @@ test('pendling: liknande vägärenden slås ihop', () => {
 test('pendling: korta platser och fraser', () => {
   assert.equal(shortPlace('Väg 56 från Stora Ekeby till Kvicksund S båda riktningarna i Västmanlands län (U)'), 'Stora Ekeby – Kvicksund S');
   assert.equal(shortPlace('Väg 56 vid Kvicksundsbron, i båda riktningar.'), 'Kvicksundsbron');
+  assert.equal(shortPlace('av-/påfart till Väg 56 i Västerås kommun'), 'Av-/påfart väg 56, Västerås');
+  assert.equal(shortPlace('av-/påfart från E18 till Väg 56 i Västerås kommun'), 'Av-/påfart E18 till väg 56, Västerås');
   assert.deepEqual(phrases(['Drift/underhåll\nEtt avstängt körfält. Risk för köbildning', 'Risk för köbildning']), ['Drift/underhåll', 'Ett avstängt körfält', 'Risk för köbildning']);
 });
 

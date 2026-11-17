@@ -81,7 +81,7 @@ export function LightControl({ light }: { light: Light }) {
         </span>
         <span className="flex w-14 shrink-0 flex-col items-end leading-none">
           <span className="text-[1.5rem] font-bold tabular-nums">{on ? (light.can.dim ? dim : 'På') : 'Av'}</span>
-          {on && light.can.dim && <span className="mt-1 text-[0.8125rem] text-dim">%</span>}
+          {on && light.can.dim && <span className="mt-1 text-[0.875rem] text-dim">%</span>}
         </span>
         {canColor && (
           <button

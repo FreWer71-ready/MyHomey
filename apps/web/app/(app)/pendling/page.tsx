@@ -4,6 +4,7 @@ import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
 import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitTripCard } from '@/components/TransitTrip';
+import { RoadImpact } from '@/components/RoadImpact';
 import { km } from '@/lib/trip';
 import { etaConfigured } from '@/lib/route';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
@@ -48,12 +49,12 @@ function Stations({ list }: { list: RoadStation[] }) {
             <details className="group">
               {/* Tryck på temperaturen: Trafikverkets väglagskamera vid stationen. */}
               <summary className="flex cursor-pointer list-none flex-col px-3 py-2">
-                <span className="truncate text-[0.8125rem] font-bold text-dim">{s.name}</span>
+                <span className="truncate text-[0.875rem] font-bold text-dim">{s.name}</span>
                 <span className="flex items-center gap-1.5 text-[1.375rem] leading-tight font-extrabold">
                   Väg {deg(s.road)}
                   {s.id && <Icon name="camera" size={16} className="opacity-60 group-open:opacity-100" />}
                 </span>
-                <span className="text-[0.8125rem] font-bold opacity-85">
+                <span className="text-[0.875rem] font-bold opacity-85">
                   Luft {deg(s.air)}{s.snow ? ' · snö' : s.rain ? ' · regn' : ''}{tone === 'bad' ? ' · halt' : tone === 'warn' ? ' · risk för halka' : ''}
                 </span>
               </summary>
@@ -61,7 +62,7 @@ function Stations({ list }: { list: RoadStation[] }) {
                 <a href={camUrl(s.id, true)} target="_blank" rel="noopener noreferrer" className="block px-2 pb-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={camUrl(s.id)} alt={`Väglagskamera ${s.name}`} loading="lazy" className="w-full rounded-xl bg-glass-2" />
-                  <span className="mt-1 block text-[0.75rem] font-bold text-dim">Trafikverket · tryck för större bild</span>
+                  <span className="mt-1 block text-[0.875rem] font-bold text-dim">Trafikverket · tryck för större bild</span>
                 </a>
               )}
             </details>
@@ -92,11 +93,12 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
             <li key={g.id} className="flex flex-col gap-1 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[g.tone], 0.4) }} title={g.severityText ?? undefined}>
               {/* Rad 1: väg, typ, antal – period till höger. */}
               <span className="flex items-center gap-2">
-                <span className="shrink-0 rounded-md bg-black/25 px-1.5 text-[0.8125rem] font-extrabold">{g.road}</span>
+                <span className="shrink-0 rounded-md bg-black/25 px-1.5 text-[0.875rem] font-extrabold">{g.road}</span>
                 <span className="min-w-0 grow truncate text-[1.0625rem] font-extrabold">
                   {g.type}{g.count > 1 && <span className="opacity-80"> ×{g.count}</span>}
                 </span>
-                <span className="shrink-0 text-[0.8125rem] font-bold opacity-80">
+                <RoadImpact tone={g.tone} plain className="rounded-md bg-black/35 px-1.5 text-[0.875rem]" />
+                <span className="shrink-0 text-[0.875rem] font-bold opacity-80">
                   {g.start && g.start > Date.now() ? `från ${fmtDate(g.start)}` : g.end ? `t.o.m. ${fmtDate(g.end)}` : ''}
                 </span>
               </span>
@@ -106,7 +108,7 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
               )}
               {facts.length > 0 && (
                 <span className="flex flex-wrap gap-1">
-                  {facts.map((f) => <span key={f} className="rounded-full bg-black/20 px-2 py-0.5 text-[0.75rem] font-bold">{f}</span>)}
+                  {facts.map((f) => <span key={f} className="rounded-full bg-black/20 px-2 py-0.5 text-[0.875rem] font-bold">{f}</span>)}
                 </span>
               )}
             </li>
@@ -138,21 +140,26 @@ export default async function CommutePage() {
     <>
       <h1 className="flex items-baseline justify-between gap-3 text-2xl font-extrabold">
         {c && !c.trains ? 'Trafik' : 'Pendling'}
-        {c && <span className="text-[0.8125rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
+        {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
       </h1>
       {goal && (
         // ETA först och störst; restid, avstånd och trafik mindre under (ljusgrå #C5CDD6 klarar 4,5:1 även mot ljus bild).
         <section aria-label={goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-4 rounded-2xl glass px-4 py-3">
           <Icon name="road" size={32} />
-          <span className="flex min-w-0 grow flex-col gap-0.5">
-            <span className="text-[0.8125rem] font-bold tracking-wide text-[#C5CDD6] uppercase">
-              {goal.home ? 'Hem' : goal.label} · om du åker nu
+          {/* Skärmläsare får en mening; den visuella uppdelningen göms för dem. */}
+          <span className="sr-only">
+            {goal.home ? 'Hem' : `Till ${goal.label.toLowerCase()}`}: {goal.home ? 'hemma' : 'framme'} klockan {hhmm(goal.eta.arrive)} om du åker nu,
+            {' '}{goal.eta.minutes} {goal.eta.minutes === 1 ? 'minut' : 'minuter'}, {Math.round(goal.eta.km)} kilometer{goal.eta.trafficMin > 0 ? `, varav ${goal.eta.trafficMin} ${goal.eta.trafficMin === 1 ? 'minut' : 'minuter'} trafik` : ''}.
+          </span>
+          <span aria-hidden="true" className="flex min-w-0 grow flex-col gap-0.5">
+            <span className="text-[1rem] font-semibold text-[#C5CDD6]">
+              {goal.home ? 'Hem' : `Till ${goal.label.toLowerCase()}`} · om du åker nu
             </span>
             <span className="flex items-baseline gap-2 leading-none">
               <span className="text-[1.125rem] font-semibold">{goal.home ? 'Hemma' : 'Framme'}</span>
               <span className="text-[2.5rem] font-extrabold tabular-nums">{hhmm(goal.eta.arrive)}</span>
             </span>
-            <span className="text-[0.875rem] text-[#C5CDD6]">
+            <span className="text-[1rem] text-[#C5CDD6]">
               {goal.eta.minutes} min · {Math.round(goal.eta.km)} km{goal.fromHere ? ' härifrån' : ''}
               {goal.eta.trafficMin > 0 && <span className="font-bold" style={{ color: TONE_COLOR.warn }}> · +{goal.eta.trafficMin} min trafik</span>}
             </span>

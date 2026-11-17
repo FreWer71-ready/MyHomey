@@ -72,13 +72,13 @@ export default async function AlarmPage() {
               <li key={v.id} className="flex flex-col gap-0.5 rounded-2xl bg-danger-strong px-3 py-2 text-white">
                 <span className="font-extrabold">VMA: {v.headline}</span>
                 {v.text && <span className="text-sm font-bold">{v.text}</span>}
-                <span className="text-[0.8125rem] font-bold opacity-90">{v.area}{v.url && <> · <a href={v.url} target="_blank" rel="noopener noreferrer" className="underline">Läs mer</a></>}</span>
+                <span className="text-[0.875rem] font-bold opacity-90">{v.area}{v.url && <> · <a href={v.url} target="_blank" rel="noopener noreferrer" className="underline">Läs mer</a></>}</span>
               </li>
             ))}
             {wx.smhi.map((w) => (
               <li key={w.id} className={`flex flex-col gap-0.5 rounded-2xl px-3 py-2 ${w.level === 'red' ? 'bg-danger-strong text-white' : w.level === 'orange' ? 'bg-[#FF8A3D] text-[#1A1205]' : 'bg-[#E8B400] text-[#1A1205]'}`}>
                 <span className="font-extrabold">{w.level === 'red' ? 'Röd' : w.level === 'orange' ? 'Orange' : 'Gul'} varning: {w.event}</span>
-                <span className="text-[0.8125rem] font-bold">{w.area}{w.start ? ` · ${when(w.start)}` : ''}{w.end ? `–${when(w.end)}` : ''}</span>
+                <span className="text-[0.875rem] font-bold">{w.area}{w.start ? ` · ${when(w.start)}` : ''}{w.end ? `–${when(w.end)}` : ''}</span>
                 {w.text && <span className="text-sm font-bold">{w.text}</span>}
               </li>
             ))}
@@ -110,7 +110,7 @@ export default async function AlarmPage() {
             ))}
           </ul>
         ) : <Empty text="Inga händelser senaste dygnet" />}
-        <p className="mt-2 px-1 text-[0.8125rem] font-bold text-dim">Källa: Polisen (polisen.se), uppdateras var 10:e minut.</p>
+        <p className="mt-2 px-1 text-[0.875rem] font-bold text-dim">Källa: Polisen (polisen.se), uppdateras var 10:e minut.</p>
       </Section>
 
       {/* Kommunens driftinformation: bara ditt område syns, övriga Eskilstuna ligger hopfällt. */}
@@ -141,7 +141,7 @@ export default async function AlarmPage() {
                 <ul className="flex flex-col gap-2 px-2 pb-2">{rest.map(item)}</ul>
               </details>
             )}
-            <p className="mt-2 px-1 text-[0.8125rem] font-bold text-dim">Källa: Eskilstuna kommun (eskilstuna.se/driftinformation), uppdateras var 30:e minut.</p>
+            <p className="mt-2 px-1 text-[0.875rem] font-bold text-dim">Källa: Eskilstuna kommun (eskilstuna.se/driftinformation), uppdateras var 30:e minut.</p>
           </Section>
         );
       })()}

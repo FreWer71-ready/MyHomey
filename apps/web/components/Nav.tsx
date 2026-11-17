@@ -61,8 +61,8 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
             aria-current={active(it.href) ? 'page' : undefined}
             title={it.label}
             className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[0.875rem] py-2.5 text-[0.75rem] md:flex-none ${
-              active(it.href) ? 'bg-card font-bold text-fg' : 'text-dim'
-            }`}
+ active(it.href) ? 'bg-card font-bold text-fg' : 'text-dim'
+ }`}
           >
             {it.href === '/larm' && fresh ? (
               <span className="relative">
