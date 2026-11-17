@@ -122,6 +122,10 @@ test('pendling: halka och medel nära hemmet', () => {
   assert.equal(slip(a), 'bad');
   assert.equal(slip(b), 'warn');
   assert.equal(slip(c), null);
+  // Tidig varning: högst +2° och fuktigt.
+  assert.equal(slip(parseStation(st('1', 'Regn', 3, 1.5, -1, true), now)!), 'warn');
+  assert.equal(slip(parseStation(st('2', 'Dagg', 3, 1.8, 1.5), now)!), 'warn');
+  assert.equal(slip(parseStation(st('3', 'Varm', 4, 2.5, -1, true), now)!), null);
   const m = nearAverage([a, b, c])!;
   assert.equal(m.air, 1.5);
   assert.equal(m.road, -0.1);

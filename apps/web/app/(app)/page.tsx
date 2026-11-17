@@ -19,7 +19,7 @@ import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
-import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, trainTone } from '@/lib/commute';
+import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, slip, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
 import { addDays, dayOf } from '@/lib/calendar-view';
@@ -176,8 +176,12 @@ export default async function HomePage() {
   const outSource = tvs?.air != null ? `Trafikverket · ${tvs.name}` : h.outdoorTemp != null ? h.outdoorSource : weather?.source ?? null;
   // Vad vädret betyder för hemmet (en rad, bara när det är relevant).
   const nightMin = weather ? Math.min(...weather.hours.slice(0, 12).map((x) => x.temp).filter(Number.isFinite)) : Infinity;
+  // Halka hemma: Trafikverkets stationer nära hemmet (med fukt/daggpunkt), annars Homey-stationens vägtemperatur.
+  const homeSlip = tvs ? slip(tvs) : station?.road != null ? slip({ name: '', air: null, road: station.road, wind: null, gust: null, deg: null, at: 0 }) : null;
+  const slipColor = homeSlip === 'bad' ? C.bad : homeSlip === 'warn' ? C.warn : undefined;
   const hint: { icon: IconName; text: string } | null =
-    station?.road != null && station.road <= 0.5 ? { icon: 'road', text: 'Halt ute – skrapa bilen' }
+    homeSlip === 'bad' ? { icon: 'road', text: 'Halt ute – skrapa bilen' }
+    : homeSlip === 'warn' ? { icon: 'road', text: `Risk för halka – vägbanan ${fmtTemp(station!.road!)}` }
     : station?.gust != null && station.gust >= 12 ? { icon: 'wind', text: `Byiga vindar ${num(station.gust, 0)} m/s – säkra utemöblerna` }
     : outTemp != null && outTemp > 0 && nightMin <= 0 ? { icon: 'snow', text: `Frost inatt (${num(nightMin, 0)}°)` }
     : null;
@@ -232,6 +236,11 @@ export default async function HomePage() {
   // Alla varningar i samma format; nivån (gul/orange/röd) styr bara färgen.
   const alerts: Alert[] = [
     ...weatherAlerts(wx),
+    // Halka hemma, om pendlingens halkvarning inte redan visas.
+    ...(homeSlip && !trafficAlerts.some((a) => a.id.startsWith('halka-')) ? [{
+      id: `halka-hem-${homeSlip}`, level: homeSlip === 'bad' ? 'red' : 'orange', icon: 'road', href: '/pendling',
+      text: homeSlip === 'bad' ? `Halt väglag hemma · vägbanan ${fmtTemp(station!.road!)}` : `Risk för halka hemma · vägbanan ${fmtTemp(station!.road!)}`,
+    } as Alert] : []),
     ...trafficAlerts.filter((a) => !((weekend || sunday) && a.kind === 'train')).map((a): Alert => ({
       id: a.id, icon: a.kind === 'train' ? 'train' : 'road', text: a.label, href: '/pendling',
       level: a.tone === 'bad' ? 'red' : a.kind === 'road' ? 'orange' : 'yellow',
@@ -328,7 +337,7 @@ export default async function HomePage() {
               {station?.wind != null && (
                 <span className="flex shrink-0 flex-col items-end text-[15px] text-dim">
                   <span className="flex items-center gap-1"><Icon name="wind" size={16} />{num(station.wind, 0)}{station.gust != null && station.gust > station.wind ? `–${num(station.gust, 0)}` : ''} m/s</span>
-                  {station.road != null && <span style={{ color: station.road <= 0.5 ? C.bad : undefined }}>Väg {fmtTemp(station.road)}</span>}
+                  {station.road != null && <span className={homeSlip ? 'font-semibold' : undefined} style={{ color: slipColor }}>{homeSlip ? '⚠ ' : ''}Väg {fmtTemp(station.road)}</span>}
                 </span>
               )}
             </div>
