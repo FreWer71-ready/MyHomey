@@ -43,7 +43,7 @@ const COMFORT = { low: 18, high: 26 };
 const COMMUTE_H = 'lg:max-h-[calc(50%-12px)]';
 
 /** Kort: helt kort (#131A22), ingen gradient, samma inre marginal överallt. */
-function Card({ title, icon, href, className = '', children }: { title?: string; icon?: IconName; href?: string; className?: string; children: React.ReactNode }) {
+function Card({ title, icon, href, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; className?: string; children: React.ReactNode }) {
   const Box = href ? Link : 'section';
   return (
     <Box href={href!} className={`flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[20px] bg-card p-5 lg:p-6 ${className}`}>
@@ -439,7 +439,7 @@ export default async function HomePage() {
             </Card>
           )}
           {commute?.trains && !weekend && (
-            <Card title={`Pendling · ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
+            <Card title={<>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[17px] font-bold text-fg">{dir === 'out' ? 'Eskilstuna → Stockholm' : 'Stockholm → Eskilstuna'}</span></>} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[18px] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               <HomeTrains trains={trains} serverNow={now} />
