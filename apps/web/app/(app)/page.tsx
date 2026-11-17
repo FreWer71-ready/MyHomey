@@ -503,9 +503,9 @@ export default async function HomePage() {
             <Card title="Väg 56/E18 · Eskilstuna–Västerås" icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
               {homeGoal && (
                 <p className="flex flex-wrap items-baseline gap-x-2 border-b border-line pb-3 text-[1rem]">
-                  <span className="font-semibold">{homeGoal.home ? 'Tid hem:' : `Tid till ${homeGoal.label.toLowerCase()}:`}</span>
-                  <span className="text-[1.375rem] font-extrabold tabular-nums">{homeGoal.eta.minutes} min</span>
-                  <span className="text-dim">{homeGoal.home ? 'hemma' : 'framme'} {hhmm(homeGoal.eta.arrive)}</span>
+                  <span className="font-semibold">{homeGoal.home ? 'Hemma' : 'Framme'}</span>
+                  <span className="text-[1.75rem] leading-none font-extrabold tabular-nums">{hhmm(homeGoal.eta.arrive)}</span>
+                  <span className="text-dim">{homeGoal.eta.minutes} min{homeGoal.home ? '' : ` till ${homeGoal.label.toLowerCase()}`}</span>
                   {homeGoal.eta.trafficMin > 0 && <span className="ml-auto font-semibold" style={{ color: C.warn }}>+{homeGoal.eta.trafficMin} min trafik</span>}
                 </p>
               )}
