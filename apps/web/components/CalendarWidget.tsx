@@ -1,7 +1,7 @@
 'use client';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
-import { CAL_COLORS, FREE_BG, FREE_CHIP, FREE_FG, dayInfo, isOngoing, isOwnTeam, shortTitle, TZ, type Calendar, type CalEvent, type DayInfo } from '@/lib/calendar-view';
+import { CAL_COLORS, FREE_BG, FREE_CHIP, FREE_FG, dayInfo, dayOf, isOngoing, isOwnTeam, shortTitle, TZ, type Calendar, type CalEvent, type DayInfo } from '@/lib/calendar-view';
 import { Icon } from './Icon';
 
 const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);
@@ -40,19 +40,36 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
   const monthDays = (cal?.days ?? []).filter((d) => d.allDay.length + d.timed.length > 0);
   const week = useRef<HTMLDivElement>(null);
 
+  // Infällt kort: bara rubriken och en sammanfattning. Valet sparas per kalender på enheten.
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    try { if (localStorage.getItem(`cal-closed:${id}`) === '1') setOpen(false); } catch { /* privat läge */ }
+  }, [id]);
+  const toggle = () => setOpen((o) => {
+    try { localStorage.setItem(`cal-closed:${id}`, o ? '1' : '0'); } catch { /* privat läge */ }
+    return !o;
+  });
+  const next = days.flatMap((d) => d.timed).find((e) => e.end! > now);
+  const todayCount = days[0]?.date === cal?.days[0]?.date ? days[0].timed.filter((e) => e.end! > now).length : 0;
+  const summary = !cal ? '' : next
+    ? `${todayCount ? `Idag ${todayCount} · ` : ''}nästa ${dayOf(next.start!) === dayOf(now) ? '' : `${dayInfo(dayOf(next.start!), now).main.toLowerCase()} `}${hm(next.start!)} ${shortTitle(next.title)}`
+    : 'Inget inplanerat de närmaste 7 dagarna';
+
   return (
     <>
-    {/* Tryck på kortet: kommande månad i en egen ruta. */}
-    <section
-      aria-label={title} role="button" tabIndex={0}
-      onClick={() => cal && week.current?.showPopover()}
-      onKeyDown={(e) => { if (cal && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); week.current?.showPopover(); } }}
-      className="flex max-h-[30rem] min-h-0 w-full min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:max-h-none lg:p-6"
-    >
+    <section aria-label={title} className="flex max-h-[30rem] min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:max-h-none lg:p-6">
       <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
-        <Icon name="calendar" size={22} />{title}
-        <span className="ml-auto text-[1rem] font-normal">Månad ›</span>
+        {/* Rubriken fäller in och ut; "Månad" öppnar 30 dagar i en egen ruta. */}
+        <button type="button" onClick={toggle} aria-expanded={open} aria-controls={`${id}-lista`}
+          className="flex min-h-11 min-w-0 grow items-center gap-2.5 text-left">
+          <Icon name="calendar" size={22} />
+          <span className="truncate">{title}</span>
+          <span aria-hidden="true" className={`text-[1rem] transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
+        </button>
+        {cal && <button type="button" popoverTarget={id} className="min-h-11 shrink-0 text-[1rem] font-normal">Månad ›</button>}
       </h2>
+      {!open && cal && <p className="truncate text-[1rem] text-dim">{summary}</p>}
+      <div id={`${id}-lista`} hidden={!open} className="contents">
       {error ? (
         <p role="status" className="text-[1rem] text-dim">{error} Vi försöker igen om en stund.</p>
       ) : !cal ? (
@@ -77,6 +94,7 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
           })}
         </div>
       )}
+      </div>
     </section>
     {cal && (
       <div ref={week} id={id} popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,45rem)] overflow-hidden rounded-[1.25rem] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
