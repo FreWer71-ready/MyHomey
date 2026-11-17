@@ -1,15 +1,17 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { runFlow, runHueScene, runMood } from '@/app/actions/scene';
+import { runFlow, runHueScene, runMood, runScenes } from '@/app/actions/scene';
 import { Icon, type IconName } from './Icon';
 
 export type Action = {
-  id: string; name: string; kind: 'mood' | 'flow' | 'hue';
+  id: string; name: string; kind: 'mood' | 'flow' | 'hue' | 'room';
+  /** kind 'room': Ljust/Mys/Släck i de här rummen. */
+  zones?: string[]; scene?: string;
   advanced?: boolean; dynamic?: boolean; active?: boolean; colors?: string[];
 };
 
-const KIND: Record<Action['kind'], string> = { mood: 'Mood', flow: 'Flow', hue: 'Hue-scen' };
+const KIND: Record<Action['kind'], string> = { mood: 'Mood', flow: 'Flow', hue: 'Hue-scen', room: 'Rum' };
 
 /** Ikon efter namnet, så att knapparna går att skilja åt med en blick. */
 export function iconFor(name: string): IconName {
@@ -20,6 +22,7 @@ export function iconFor(name: string): IconName {
   if (/visningsläge|husförsäljning/.test(n)) return 'forsale';
   if (/override/.test(n)) return /\b(off|av)\b/.test(n) ? 'toggleOff' : 'toggle';
   if (/natt|sov|godnatt|släck/.test(n)) return 'moon';
+  if (/mys/.test(n)) return 'sofa';
   if (/morgon|dag|ljust|vakna/.test(n)) return 'sun';
   if (/lämna|borta|går|semester/.test(n)) return 'door';
   if (/film|tv|bio|visning/.test(n)) return 'tv';
@@ -43,7 +46,8 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
   const run = (a: Action) => {
     setState({ id: a.id, status: 'busy' });
     start(async () => {
-      const r = a.kind === 'flow' ? await runFlow(a.id, !!a.advanced) : a.kind === 'hue' ? await runHueScene(a.id, !!a.dynamic) : await runMood(a.id);
+      const r = a.kind === 'flow' ? await runFlow(a.id, !!a.advanced) : a.kind === 'hue' ? await runHueScene(a.id, !!a.dynamic)
+        : a.kind === 'room' ? await runScenes(a.zones ?? [], a.scene ?? '') : await runMood(a.id);
       setState({ id: a.id, status: r.ok ? 'ok' : 'error', msg: r.error });
       if (r.ok) setTimeout(() => router.refresh(), 4000);
       setTimeout(() => setState(null), r.ok ? 2500 : 6000);
