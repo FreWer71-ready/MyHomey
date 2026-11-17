@@ -129,8 +129,9 @@ export default async function CommutePage() {
   const o = origin(locate.members);
   // Eftermiddag (riktning hem): hem från positionen, annars från jobbet. Annars till jobbet om man inte redan är där.
   const goingHome = !!tg && direction() === 'home' && (o.away || !o.pos);
+  // Efter kl 12 bara hemresan (om man inte redan är hemma); före kl 12 bara resan till jobbet (om man inte redan är där).
   const transit = !tg ? []
-    : goingHome ? await loadTransit(o.away ? o.pos! : tg.at, PLACE, Date.now(), 2, false, true)
+    : direction() === 'home' ? (goingHome ? await loadTransit(o.away ? o.pos! : tg.at, PLACE, Date.now(), 2, false, true) : [])
     : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
   const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
   const dir = direction();
