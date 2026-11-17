@@ -16,7 +16,7 @@ html { font-size: calc(100% * var(--ui-scale, 1)); }
   --color-dim: #8B98A5;
   --color-mute: #8B98A5;
   --color-deep: #0B0F1C;
-  --color-glass: rgb(14 18 32 / 0.55);
+  --color-glass: rgb(14 18 32 / 0.7); /* 0,7: grå text klarar 4,5:1 även mot ljus bild */
   --color-glass-2: rgb(255 255 255 / 0.06);
   --color-glass-hi: rgb(255 255 255 / 0.12);
   /* Knappar ovanpå färgade kort: täta och mörka så att ikonerna syns skarpt. */
@@ -83,7 +83,8 @@ body {
 .backdrop-veil {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgb(4 6 14 / 0.55), rgb(4 6 14 / 0.35) 40%, rgb(4 6 14 / 0.7));
+  /* Kontrast (WCAG AA) även mot en ljus himmelsbild: tätast överst där klocka, datum och närvaro står direkt på bilden. */
+  background: linear-gradient(180deg, rgb(4 6 14 / 0.85), rgb(4 6 14 / 0.85) 22%, rgb(4 6 14 / 0.72) 50%, rgb(4 6 14 / 0.85));
 }
 @keyframes backdrop-pan {
   from { transform: scale(1) translate3d(0, 0, 0); }

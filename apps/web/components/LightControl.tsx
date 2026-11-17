@@ -70,7 +70,7 @@ export function LightControl({ light }: { light: Light }) {
           onClick={() => { setOn(!on); send({ on: !on }); }}
           aria-pressed={on}
           aria-label={`${light.name} ${on ? 'släck' : 'tänd'}`}
-          className={`flex size-12 shrink-0 items-center justify-center rounded-[0.875rem] transition ${on ? '' : 'bg-white/[0.06] opacity-45 grayscale'} ${status === 'busy' ? 'animate-pulse' : ''}`}
+          className={`flex size-12 shrink-0 items-center justify-center rounded-[0.875rem] transition ${on ? '' : 'bg-white/[0.06] opacity-70 grayscale'} ${status === 'busy' ? 'animate-pulse' : ''}`}
           style={on ? { background: `color-mix(in srgb, ${lamp} 28%, transparent)`, boxShadow: `0 0 18px color-mix(in srgb, ${lamp} 35%, transparent)` } : undefined}
         >
           <Icon name="bulb" size={28} />

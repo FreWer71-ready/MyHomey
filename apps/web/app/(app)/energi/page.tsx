@@ -136,7 +136,7 @@ async function UseView({ period, powerW, meters, estimated, href, kwhChart }: { 
                 {top.map((x) => {
                   const w = Math.max(0, x.latest ?? 0);
                   return (
-                    <li key={x.id} className={`relative shrink-0 overflow-hidden rounded-[0.75rem] bg-glass-hi px-3 py-1 ${w < 0.5 ? 'opacity-55' : ''}`}>
+                    <li key={x.id} className={`relative shrink-0 overflow-hidden rounded-[0.75rem] bg-glass-hi px-3 py-1 ${w < 0.5 ? 'text-dim' : ''}`}>
                       <span className="absolute inset-y-0 left-0 bg-violet/25" style={{ width: `${sumNow ? (w / sumNow) * 100 : 0}%` }} />
                       <span className="relative flex items-center justify-between gap-3">
                         <span className="truncate font-bold">{x.label}</span>

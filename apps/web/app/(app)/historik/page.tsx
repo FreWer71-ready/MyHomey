@@ -42,7 +42,7 @@ function RoadCharts({ rows, long }: { rows: RoadHistRow[]; long: boolean }) {
       { id: 'wind', label: 'Medelvind', color: '#12B76A', points: col(5) },
       { id: 'gust', label: 'Byar', color: '#E8418C', points: col(6) },
     ] },
-    { title: 'Luftfuktighet', unit: ' %', decimals: 0, bars: false, series: [{ id: 'rh', label: 'Fukt', color: '#5B6180', points: col(4) }] },
+    { title: 'Luftfuktighet', unit: ' %', decimals: 0, bars: false, series: [{ id: 'rh', label: 'Fukt', color: '#8A93B8', points: col(4) }] },
   ];
   return (
     <>
@@ -207,7 +207,7 @@ export default async function HistoryPage({
                 href={active ? href(view, period) : href(view, period, s.id)}
                 aria-pressed={active}
                 className={`flex flex-col rounded-[1.25rem] glass px-3 py-2 ${
-                  active ? 'shadow-[inset_0_0_0_3px_var(--color-ink)]' : sel ? 'opacity-55' : ''
+                  active ? 'shadow-[inset_0_0_0_3px_var(--color-ink)]' : sel ? 'text-dim [&_*]:!text-dim' : ''
                 }`}
               >
                 <span className="flex items-center gap-2 font-extrabold">
