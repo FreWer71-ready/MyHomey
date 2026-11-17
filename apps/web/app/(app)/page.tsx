@@ -6,6 +6,7 @@ import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type Trip } from '@/lib/trip';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
+import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
@@ -182,6 +183,7 @@ export default async function HomePage() {
   const roads = commute ? groupRoad(commute.road) : [];
   const trafficAlerts = commute ? commuteAlerts(commute, now, hhmm) : [];
   const hasCal = calendarConfigured();
+  const hasMirror = mirrorConfigured();
   // Helg: ingen tågpendling. Visa i stället vägläget mot nästa kalenderhändelse med plats (t.ex. Mariefred),
   // annars trafikläget i närområdet. Samma kortstorlek som pendlingen.
   const weekend = !!commute?.trains && isWeekend(now);
@@ -426,6 +428,8 @@ export default async function HomePage() {
             </Card>
           )}
           {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow lg:basis-0"><CalendarWidget /></div>}
+          {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
+          {hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[130px] lg:grow lg:basis-0"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
