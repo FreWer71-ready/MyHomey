@@ -32,7 +32,7 @@ export default async function LocatePage() {
               <li key={m.id} className="flex min-h-[4.25rem] items-center gap-3 border-b border-line py-2 last:border-b-0">
                 <span className={`flex size-11 shrink-0 items-center justify-center rounded-full text-[1.125rem] font-bold ${m.home ? 'bg-ok/20 text-ok' : 'bg-white/[0.06] text-fg'}`}>{m.first[0]}</span>
                 <span className="flex min-w-0 grow flex-col leading-tight">
-                  <span className="truncate text-[1.0625rem] font-semibold">{m.first}{m.driving && <span className="ml-2 rounded-full bg-[#F0883E]/20 px-2 py-0.5 text-[0.8125rem] text-[#F0883E]">Kör</span>}</span>
+                  <span className="truncate text-[1.0625rem] font-semibold">{m.first}{m.driving && <span className="ml-2 rounded-full bg-[#F0883E]/20 px-2 py-0.5 text-[0.875rem] text-[#F0883E]">Kör</span>}</span>
                   <span className="truncate text-[0.9375rem] text-dim">
                     {m.home ? 'Hemma' : where ?? 'Borta'}{!m.home && m.lat != null && m.lon != null && km(PLACE, { lat: m.lat, lon: m.lon }) >= 1 ? ` · ${Math.round(km(PLACE, { lat: m.lat, lon: m.lon }) * 10) / 10} km`.replace('.', ',') : ''}{m.stay ? ` · ${m.stay}` : ''}{!m.home && m.address && where !== m.address.split(',')[0] ? ` · ${m.address}` : ''}
                   </span>

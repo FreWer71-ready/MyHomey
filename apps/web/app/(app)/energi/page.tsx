@@ -61,7 +61,7 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
           <Link href={href('forbrukning')} className="glass flex items-center gap-3 rounded-[1.25rem] py-2 pr-5 pl-2" style={{ background: tint('#8B5CF6', 0.5) }}>
             <span className="flex size-11 items-center justify-center rounded-[0.875rem] bg-glass-hi"><Icon name="bolt" size={24} /></span>
             <span className="flex flex-col leading-tight">
-              <span className="text-[0.8125rem] font-bold tracking-wider uppercase">Effekt nu</span>
+              <span className="text-[0.875rem] font-bold">Effekt nu</span>
               <span className="text-2xl font-extrabold">{fmtWatt(h.powerW)}</span>
             </span>
           </Link>
@@ -69,7 +69,7 @@ export default async function EnergyPage({ searchParams }: { searchParams: Promi
           <Link href={href('pris')} className="glass flex items-center gap-3 rounded-[1.25rem] py-2 pr-5 pl-2" style={{ background: s.level?.bg ?? 'var(--color-glass)' }}>
             <span className="flex size-11 items-center justify-center rounded-[0.875rem] bg-glass-hi"><Icon name="money" size={24} /></span>
             <span className="flex flex-col leading-tight">
-              <span className="text-[0.8125rem] font-bold tracking-wider uppercase">Elpris nu{s.level ? ` · ${s.level.label}` : ''}</span>
+              <span className="text-[0.875rem] font-bold">Elpris nu{s.level ? ` · ${s.level.label}` : ''}</span>
               <span className="text-2xl font-extrabold">{fmtOre(s.now?.ore)}</span>
             </span>
           </Link>

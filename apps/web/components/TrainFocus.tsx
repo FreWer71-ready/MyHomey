@@ -43,7 +43,7 @@ function Focus({ t, now, large }: { t: Train; now: number; large?: boolean }) {
           </span>
         </span>
         <span className="ml-auto flex shrink-0 flex-col items-end leading-none">
-          <span className="text-[0.75rem] font-bold uppercase tracking-wider text-dim">Avgår om</span>
+          <span className="text-[0.875rem] font-bold text-dim">Avgår om</span>
           <span className={`${large ? 'text-[3.25rem]' : 'text-[2.75rem]'} font-extrabold leading-none tabular-nums`} style={{ color: farg }} suppressHydrationWarning>
             {countdown(kvar)}
           </span>
@@ -116,7 +116,7 @@ export function PageTrainList({ trains, serverNow }: { trains: Train[]; serverNo
           <li key={t.id} className="flex items-center gap-3 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[trainTone(t)], 0.4) }}>
             <span className="flex w-[4rem] shrink-0 flex-col leading-tight">
               <span className={`text-xl font-extrabold tabular-nums ${t.canceled || t.delay >= 3 ? 'line-through decoration-2 opacity-70' : ''}`}>{hhmm(t.dep)}</span>
-              {dayOf(t.dep) !== dayOf(now) && <span className="text-[0.8125rem] font-semibold text-dim">imorgon</span>}
+              {dayOf(t.dep) !== dayOf(now) && <span className="text-[0.875rem] font-semibold text-dim">imorgon</span>}
               {!t.canceled && t.delay >= 3 && t.est && <span className="text-lg font-extrabold tabular-nums">{hhmm(t.est)}</span>}
             </span>
             <span className="flex min-w-0 grow flex-col leading-tight">

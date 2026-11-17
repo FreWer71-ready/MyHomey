@@ -339,11 +339,23 @@ export function shortPlace(p: string): string {
     .replace(/\s*i [\wåäö]+ län( \([A-ZÅÄÖ]+\))?/gi, '')
     .replace(/^från (.+?) till (.+)$/i, '$1 – $2')
     .replace(/^vid /i, '')
+    // "av-/påfart till Väg 56 i Västerås kommun" → "Av-/påfart väg 56, Västerås"
+    .replace(/^(av-\/påfart|avfart|påfart)\s+(till|från)\s+/i, '$1 ')
+    .replace(/\bVäg (\d+)/g, 'väg $1')
+    .replace(/\s+i ([\wåäöÅÄÖ-]+) kommun\b/gi, ', $1')
     .replace(/[.,\s]+$/, '')
-    .trim();
+    .trim()
+    .replace(/^./, (c) => c.toUpperCase());
 }
 
 /** Beskrivningar som korta fraser utan dubbletter: "Drift/underhåll\nEtt avstängt körfält. Risk för köbildning." -> 3 fraser. */
 export function phrases(texts: string[]): string[] {
   return [...new Set(texts.flatMap((t) => t.split(/[.\n]+/)).map((x) => x.trim()).filter(Boolean))];
 }
+
+/** Påverkan på vägen i ord och form (inte bara färg, WCAG 1.4.1). */
+export const IMPACT: Record<Tone, { label: string; mark: string }> = {
+  bad: { label: 'Stor påverkan', mark: '▲' },
+  warn: { label: 'Påverkan', mark: '◆' },
+  ok: { label: 'Liten påverkan', mark: '●' },
+};

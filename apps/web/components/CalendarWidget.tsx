@@ -113,10 +113,10 @@ function Day({ info, count, children }: { info: DayInfo; count: number; children
   return (
     <section className={`flex flex-col gap-1.5 ${info.free ? '-mx-2.5 rounded-[0.875rem] px-2.5 py-2' : ''}`} style={info.free ? { background: FREE_BG } : undefined}>
       <h3 className="flex items-baseline gap-2">
-        <span className="text-[0.9375rem] font-bold tracking-wide uppercase" style={info.free ? { color: FREE_FG } : undefined}>{info.main}</span>
+        <span className="text-[0.9375rem] font-bold" style={info.free ? { color: FREE_FG } : undefined}>{info.main}</span>
         <span className="text-[0.9375rem] text-dim">{info.sub}</span>
         {info.free && (
-          <span className="self-center rounded-full px-2 py-0.5 text-[0.75rem] font-bold tracking-wide uppercase" style={{ color: FREE_FG, background: FREE_CHIP }}>
+          <span className="self-center rounded-full px-2 py-0.5 text-[0.875rem] font-bold" style={{ color: FREE_FG, background: FREE_CHIP }}>
             {info.holiday ?? 'Helg'}
           </span>
         )}
@@ -129,7 +129,7 @@ function Day({ info, count, children }: { info: DayInfo; count: number; children
 
 function WeekLine({ week }: { week: number }) {
   return (
-    <div className="flex items-center gap-2 text-[0.8125rem] font-bold tracking-wide text-dim uppercase">
+    <div className="flex items-center gap-2 text-[0.875rem] font-bold text-dim">
       <span>v. {week}</span><span className="h-px grow bg-line" />
     </div>
   );
@@ -138,7 +138,7 @@ function WeekLine({ week }: { week: number }) {
 function AllDay({ e }: { e: CalEvent }) {
   return (
     <p className="flex min-w-0 items-center gap-3 rounded-[0.75rem] py-1 pr-3 pl-3" style={bar(e)}>
-      <span className="w-[3.25rem] shrink-0 text-[0.8125rem] font-bold text-dim uppercase">Heldag</span>
+      <span className="w-[3.25rem] shrink-0 text-[0.875rem] font-bold text-dim">Heldag</span>
       <span className="truncate text-[1rem]">{shortTitle(e.title)}</span>
     </p>
   );
@@ -154,13 +154,13 @@ function Row({ e, now }: { e: CalEvent; now: number }) {
       style={bar(e)}>
       <span className="flex w-[3.25rem] shrink-0 flex-col leading-tight tabular-nums">
         <span className="text-[1.0625rem] font-bold">{hm(e.start!)}</span>
-        <span className={`text-[0.8125rem] ${live ? 'opacity-70' : 'text-dim'}`}>{hm(e.end!)}</span>
+        <span className={`text-[0.875rem] ${live ? 'opacity-70' : 'text-dim'}`}>{hm(e.end!)}</span>
       </span>
       <span className="flex min-w-0 grow flex-col leading-tight">
         <span className={`line-clamp-2 text-[1.0625rem] break-words ${own ? 'font-bold' : 'font-semibold'}`}>{shortTitle(e.title)}</span>
         {loc && <span className={`truncate text-[0.875rem] ${live ? 'opacity-70' : 'text-dim'}`}>{loc}</span>}
       </span>
-      {live && <span className="shrink-0 self-center text-[0.8125rem] font-bold uppercase">Pågår</span>}
+      {live && <span className="shrink-0 self-center text-[0.875rem] font-bold">Pågår</span>}
     </div>
   );
 }

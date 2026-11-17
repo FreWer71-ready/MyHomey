@@ -10,6 +10,7 @@ import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
 import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
+import { RoadImpact } from '@/components/RoadImpact';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
@@ -24,7 +25,7 @@ import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
-import { TONE_COLOR, type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, slip, trainTone } from '@/lib/commute';
+import { type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, slip, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
 import { addDays, dayInfo, dayOf } from '@/lib/calendar-view';
@@ -43,18 +44,26 @@ const C = { ok: '#3FB950', warn: '#E3A008', bad: '#F85149', mute: '#8B98A5' } as
 const num = (v: number, d = 1) => v.toLocaleString('sv-SE', { maximumFractionDigits: d });
 /** Rum utanför det här spannet räknas som avvikelse och lyfts fram. */
 const COMFORT = { low: 18, high: 26 };
+/** Antal med rätt böjning: plural(1, 'minut', 'minuter') → "1 minut". */
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
 /** Pendling/helgtrafik: höjd efter innehåll men högst halva kolumnen; kalendern tar resten. */
 const COMMUTE_H = 'lg:max-h-[calc(50%-0.75rem)]';
 
 /** Kort: helt kort (#131A22), ingen gradient, samma inre marginal överallt. */
-function Card({ title, icon, href, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; className?: string; children: React.ReactNode }) {
+/**
+ * Kort på Hem. Med href blir hela kortet en länk: pilen › visar det (WCAG 2.4.4), och `label` ger skärmläsare ett kort
+ * namn i stället för kortets hela text.
+ */
+function Card({ title, icon, href, label, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; label?: string; className?: string; children: React.ReactNode }) {
   const Box = href ? Link : 'section';
   return (
-    <Box href={href!} className={`flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:p-6 ${className}`}>
+    <Box href={href!} aria-label={href ? label : undefined} className={`flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:p-6 ${className}`}>
       {title && (
         <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
           {icon && <Icon name={icon} size={22} />}
           {title}
+          {href && <span aria-hidden="true" className="ml-auto pl-2 text-[1.25rem] leading-none">›</span>}
         </h2>
       )}
       {children}
@@ -352,7 +361,7 @@ export default async function HomePage() {
                 <li key={p.id} className="flex items-center gap-2 text-[1.125rem]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
                   <span className="size-3 rounded-full" style={{ background: p.present ? C.ok : 'transparent', boxShadow: p.present ? undefined : `inset 0 0 0 2px ${C.mute}` }} />
                   <span className={p.present ? 'font-semibold' : 'text-dim'}>{p.name}</span>
-                  <span className="-ml-1 text-[0.8125rem] text-dim" title={p.src === 'L360' ? 'Life360' : 'Smart Presence'}>({p.src})</span>
+                  <span className="-ml-1 text-[0.875rem] text-dim" title={p.src === 'L360' ? 'Life360' : 'Smart Presence'}>({p.src})</span>
                   {!p.present && (() => { const m = where(p.name); const w = m && !m.home ? [whereText(m), awayKm(m)].filter(Boolean).join(' · ') || null : null; return w ? <span className="text-[1rem] text-dim">{w}</span> : p.since ? <span className="text-[1rem] text-dim">{seenAgo(p.since)}</span> : null; })()}
                 </li>
               ))}
@@ -373,7 +382,8 @@ export default async function HomePage() {
 
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
-          <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader" className="order-4 lg:order-none lg:shrink-0">
+          <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
+            label={`Ute ${outTemp != null ? fmtTemp(outTemp) : ''}${sky ? `, ${sky.label.toLowerCase()}` : ''}${hint ? `. ${hint.text}` : ''}. Visa väderprognosen.`} className="order-4 lg:order-none lg:shrink-0">
             <div className="flex items-center gap-3">
               {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={60} label={sky.label} />}
               <div className="flex min-w-0 grow flex-col">
@@ -429,7 +439,8 @@ export default async function HomePage() {
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
           {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
           {tripEta && !(weekend && trip) && (
-            <Card title={`Resa · ${tripEta.trip.place}`} icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
+            <Card title={`Resa · ${tripEta.trip.place}`} icon="road" href="/pendling"
+              label={`Resa till ${tripEta.trip.place.replace(/\?$/, ' (gissad plats)')}${tripEta.trip.start != null ? ` klockan ${hhmm(tripEta.trip.start)}` : ''}: ${tripEta.eta.live ? `åk nu, framme ${hhmm(tripEta.eta.arrive)}` : `åk senast ${hhmm(tripEta.eta.depart)}`}, ${plural(tripEta.eta.minutes, 'minut', 'minuter')} plus ${tripEta.margin} minuters marginal. Visa trafikläget.`} className="order-3 lg:order-none lg:shrink-0">
               <p className="truncate text-[1rem] text-dim">
                 {tripEta.fallback
                   ? <>Ingen kalenderhändelse · {tripEta.trip.location.split(',')[0]}</>
@@ -457,12 +468,10 @@ export default async function HomePage() {
                   <li key={g.id} className="flex min-w-0 items-center gap-3">
                     <Icon name="road" size={22} />
                     <span className="flex min-w-0 grow flex-col leading-tight">
-                      <span className="truncate text-[1rem] font-semibold">{g.road} · {g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
+                      <span className="truncate text-[1rem] font-semibold">{g.type} · {g.road.replace(/^Väg/, 'väg')}{g.count > 1 ? ` ×${g.count}` : ''}</span>
                       <span className="truncate text-[0.9375rem] text-dim">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
                     </span>
-                    <span className="shrink-0 text-[1rem] font-semibold" style={{ color: TONE_COLOR[g.tone] }}>
-                      {g.tone === 'bad' ? 'Stor påverkan' : g.tone === 'warn' ? 'Påverkan' : 'Liten'}
-                    </span>
+                    <RoadImpact tone={g.tone} className="text-[1rem]" />
                   </li>
                 ))}
                 {weekendRoads.length > 3 && <li className="pl-[2.125rem] text-[0.9375rem] text-dim">+ {weekendRoads.length - 3} till</li>}
@@ -470,7 +479,9 @@ export default async function HomePage() {
             </Card>
           )}
           {commute?.trains && !weekend && (
-            <Card title={<>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling" className={`order-3 lg:order-none lg:shrink-0 ${nextTransit ? '' : COMMUTE_H}`}>
+            <Card title={<>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
+              label={`Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
+              className={`order-3 lg:order-none lg:shrink-0 ${nextTransit ? '' : COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               <HomeTrains trains={trains} serverNow={now} />
@@ -498,12 +509,10 @@ export default async function HomePage() {
                   <li key={g.id} className="flex min-w-0 items-center gap-3">
                     <Icon name="road" size={22} />
                     <span className="flex min-w-0 grow flex-col leading-tight">
-                      <span className="truncate text-[1rem] font-semibold">{g.road} · {g.type}{g.count > 1 ? ` ×${g.count}` : ''}</span>
+                      <span className="truncate text-[1rem] font-semibold">{g.type} · {g.road.replace(/^Väg/, 'väg')}{g.count > 1 ? ` ×${g.count}` : ''}</span>
                       <span className="truncate text-[1rem] text-dim">{g.places.map(shortPlace).filter(Boolean)[0] ?? ''}</span>
                     </span>
-                    <span className="shrink-0 text-[1rem] font-semibold" style={{ color: TONE_COLOR[g.tone] }}>
-                      {g.tone === 'bad' ? 'Stor påverkan' : g.tone === 'warn' ? 'Påverkan' : 'Liten'}
-                    </span>
+                    <RoadImpact tone={g.tone} className="text-[1rem]" />
                   </li>
                 ))}
                 {roads.length > 2 && <li className="pl-[2.125rem] text-[1rem] text-dim">+ {roads.length - 2} till</li>}
@@ -511,28 +520,37 @@ export default async function HomePage() {
             </Card>
           )}
           {commute && !commute.trains && (
-            <Card title="Väg 56/E18 · Eskilstuna–Västerås" icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0">
+            <Card
+              title={homeGoal ? (homeGoal.home ? 'Hem' : `Till ${homeGoal.label.toLowerCase()}`) : 'Väg 56/E18 · Eskilstuna–Västerås'}
+              icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0"
+              label={homeGoal
+                ? `${homeGoal.home ? 'Hem' : `Till ${homeGoal.label.toLowerCase()}`}: ${homeGoal.home ? 'hemma' : 'framme'} klockan ${hhmm(homeGoal.eta.arrive)} om du åker nu, ${plural(homeGoal.eta.minutes, 'minut', 'minuter')}${homeGoal.eta.trafficMin > 0 ? `, varav ${plural(homeGoal.eta.trafficMin, 'minut', 'minuter')} trafik` : ''}. ${roads.length ? `${plural(roads.length, 'störning', 'störningar')} längs vägen.` : 'Fritt längs vägen.'} Visa trafikläget.`
+                : `Väg 56 och E18: ${roads.length ? plural(roads.length, 'störning', 'störningar') : 'fritt'}. Visa trafikläget.`}
+            >
               {homeGoal && (
                 // Samma upplägg som på Trafik: liten rubrik, ETA störst, restid/avstånd/trafik mindre under.
                 <div className="flex flex-col gap-0.5 border-b border-line pb-3">
-                  <span className="text-[0.8125rem] font-bold tracking-wide text-dim uppercase">{homeGoal.home ? 'Hem' : homeGoal.label} · om du åker nu</span>
+                  <span className="text-[0.9375rem] font-semibold text-dim">Om du åker nu</span>
                   <span className="flex items-baseline gap-2 leading-none">
                     <span className="text-[1.0625rem] font-semibold">{homeGoal.home ? 'Hemma' : 'Framme'}</span>
                     <span className="text-[2.25rem] font-extrabold tabular-nums">{hhmm(homeGoal.eta.arrive)}</span>
                   </span>
-                  <span className="text-[0.875rem] text-dim">
+                  <span className="text-[1rem] text-dim">
                     {homeGoal.eta.minutes} min · {Math.round(homeGoal.eta.km)} km{homeGoal.fromHere ? ' härifrån' : ''}
                     {homeGoal.eta.trafficMin > 0 && <span className="font-bold" style={{ color: C.warn }}> · +{homeGoal.eta.trafficMin} min trafik</span>}
                   </span>
                 </div>
               )}
+              {homeGoal && <span className="text-[0.9375rem] font-semibold text-dim">Längs väg 56/E18</span>}
               {roads.length === 0 ? <p className="text-[1.5rem] font-semibold" style={{ color: C.ok }}>Fritt</p> : (
-                <ul className="flex flex-col gap-1.5">
+                <ul className="flex flex-col gap-2">
                   {roads.slice(0, 3).map((g) => (
-                    <li key={g.id} className="flex items-center gap-2 text-[1rem]">
-                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: TONE_COLOR[g.tone] }} />
-                      <span className="font-semibold">{g.road} {g.type.toLowerCase()}</span>
-                      <span className="truncate text-dim">{g.places.map(shortPlace)[0] ?? ''}</span>
+                    <li key={g.id} className="flex min-w-0 items-start gap-3 text-[1rem]">
+                      <span className="flex min-w-0 grow flex-col leading-tight">
+                        <span className="font-semibold">{g.type} · {g.road.replace(/^Väg/, 'väg')}</span>
+                        <span className="truncate text-dim">{g.places.map(shortPlace)[0] ?? ''}</span>
+                      </span>
+                      <RoadImpact tone={g.tone} />
                     </li>
                   ))}
                 </ul>

@@ -45,7 +45,7 @@ export function MoodButtons({ moods, large = false, kind = 'mood' }: { moods: It
               {m.room ? (
                 <span className="flex flex-col items-start leading-tight">
                   {m.name}
-                  <span className="text-[0.8125rem] font-bold text-fg/80">{m.room}</span>
+                  <span className="text-[0.875rem] font-bold text-fg/80">{m.room}</span>
                 </span>
               ) : m.name}
             </button>

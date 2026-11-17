@@ -36,7 +36,7 @@ export function HueScenes({ scenes }: { scenes: HueScene[] }) {
                 <span className="size-9 shrink-0 rounded-full shadow-[inset_0_0_0_2px_rgb(255_255_255/0.3)]" style={{ background: bg }} />
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate text-[1.0625rem] font-extrabold">{s.name}</span>
-                  {s.active && <span className="text-[0.8125rem] font-bold text-ok">På nu</span>}
+                  {s.active && <span className="text-[0.875rem] font-bold text-ok">På nu</span>}
                 </span>
               </button>
               {s.dynamic && (
