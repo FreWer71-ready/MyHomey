@@ -19,14 +19,17 @@ export const viewport: Viewport = { themeColor: '#070A14', colorScheme: 'dark' }
  * Större text per installation (UI_SCALE, t.ex. 1.5 hos Ulrika). Viewporten görs smalare i CSS-pixlar och skalas upp,
  * så att allt blir större och sidan själv väljer en layout med färre kolumner. Gäller pekskärmar (platta/mobil);
  * på dator används webbläsarens egen zoom. Next skriver om viewport-taggen vid sidbyten (ofta i installerad app),
- * därför bevakas även ändrade attribut och skalningen sätts tillbaka.
+ * därför bevakas även ändrade attribut och skalningen sätts tillbaka. Zoomen låses (min = max = UI_SCALE), annars
+ * nollställer webbläsaren den när ytan ändras, t.ex. i helskärm; vid helskärmsbyte sätts taggen om helt.
  */
 const scaleScript = (s: number) => `(function(){var s=${s};function want(){
 var L=(screen.orientation&&screen.orientation.type.indexOf('landscape')===0)||window.innerWidth>window.innerHeight;
 var w=L?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);
-return 'width='+Math.round(w/s)+', initial-scale='+s+', viewport-fit=cover';}
+return 'width='+Math.round(w/s)+', initial-scale='+s+', minimum-scale='+s+', maximum-scale='+s+', viewport-fit=cover';}
 function a(){var v=want();document.querySelectorAll('meta[name=viewport]').forEach(function(m){if(m.getAttribute('content')!==v)m.setAttribute('content',v);});}
+function r(){var m=document.querySelector('meta[name=viewport]');if(m){m.setAttribute('content','width=device-width');}setTimeout(a,50);}
 a();document.addEventListener('DOMContentLoaded',a);addEventListener('orientationchange',function(){setTimeout(a,250)});addEventListener('pageshow',a);
+document.addEventListener('fullscreenchange',function(){setTimeout(r,150)});addEventListener('resize',function(){clearTimeout(window.__uis);window.__uis=setTimeout(a,200)});
 new MutationObserver(function(r){for(var i=0;i<r.length;i++){var t=r[i].target;
 if(r[i].type==='attributes'&&t.nodeName==='META'&&t.name==='viewport'){a();return;}
 for(var j=0;j<r[i].addedNodes.length;j++){var n=r[i].addedNodes[j];if(n.nodeName==='META'&&n.name==='viewport'){a();return;}}}})
