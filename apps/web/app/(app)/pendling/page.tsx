@@ -1,7 +1,10 @@
 import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute, loadLocate } from '@/lib/data';
-import { goalEta } from '@/lib/goal';
+import { goalEta, origin } from '@/lib/goal';
+import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { TransitTripCard } from '@/components/TransitTrip';
+import { km } from '@/lib/trip';
 import { etaConfigured } from '@/lib/route';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
 import { PageTrainList } from '@/components/TrainFocus';
@@ -116,9 +119,14 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
 
 export default async function CommutePage() {
   if (process.env.COMMUTE === 'off') notFound();
-  const [c, locate] = await Promise.all([loadCommute(), etaConfigured() && process.env.DEFAULT_DESTINATION ? loadLocate().catch(() => ({ members: [] })) : Promise.resolve({ members: [] })]);
+  const [c, locate] = await Promise.all([loadCommute(), (etaConfigured() && process.env.DEFAULT_DESTINATION) || transitConfigured() ? loadLocate().catch(() => ({ members: [] })) : Promise.resolve({ members: [] })]);
   // Tid till standardmålet (DEFAULT_DESTINATION, t.ex. jobbet) med aktuell trafik, om det är inställt.
   const goal = etaConfigured() && process.env.DEFAULT_DESTINATION ? await goalEta(locate.members) : null;
+  // Kollektivt till TRANSIT_DESTINATION (ResRobot): de två närmaste resorna härifrån eller hemifrån, om man inte redan är där.
+  const tg = transitConfigured() ? transitGoal() : null;
+  const o = origin(locate.members);
+  const transit = tg && !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
+  const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
@@ -141,6 +149,14 @@ export default async function CommutePage() {
             <span className="text-[28px] font-extrabold tabular-nums">{goal.eta.minutes} min</span>
             {goal.eta.trafficMin > 0 && <span className="text-[14px] font-bold" style={{ color: TONE_COLOR.warn }}>+{goal.eta.trafficMin} min trafik</span>}
           </span>
+        </section>
+      )}
+      {tg && transit.length > 0 && (
+        <section aria-label={`Resa till ${tg.label.toLowerCase()}`} className="flex flex-col gap-2">
+          <h2 className="text-[18px] font-bold">Resa till {tg.label.toLowerCase()}{o.away ? ' · härifrån' : ''}</h2>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {transit.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={rtTrains} first={i === 0} />)}
+          </div>
         </section>
       )}
       {!c ? (

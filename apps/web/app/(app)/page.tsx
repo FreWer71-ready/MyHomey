@@ -7,6 +7,8 @@ import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { alongRoute, boxFor, isWeekend, km, stockholm, nearHome, nextTrip, type Trip } from '@/lib/trip';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
+import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { tripDelay } from '@/components/TransitTrip';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
@@ -235,6 +237,11 @@ export default async function HomePage() {
       if (g) tripEta = { trip: { title: g.label, location: g.address, place: g.label, start: null, km: g.km }, eta: g.eta, fromHere: g.fromHere, fallback: true };
     }
   }
+  // Kollektivt till jobbet (ResRobot) på väg mot Stockholm en arbetsdag: nästa resa i pendlingskortet.
+  const tg = transitConfigured() && commute?.trains && !weekend && dir === 'out' && !dayInfo(dayOf(now), now).free ? transitGoal() : null;
+  const o2 = tg ? origin(locate.members) : null;
+  const nextTransit = tg && o2 && !(o2.pos && km(o2.pos, tg.at) <= 1) ? (await loadTransit(o2.from, tg.at, now, 1, !o2.away))[0] ?? null : null;
+  const transitLate = nextTransit && commute ? tripDelay(nextTransit, [...commute.out, ...commute.all]) : null;
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
   const tripLine = tripEta && (() => {
     const { eta, trip: t } = tripEta;
@@ -449,6 +456,13 @@ export default async function HomePage() {
               {trains.length === 0 && <p className="text-[18px] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               <HomeTrains trains={trains} serverNow={now} />
+              {nextTransit && tg && (
+                <p className="flex items-baseline gap-2 border-t border-line pt-3 text-[16px]">
+                  <span className="font-semibold">{tg.label}:</span>
+                  <span>åk {hhmm(nextTransit.dep)} · framme {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}</span>
+                  {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
+                </p>
+              )}
               {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). */}
               <ul className="flex flex-col gap-1.5 border-t border-line pt-3">
                 {roads.length === 0 && (
