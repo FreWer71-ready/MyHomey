@@ -57,13 +57,16 @@ export const NEAR_STATIONS = ['429', '418'];
 
 /**
  * Halka per station: 'bad' = vägbanan under 0° och fukt (nederbörd eller rimfrost: vägen kallare än daggpunkten),
- * 'warn' = vägbanan 0,5° eller kallare (risk för halka), annars null.
+ * 'warn' = vägbanan 0,5° eller kallare, eller tidig varning: högst +2° och fuktig
+ * (nederbörd eller vägen högst 0,5° över daggpunkten), annars null.
  */
 export function slip(s: RoadStation): Tone | null {
   if (s.road == null) return null;
   const wet = !!s.rain || !!s.snow || (s.dew != null && s.road <= s.dew);
   if (s.road <= 0 && wet) return 'bad';
-  return s.road <= 0.5 ? 'warn' : null;
+  if (s.road <= 0.5) return 'warn';
+  const damp = !!s.rain || !!s.snow || (s.dew != null && s.road <= s.dew + 0.5);
+  return s.road <= 2 && damp ? 'warn' : null;
 }
 
 /** Medel av stationerna nära hemmet (luft, väg, vind); byar = högsta. Riktning från den första. */
