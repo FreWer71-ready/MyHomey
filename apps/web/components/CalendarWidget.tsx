@@ -1,7 +1,7 @@
 'use client';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
-import { CAL_COLORS, dayInfo, isOngoing, isOwnTeam, shortTitle, TZ, type Calendar, type CalEvent, type DayInfo } from '@/lib/calendar-view';
+import { CAL_COLORS, FREE_BG, FREE_CHIP, FREE_FG, dayInfo, isOngoing, isOwnTeam, shortTitle, TZ, type Calendar, type CalEvent, type DayInfo } from '@/lib/calendar-view';
 import { Icon } from './Icon';
 
 const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);
@@ -106,9 +106,6 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
   );
 }
 
-/** Helg och röda dagar: varm ton över hela dagen och en etikett i rubriken. */
-const FREE_BG = 'rgba(255, 170, 90, 0.08)';
-const FREE_FG = '#FFB86B';
 /** Kalenderns färg som kant till vänster (bara när flera kalendrar slagits ihop). */
 const bar = (e: CalEvent) => (e.src !== undefined ? { boxShadow: `inset 3px 0 0 ${CAL_COLORS[e.src % CAL_COLORS.length]}` } : undefined);
 
@@ -119,7 +116,7 @@ function Day({ info, count, children }: { info: DayInfo; count: number; children
         <span className="text-[15px] font-bold tracking-wide uppercase" style={info.free ? { color: FREE_FG } : undefined}>{info.main}</span>
         <span className="text-[15px] text-dim">{info.sub}</span>
         {info.free && (
-          <span className="self-center rounded-full px-2 py-0.5 text-[12px] font-bold tracking-wide uppercase" style={{ color: FREE_FG, background: 'rgba(255, 170, 90, 0.16)' }}>
+          <span className="self-center rounded-full px-2 py-0.5 text-[12px] font-bold tracking-wide uppercase" style={{ color: FREE_FG, background: FREE_CHIP }}>
             {info.holiday ?? 'Helg'}
           </span>
         )}

@@ -119,3 +119,8 @@ export function dayInfo(date: string, now = Date.now()): DayInfo {
     free: wd === 0 || wd === 6 || !!holiday, holiday, week,
   };
 }
+
+/** Helg och röda dagar i listor (kalender, väder): varm bakgrund, text och etikett. */
+export const FREE_BG = 'rgba(255, 170, 90, 0.08)';
+export const FREE_FG = '#FFB86B';
+export const FREE_CHIP = 'rgba(255, 170, 90, 0.16)';
