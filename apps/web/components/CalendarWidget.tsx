@@ -10,7 +10,7 @@ const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour
  * Kalender (hushållets Google-kalendrar via /api/calendar). Idag och Imorgon visas alltid, övriga dagar bara
  * om något med tid är inplanerat. Heldag markeras bara vid dagen. Pågående och egna lagets matcher lyfts fram.
  */
-export function CalendarWidget() {
+export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id = 'kalender-vecka' }: { src?: string; title?: string; id?: string } = {}) {
   const [cal, setCal] = useState<Calendar | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -19,7 +19,7 @@ export function CalendarWidget() {
     let alive = true;
     const load = async () => {
       try {
-        const res = await fetch(`${BASE_PATH}/api/calendar`, { cache: 'no-store' });
+        const res = await fetch(`${BASE_PATH}${src}`, { cache: 'no-store' });
         const body = await res.json().catch(() => null);
         if (!alive) return;
         if (!res.ok || !body?.days) setError(body?.error ?? 'Kalendern kunde inte hämtas just nu.');
@@ -32,7 +32,7 @@ export function CalendarWidget() {
     const poll = setInterval(load, 10 * 60_000);
     const tick = setInterval(() => setNow(Date.now()), 30_000);
     return () => { alive = false; clearInterval(poll); clearInterval(tick); };
-  }, []);
+  }, [src]);
 
   // Bara dagar med något kvar: tidsatta som inte är slut, eller heldag (visas som antal).
   // Kortet: idag + 7 dagar. Rutan vid tryck: hela månaden (30 dagar).
@@ -44,13 +44,13 @@ export function CalendarWidget() {
     <>
     {/* Tryck på kortet: kommande månad i en egen ruta. */}
     <section
-      aria-label="Kalender" role="button" tabIndex={0}
+      aria-label={title} role="button" tabIndex={0}
       onClick={() => cal && week.current?.showPopover()}
       onKeyDown={(e) => { if (cal && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); week.current?.showPopover(); } }}
       className="flex max-h-[30rem] min-h-0 w-full min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-[20px] bg-card p-5 lg:max-h-none lg:p-6"
     >
       <h2 className="flex items-center gap-2.5 text-[18px] font-semibold text-dim">
-        <Icon name="calendar" size={22} />Kalender
+        <Icon name="calendar" size={22} />{title}
         <span className="ml-auto text-[16px] font-normal">Månad ›</span>
       </h2>
       {error ? (
@@ -76,10 +76,10 @@ export function CalendarWidget() {
       )}
     </section>
     {cal && (
-      <div ref={week} id="kalender-vecka" popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,720px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
+      <div ref={week} id={id} popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,720px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-          <h2 className="flex items-center gap-2.5 text-[20px] font-semibold"><Icon name="calendar" size={24} />Kommande 30 dagar</h2>
-          <button type="button" popoverTarget="kalender-vecka" popoverTargetAction="hide" className="pill">Stäng</button>
+          <h2 className="flex items-center gap-2.5 text-[20px] font-semibold"><Icon name="calendar" size={24} />{title === 'Kalender' ? 'Kommande 30 dagar' : `${title} · 30 dagar`}</h2>
+          <button type="button" popoverTarget={id} popoverTargetAction="hide" className="pill">Stäng</button>
         </div>
         <div className="max-h-[calc(88dvh-72px)] overflow-y-auto px-5 py-4">
           {monthDays.length === 0 && <p className="py-3 text-[16px] text-dim">Inget inplanerat</p>}

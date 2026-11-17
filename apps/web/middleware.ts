@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { publicUrl } from './lib/paths';
 import { COOKIE_OPTIONS } from './lib/supabase/cookie';
 
-const PUBLIC = ['/login', '/auth'];
+// /api/calendar/share skyddas av sin egen nyckel (server till server, utan inloggning).
+const PUBLIC = ['/login', '/auth', '/api/calendar/share'];
 
 export async function middleware(request: NextRequest) {
   if (process.env.NODE_ENV === 'development' && process.env.DEMO_DATA) return NextResponse.next();

@@ -8,6 +8,42 @@ const C = {
 };
 
 const FLAT = {
+  // Snabbval med egna färger/symboler (iconFor i ActionTiles).
+  bajen: (
+    <>
+      <path d="M12 2.5 20 5v6.5c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V5z" fill="#00A651" />
+      <rect x={7.4} y={4.2} width={2.6} height={13.5} fill="#FFFFFF" />
+      <rect x={14} y={4.2} width={2.6} height={13.5} fill="#FFFFFF" />
+    </>
+  ),
+  sweden: (
+    <>
+      <rect x={2} y={5} width={20} height={14} rx={2} fill="#006AA7" />
+      <rect x={7} y={5} width={3} height={14} fill="#FECC00" />
+      <rect x={2} y={10.5} width={20} height={3} fill="#FECC00" />
+    </>
+  ),
+  villa: (
+    <>
+      <path d="M12 2.5a9.5 9.5 0 0 0 0 19z" fill="#2BB5C4" />
+      <path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="#7A1F3D" />
+    </>
+  ),
+  forsale: (
+    <>
+      <path d="M2.5 12 9 6.5l6.5 5.5v8.5h-13z" fill={C.grey} />
+      <rect x={7.3} y={15} width={3.4} height={5.5} fill={C.wood} />
+      <rect x={18} y={6} width={1.6} height={15} rx={0.8} fill={C.wood} />
+      <rect className="wx-twinkle" x={14.5} y={7.5} width={8} height={5} rx={1} fill={C.red} />
+      <path d="M16 10h5" stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" />
+    </>
+  ),
+  toggle: (
+    <>
+      <rect x={2} y={7} width={20} height={10} rx={5} fill={C.green} />
+      <circle cx={17} cy={12} r={3.6} fill="#FFFFFF" />
+    </>
+  ),
   home: (
     <>
       <path d="M5 11 12 5l7 6v9H5z" fill={C.cloud} />
