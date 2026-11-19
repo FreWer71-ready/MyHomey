@@ -3,7 +3,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
 import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
-import { allPositions, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
+import { allPositions, earliestAt, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
 import { detectTrain, positionHistory } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
 import type { TransitLeg } from '@/lib/transit';
@@ -166,6 +166,9 @@ export default async function CommutePage() {
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
+  // Aktuell riktning: tåg man inte hinner till härifrån (taxi/cykel) visas inte – då håller inte planen.
+  const reachBy = earliestAt(freshestPosition(locate.members, locate.items, me), TERMINALS[d0 === 'out' ? 0 : 1], nowMs);
+  const reach = (list: Train[]) => soon(list).filter((t) => reachBy == null || (t.est ?? t.dep) >= reachBy);
   return (
     <>
       <h1 className="flex items-baseline justify-between gap-3 text-2xl font-extrabold">
@@ -230,8 +233,8 @@ export default async function CommutePage() {
           <div className="flex min-w-0 flex-col gap-4">
             {/* Bara aktuell riktning: mot Stockholm före kl 12, hem efter. */}
             {c.trains && (dir === 'out'
-              ? <Trains title="Eskilstuna → Stockholm" icon="train" list={soon(c.out)} active journey={perTrain ? 'out' : undefined} />
-              : <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active journey={perTrain ? 'home' : undefined} />)}
+              ? <Trains title="Eskilstuna → Stockholm" icon="train" list={reach(c.out)} active journey={perTrain ? 'out' : undefined} />
+              : <Trains title="Stockholm → Eskilstuna" icon="train" list={reach(c.home)} active journey={perTrain ? 'home' : undefined} />)}
             {c.trains && dir === 'out' && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
             {/* Utan tågpendling (COMMUTE=road) är vägen viktigast: vägdata först. */}
             {!c.trains && <Road list={c.road} stations={c.stations ?? []} />}

@@ -14,7 +14,7 @@ import type { TransitLeg } from '@/lib/transit';
 import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
 import { pingableNames } from '@/app/actions/ping';
-import { allPositions, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
+import { allPositions, earliestAt, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
 import { detectTrain, positionHistory } from '@/lib/onboard-source';
 import { RoadImpact } from '@/components/RoadImpact';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
@@ -212,7 +212,9 @@ export default async function HomePage() {
   // Söndag: bara måndagens tåg från 06:00 på Hem (alla avgångar finns under Pendling).
   const sunday = stockholm(now).day === 0;
   const monday6 = sunday ? (([y, m, d]) => zoned(y, m, d, 6, 0, 0))(addDays(dayOf(now), 1).split('-').map(Number)) : 0;
-  const trains = (commute?.[dir] ?? []).filter((t) => !sunday || t.dep >= monday6);
+  // Tåg man inte hinner till härifrån (snabbaste vägen, taxi/cykel) visas inte – då håller inte planen.
+  const reachBy = commute?.trains ? earliestAt(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '', now), TERMINALS[dir === 'out' ? 0 : 1], now) : null;
+  const trains = (commute?.[dir] ?? []).filter((t) => (!sunday || t.dep >= monday6) && (reachBy == null || (t.est ?? t.dep) >= reachBy));
   const roads = commute ? groupRoad(commute.road) : [];
   const trafficAlerts = commute ? commuteAlerts(commute, now, hhmm) : [];
   const hasCal = calendarConfigured();

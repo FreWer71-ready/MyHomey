@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { freshestPosition, inferTrain, matchTrain, parsePoint, pickRun, TERMINALS } from './onboard.ts';
+import { earliestAt, freshestPosition, inferTrain, matchTrain, parsePoint, pickRun, TERMINALS } from './onboard.ts';
 
 const now = Date.parse('2026-11-18T07:30:00+01:00');
 const iso = (minAgo: number) => new Date(now - minAgo * 60_000).toISOString();
@@ -62,4 +62,11 @@ test('tågläge: resan pågår efter ankomst (på tunnelbanan i Stockholm)', () 
   // Kvar nära stationen (gått därifrån, inte åkt): inget tågläge.
   const near = [pos[0], { ...pos[1], at: { lat: 59.38, lon: 16.52 } }];
   assert.equal(inferTrain(near as never, TERMINALS[0], [train], Date.parse('2026-11-19T07:10:00+01:00')), null);
+});
+
+test('reseplan: från Liljeholmen 15:11 hinner man inte tåget 15:23 från Stockholm C', () => {
+  const now = Date.parse('2026-11-19T15:11:00+01:00');
+  const at = earliestAt({ at: { lat: 59.3108, lon: 18.0231 }, ts: now, speed: null, src: 'life360' }, TERMINALS[1], now)!;
+  assert.ok(at > Date.parse('2026-11-19T15:23:00+01:00'));
+  assert.equal(earliestAt(null, TERMINALS[1], now), null);
 });
