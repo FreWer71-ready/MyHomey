@@ -10,6 +10,7 @@ import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
 import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
+import type { TransitLeg } from '@/lib/transit';
 import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
 import { pingableNames } from '@/app/actions/ping';
@@ -298,6 +299,12 @@ export default async function HomePage() {
   const nextHour = upcomingDir.filter((t) => (t.est ?? t.dep) <= now + 3600_000).length ? upcomingDir.filter((t) => (t.est ?? t.dep) <= now + 3600_000) : upcomingDir.slice(0, 1);
   const riddenArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;
   const onward = ridden && riddenArr && (riddenToWork || [...(commute?.home ?? []), ...(commute?.recent?.home ?? [])].some((t) => t.id === ridden.id)) ? await loadOnward(riddenArr, riddenToWork, PLACE) : [];
+  // Hela resan i tågläget: tågsträckan (pågår nu) och resten efter tåget.
+  const tripLegs: TransitLeg[] = ridden && riddenArr ? [{
+    kind: 'train', from: riddenToWork ? 'Eskilstuna C' : 'Stockholm C', to: riddenToWork ? 'Stockholm C' : 'Eskilstuna C',
+    dep: ridden.est ?? ridden.dep, arr: riddenArr, minutes: Math.round((riddenArr - (ridden.est ?? ridden.dep)) / 60_000),
+    label: `${ridden.product ?? 'Tåg'} ${ridden.ident}`, num: ridden.ident, dir: ridden.dest, track: null,
+  }, ...onward] : [];
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
   const tripLine = tripEta && (() => {
     const { eta, trip: t } = tripEta;
@@ -527,7 +534,7 @@ export default async function HomePage() {
                   {ridden && onward.length > 0 && commute && (
                     <div className="flex flex-col gap-1 border-t border-line pt-3">
                       <p className="text-[1rem]"><span className="font-semibold">{riddenToWork ? 'Jobbet' : 'Hem'}:</span> {riddenToWork ? 'framme' : 'hemma'} ca {hhmm(onward.at(-1)!.arr)}</p>
-                      <TransitLegs trip={{ dep: onward[0].dep, arr: onward.at(-1)!.arr, legs: onward, startAt: null, endAt: null }} trains={[...commute.out, ...commute.home, ...commute.all]} compact />
+                      <TransitLegs trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} now={now} trains={[...commute.out, ...commute.home, ...commute.all]} compact />
                     </div>
                   )}
                   {/* Om tågläget har fel: kommande avgångar inom en timme (minst nästa). */}

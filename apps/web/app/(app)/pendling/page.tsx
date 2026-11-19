@@ -6,6 +6,7 @@ import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/t
 import { allPositions, freshestPosition, inferTrain, TERMINALS } from '@/lib/onboard';
 import { detectTrain } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
+import type { TransitLeg } from '@/lib/transit';
 import { RoadImpact } from '@/components/RoadImpact';
 import { km } from '@/lib/trip';
 import { etaConfigured } from '@/lib/route';
@@ -151,6 +152,11 @@ export default async function CommutePage() {
   const toWork = !!ridden && [...(c?.out ?? []), ...(c?.recent?.out ?? [])].some((t) => t.id === ridden.id);
   const rArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;
   const onward = ridden && rArr && (toWork || [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === ridden.id)) ? await loadOnward(rArr, toWork, PLACE) : [];
+  const tripLegs: TransitLeg[] = ridden && rArr ? [{
+    kind: 'train', from: toWork ? 'Eskilstuna C' : 'Stockholm C', to: toWork ? 'Stockholm C' : 'Eskilstuna C',
+    dep: ridden.est ?? ridden.dep, arr: rArr, minutes: Math.round((rArr - (ridden.est ?? ridden.dep)) / 60_000),
+    label: `${ridden.product ?? 'Tåg'} ${ridden.ident}`, num: ridden.ident, dir: ridden.dest, track: null,
+  }, ...onward] : [];
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
@@ -174,7 +180,7 @@ export default async function CommutePage() {
             return show.length > 0 && <Trains title="Inte på det tåget? Nästa avgångar" icon="train" list={show} active={false} journey={perTrain ? d0 : undefined} />;
           })()}
           {onward.length > 0 && (
-            <TransitTripCard trip={{ dep: onward[0].dep, arr: onward.at(-1)!.arr, legs: onward, startAt: null, endAt: null }} trains={rtTrains} first home={!toWork} />
+            <TransitTripCard trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} trains={rtTrains} first home={!toWork} ongoing />
           )}
         </section>
       )}
