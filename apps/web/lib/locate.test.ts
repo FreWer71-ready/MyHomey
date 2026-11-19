@@ -33,3 +33,13 @@ test('Life360 och Hitta tolkas', () => {
   assert.deepEqual(items.map((i) => [i.name, i.lowBattery, i.canSound]), [['Klocka', true, true], ['Lurar', false, false]]);
   assert.equal(items[1].km, 16.05);
 });
+
+test('hemma = nära dashboardens hem, inte särbons "Hem" i Life360', () => {
+  const dev = [{ id: 'u', name: 'Ulrika S', driver_id: 'homey:app:com.lrvdlinden.life360:member' }];
+  const cap = (capability_id: string, v: number | string) => ({ device_id: 'u', capability_id, last_updated: '2026-11-19T10:00:00Z',
+    value_num: typeof v === 'number' ? v : null, value_bool: null, value_text: typeof v === 'string' ? v : null });
+  const caps = [cap('life360_place', 'Hem'), cap('life360_latitude', 59.6), cap('life360_longitude', 16.55)];
+  assert.equal(buildLocate(dev, caps, { lat: 59.37, lon: 16.51 }).members[0].home, false);
+  assert.equal(buildLocate(dev, caps, { lat: 59.6005, lon: 16.5502 }).members[0].home, true);
+  assert.equal(buildLocate(dev, caps).members[0].home, true);
+});

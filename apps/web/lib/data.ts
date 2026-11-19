@@ -558,7 +558,7 @@ export async function loadLocate(): Promise<{ members: Member[]; items: Item[] }
   const { data: caps } = items.length
     ? await sb.from('capability_state').select('device_id,capability_id,value_num,value_bool,value_text,last_updated').in('device_id', items.map((d) => d.id))
     : { data: [] };
-  return buildLocate([...lifeDevices, ...items], [...rows, ...(caps ?? [])]);
+  return buildLocate([...lifeDevices, ...items], [...rows, ...(caps ?? [])], PLACE);
 }
 
 /**

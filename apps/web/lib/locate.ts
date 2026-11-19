@@ -1,5 +1,7 @@
 // "Var är": personer från Life360 och prylar från Apple Hitta (båda via Homey-appar). Ren tolkning; testas i locate.test.ts.
 
+import { km } from './trip.ts';
+
 export type LocDevice = { id: string; name: string; driver_id: string | null };
 export type LocCap = { device_id: string; capability_id: string; value_num: number | null; value_bool: boolean | null; value_text: string | null; last_updated: string | null };
 
@@ -21,7 +23,11 @@ export const shortName = (n: string) => (n.includes(' - ') ? n.split(' - ').slic
 export const isLife360 = (d: LocDevice) => /life360/i.test(d.driver_id ?? '');
 export const isFindMy = (d: LocDevice) => /findmy/i.test(d.driver_id ?? '');
 
-export function buildLocate(devices: LocDevice[], caps: LocCap[]): { members: Member[]; items: Item[] } {
+/**
+ * `homeAt`: dashboardens hem. Med position avgör avståndet (≤ 300 m) om personen är hemma – Life360-platsen "Hem"
+ * kan vara en annan persons hem (t.ex. särbo). Utan position: platsnamnet eller närvaron.
+ */
+export function buildLocate(devices: LocDevice[], caps: LocCap[], homeAt?: { lat: number; lon: number }): { members: Member[]; items: Item[] } {
   const by = new Map<string, Map<string, LocCap>>();
   for (const c of caps) {
     if (!by.has(c.device_id)) by.set(c.device_id, new Map());
@@ -38,7 +44,9 @@ export function buildLocate(devices: LocDevice[], caps: LocCap[]): { members: Me
     const place = text(d.id, 'life360_place');
     return {
       id: d.id, name: d.name.trim(), first: d.name.trim().split(/\s+/)[0],
-      home: /^hem(ma)?$/i.test(place ?? '') || (place == null && bool(d.id, 'alarm_presence')),
+      home: homeAt && num(d.id, 'life360_latitude') != null && num(d.id, 'life360_longitude') != null
+        ? km(homeAt, { lat: num(d.id, 'life360_latitude')!, lon: num(d.id, 'life360_longitude')! }) <= 0.3
+        : /^hem(ma)?$/i.test(place ?? '') || (place == null && bool(d.id, 'alarm_presence')),
       place, address: text(d.id, 'life360_address'),
       driving: bool(d.id, 'life360_driving'), speed: num(d.id, 'life360_speed'), stay: text(d.id, 'life360_stay'),
       battery: num(d.id, 'measure_battery'), charging: bool(d.id, 'life360_charging'),
