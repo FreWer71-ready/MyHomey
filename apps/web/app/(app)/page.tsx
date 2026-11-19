@@ -14,7 +14,7 @@ import type { TransitLeg } from '@/lib/transit';
 import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
 import { pingableNames } from '@/app/actions/ping';
-import { allPositions, freshestPosition, inferTrain, TERMINALS } from '@/lib/onboard';
+import { allPositions, freshestPosition, inferTrain, pickRun, TERMINALS } from '@/lib/onboard';
 import { detectTrain } from '@/lib/onboard-source';
 import { RoadImpact } from '@/components/RoadImpact';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
@@ -292,7 +292,7 @@ export default async function HomePage() {
   const guessed = !onTrain && commute?.trains ? inferTrain(allPositions(locate.members, locate.items, me, now, 2 * 3600_000), TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
   const allTrains = commute ? [...commute.out, ...commute.home, ...commute.all, ...(commute.recent?.out ?? []), ...(commute.recent?.home ?? [])] : [];
-  const ridden = onTrain ? allTrains.find((t) => t.ident === onTrain.train) ?? null : null;
+  const ridden = onTrain ? pickRun(allTrains, onTrain.train, now) : null;
   const riddenToWork = !!ridden && (!!commute?.out.some((t) => t.id === ridden.id) || !!commute?.recent?.out.some((t) => t.id === ridden.id));
   // Kommande avgångar inom en timme (minst nästa), som reserv om tågläget har fel.
   const upcomingDir = trains.filter((t) => !t.canceled && (t.est ?? t.dep) > now && t.ident !== ridden?.ident);

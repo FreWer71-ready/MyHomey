@@ -72,3 +72,13 @@ export function inferTrain(positions: Pos[], station: LatLon, trains: TrainLike[
     .sort((a, b) => a.d - b.d)[0];
   return hit?.t.ident ?? null;
 }
+
+/**
+ * Rätt tur av ett tågnummer (samma nummer går varje dag): den som har avgått och inte är framme, annars den vars
+ * avgång ligger närmast nu.
+ */
+export function pickRun<T extends TrainLike>(list: T[], ident: string, now = Date.now()): T | null {
+  const runs = list.filter((t) => t.ident === ident);
+  const ongoing = runs.find((t) => (t.est ?? t.dep) <= now && (t.arr == null || now <= t.arr + 10 * 60_000));
+  return ongoing ?? runs.sort((a, b) => Math.abs((a.est ?? a.dep) - now) - Math.abs((b.est ?? b.dep) - now))[0] ?? null;
+}

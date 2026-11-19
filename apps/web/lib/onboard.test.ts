@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { freshestPosition, inferTrain, matchTrain, parsePoint, TERMINALS } from './onboard.ts';
+import { freshestPosition, inferTrain, matchTrain, parsePoint, pickRun, TERMINALS } from './onboard.ts';
 
 const now = Date.parse('2026-11-18T07:30:00+01:00');
 const iso = (minAgo: number) => new Date(now - minAgo * 60_000).toISOString();
@@ -43,4 +43,10 @@ test('tågläge: troligen på tåget när positionen står kvar vid stationen', 
   // Klockan rapporterade 06:59 (efter avgång), Life360 06:52: tidigaste observationen avgör → 10914, inte 914.
   const watch = { at: { lat: 59.3692, lon: 16.5063 }, ts: at(6, 59), speed: null, src: 'watch' as const };
   assert.equal(inferTrain([watch, pos], TERMINALS[0], list, at(7, 29)), '10914');
+});
+
+test('tågläge: rätt tur av samma tågnummer (idag, inte i morgon)', () => {
+  const today = { ident: '10914', dep: Date.parse('2026-11-19T06:57:00+01:00'), est: null, arr: Date.parse('2026-11-19T07:49:00+01:00'), canceled: false };
+  const tomorrow = { ...today, dep: today.dep + 86400_000, arr: today.arr + 86400_000 };
+  assert.equal(pickRun([tomorrow, today], '10914', Date.parse('2026-11-19T07:45:00+01:00')), today);
 });
