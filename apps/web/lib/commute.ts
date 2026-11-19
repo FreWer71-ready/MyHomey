@@ -89,6 +89,7 @@ export function nearAverage(list: RoadStation[]): RoadStation | null {
 export type Train = {
   id: string; ident: string; dep: number; est: number | null; delay: number; canceled: boolean; track: string | null;
   dest: string; arr: number | null; notes: string[]; product: string | null;
+  /** Stationen som `arr` gäller (pendlingens mål, t.ex. Eskilstuna C när tåget går vidare till Örebro). */ arrAt?: string;
 };
 export type RoadEvent = {
   id: string; road: string; type: string; code: string; incident: boolean; text: string | null; place: string | null; severity: number;
@@ -137,7 +138,7 @@ function trains(raw: RawTrain[], arrivals: RawArrival[], to: string, now: number
           id: `${r.AdvertisedTrainIdent}-${r.LocationSignature}`, ident: r.AdvertisedTrainIdent, dep, est,
           delay: est ? Math.max(0, Math.round((est - dep) / 60_000)) : 0,
           canceled: !!r.Canceled, track: r.TrackAtLocation ?? null,
-          dest: station(r.ToLocation?.[0]?.LocationName ?? to),
+          dest: station(r.ToLocation?.[0]?.LocationName ?? to), arrAt: station(to),
           arr: a ? (t(a.EstimatedTimeAtLocation) ?? Date.parse(a.AdvertisedTimeAtLocation)) : null,
           notes: [...new Set((r.Deviation ?? []).map((d) => d.Description?.trim()).filter((d): d is string => !!d && !/^(inställt|försenad|i tid)$/i.test(d)))],
           product: r.ProductInformation?.[0]?.Description ?? null,
