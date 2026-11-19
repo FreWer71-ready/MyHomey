@@ -106,12 +106,11 @@ export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n =
   try {
     if (tr && goal && !toHome && km(to, goal) < 0.2) return await preferredOut(tr, from, to, at, n, home);
     if (tr && goal && toHome && process.env.TRANSIT_ORIGIN_STOP && km(from, goal) < 1) return await preferredHome(tr, goal, to, at, n);
-    // Övrigt (t.ex. från en annan plats): snabbaste vägen, utan buss om det går.
+    // Övrigt (t.ex. från en annan plats): snabbaste vägen, utan buss.
     const stop = home ? process.env.TRANSIT_ORIGIN_STOP : undefined;
     const endStop = toHome ? process.env.TRANSIT_ORIGIN_STOP : undefined;
     const f: Point = stop ? { id: stop } : { at: from }, t: Point = endStop ? { id: endStop } : { at: to };
     let trips = await query(f, t, at, { products: process.env.TRANSIT_PRODUCTS ?? '118', n: n + 2 });
-    if (!trips.length) trips = await query(f, t, at, { n: n + 2 });
     if (stop) trips = trips.map((x) => (x.startAt ? withWalk(x, km(from, x.startAt)) : x));
     if (endStop) trips = trips.map((x) => (x.endAt ? withWalkEnd(x, km(x.endAt, to)) : x));
     return bestTrips(trips).filter((x) => x.dep >= at - 2 * MIN).slice(0, n);
@@ -135,9 +134,9 @@ export async function loadOnward(arr: number, toWork: boolean, home: LatLon): Pr
       if (!first) return [];
       return [...first.legs, ...(await lastMile(tr, goal, first.arr, true))];
     }
+    // Hem från Eskilstuna C: promenad (buss sparar ingen tid och är inte aktuell), samma som dörr till dörr.
     if (!process.env.TRANSIT_ORIGIN_STOP) return [];
-    const t = (await query({ id: process.env.TRANSIT_ORIGIN_STOP }, { at: home }, arr + MIN, { n: 2 })).sort((a, b) => a.arr - b.arr)[0];
-    return t ? t.legs.map((l, i, all) => (i === all.length - 1 && l.kind === 'walk' ? { ...l, to: 'Hemma' } : l)) : [];
+    return [walkLeg('Eskilstuna C', 'Hemma', arr, walkMin(km(STATION_ET, home)))];
   } catch (e) {
     console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);
     return [];
