@@ -8,6 +8,9 @@ import { hhmm } from '@/lib/prices';
 import { dayOf } from '@/lib/calendar-view';
 import { tint } from '@/lib/scale';
 
+/** "framme 16:56" när tåget slutar vid målet, annars var ankomsten gäller ("Eskilstuna 17:00" för ett Örebro-tåg). */
+const arrLabel = (t: Train) => (!t.arrAt || t.arrAt === t.dest ? 'framme' : t.arrAt.replace(/ C$/, ''));
+
 // Nästa tåg inom 45 minuter lyfts fram med stor avgångstid och nedräkning. Fokus och nedräkning
 // räknas här i webbläsaren, eftersom sidan bara hämtas om med några minuters mellanrum.
 
@@ -39,7 +42,7 @@ function Focus({ t, now, large, journey }: { t: Train; now: number; large?: bool
         <span className="flex min-w-[9rem] flex-1 flex-col leading-tight">
           <span className={`${large ? 'text-[2.5rem]' : 'text-[2.125rem]'} font-extrabold leading-none tabular-nums`}>{hhmm(departsAt(t))}</span>
           <span className="truncate text-[0.9375rem] font-semibold text-dim">
-            {[t.track && `spår ${t.track}`, t.dest, large && t.arr ? `framme ${hhmm(t.arr)}` : null, t.delay >= 3 ? `ord. ${hhmm(t.dep)}` : null].filter(Boolean).join(' · ')}
+            {[t.track && `spår ${t.track}`, t.dest, large && t.arr ? `${arrLabel(t)} ${hhmm(t.arr)}` : null, t.delay >= 3 ? `ord. ${hhmm(t.dep)}` : null].filter(Boolean).join(' · ')}
             <span className="font-bold" style={{ color: ton === 'ok' ? MUTE : TONE_COLOR[ton] }}> · {s.text}</span>
           </span>
         </span>
@@ -130,7 +133,7 @@ export function PageTrainList({ trains, serverNow, journey }: { trains: Train[];
             </span>
             <span className="flex min-w-0 grow flex-col leading-tight">
               <span className="truncate font-extrabold">
-                {t.dest}{t.arr && !t.canceled ? <span className="font-bold opacity-85"> · framme {hhmm(t.arr)}</span> : null}
+                {t.dest}{t.arr && !t.canceled ? <span className="font-bold opacity-85"> · {arrLabel(t)} {hhmm(t.arr)}</span> : null}
               </span>
               <span className="truncate text-[0.875rem] font-bold opacity-85">
                 {[t.product, `tåg ${t.ident}`, t.track && `spår ${t.track}`, ...t.notes].filter(Boolean).join(' · ')}
