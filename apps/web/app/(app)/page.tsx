@@ -235,7 +235,7 @@ export default async function HomePage() {
     }
   }
 
-  // Nästa resa: kalenderhändelse med adress inom 30 h. TomTom räknar restid med trafik och när man bör åka.
+  // Nästa resa: kalenderhändelse med adress inom 8 h. TomTom räknar restid med trafik och när man bör åka.
   // Startpunkt: hemmet, eller dashboardens person (HOUSEHOLD = förnamnet i Life360) om hen är borta.
   // Utan kalenderhändelse: DEFAULT_DESTINATION (adress eller "lat,lon", t.ex. Ulrikas jobb) på arbetsdagar 05–12,
   // om hen inte redan är där. Rubrik i DEFAULT_DESTINATION_LABEL (standard "Jobbet").
@@ -544,27 +544,8 @@ export default async function HomePage() {
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
-              {ridden ? (
-                <>
-                  {!arrived && <RiddenTrain t={ridden} guessed={!!guessed} />}
-                  {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
-                  {ridden && onward.length > 0 && commute && (
-                    <div className={`flex flex-col gap-1 ${arrived ? '' : 'border-t border-line pt-3'}`}>
-                      <p className="text-[1rem]"><span className="font-semibold">{riddenToWork ? 'Jobbet' : 'Hem'}:</span> {riddenToWork ? 'framme' : 'hemma'} ca {hhmm(onward.at(-1)!.arr)}</p>
-                      <TransitLegs trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} now={now} trains={[...commute.out, ...commute.home, ...commute.all]} compact />
-                    </div>
-                  )}
-                  {/* Om tågläget har fel: kommande avgångar inom en timme (minst nästa). */}
-                  {!arrived && nextHour.length > 0 && (
-                    <div className="flex flex-col gap-1.5 border-t border-line pt-3">
-                      <span className="text-[0.9375rem] font-semibold text-dim">Inte på det tåget? Nästa avgångar</span>
-                      <HomeTrains trains={nextHour} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />
-                    </div>
-                  )}
-                </>
-              ) : <HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />}
               {!ridden && nextTransit && tg && (
-                <p className="flex items-baseline gap-2 border-t border-line pt-3 text-[1rem]">
+                <p className="flex items-baseline gap-2 text-[1rem]">
                   <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
                   <span>
                     <span className="font-semibold" style={leaveIn < -1 ? { color: C.warn } : undefined}>{leaveIn < -1 ? `sen ${-leaveIn} min – ta cykel eller taxi` : leaveIn <= 0 ? 'gå nu' : `gå om ${leaveIn} min`}</span>
@@ -575,6 +556,25 @@ export default async function HomePage() {
               )}
               {/* Resebeskrivningen för förslaget (gång, tåg, SL) med spår och förseningar. */}
               {!ridden && nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact />}
+              {ridden ? (
+                <>
+                  {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
+                  {ridden && onward.length > 0 && commute && (
+                    <div className="flex flex-col gap-1">
+                      <p className="text-[1rem]"><span className="font-semibold">{riddenToWork ? 'Jobbet' : 'Hem'}:</span> {riddenToWork ? 'framme' : 'hemma'} ca {hhmm(onward.at(-1)!.arr)}</p>
+                      <TransitLegs trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} now={now} trains={[...commute.out, ...commute.home, ...commute.all]} compact />
+                    </div>
+                  )}
+                  {!arrived && <div className={onward.length > 0 ? "border-t border-line pt-3" : ""}><RiddenTrain t={ridden} guessed={!!guessed} /></div>}
+                  {/* Om tågläget har fel: kommande avgångar inom en timme (minst nästa). */}
+                  {!arrived && nextHour.length > 0 && (
+                    <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+                      <span className="text-[0.9375rem] font-semibold text-dim">Inte på det tåget? Nästa avgångar</span>
+                      <HomeTrains trains={nextHour} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />
+                    </div>
+                  )}
+                </>
+              ) : <div className={nextTransit ? 'border-t border-line pt-3' : ''}><HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} /></div>}
               {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). Inte i tågläget. */}
               <ul hidden={!!ridden} className="flex flex-col gap-1.5 border-t border-line pt-3">
                 {roads.length === 0 && (

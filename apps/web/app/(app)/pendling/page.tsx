@@ -174,6 +174,9 @@ export default async function CommutePage() {
       </h1>
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
+          {onward.length > 0 && (
+            <TransitTripCard trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} trains={rtTrains} first home={!toWork} ongoing />
+          )}
           {!arrived && <section className="flex flex-col gap-2 rounded-[1.5rem] glass p-3 ring-2 ring-sun/60">
             <h2 className="text-xl font-extrabold">Du är {guessed ? 'troligen ' : ''}på tåget</h2>
             <RiddenTrain t={ridden} guessed={!!guessed} />
@@ -185,9 +188,6 @@ export default async function CommutePage() {
             const show = hour.length ? hour : list.slice(0, 1);
             return show.length > 0 && <Trains title="Inte på det tåget? Nästa avgångar" icon="train" list={show} active={false} journey={perTrain ? d0 : undefined} />;
           })()}
-          {onward.length > 0 && (
-            <TransitTripCard trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} trains={rtTrains} first home={!toWork} ongoing />
-          )}
         </section>
       )}
       {!ridden && goal && (
@@ -225,17 +225,23 @@ export default async function CommutePage() {
       {ridden ? null : !c ? (
         <p className="rounded-2xl glass p-4 font-bold text-dim">Trafikinformationen är inte tillgänglig just nu.</p>
       ) : (
-        <>
-          {/* Bara aktuell riktning: mot Stockholm före kl 12, hem efter. */}
-          {c.trains && (dir === 'out'
-            ? <Trains title="Eskilstuna → Stockholm" icon="train" list={soon(c.out)} active journey={perTrain ? 'out' : undefined} />
-            : <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active journey={perTrain ? 'home' : undefined} />)}
-          {/* Utan tågpendling (COMMUTE=road) är vägen viktigast: vägdata först, sedan tågen från Eskilstuna C. */}
-          {!c.trains && <Road list={c.road} stations={c.stations ?? []} />}
-          {/* I bilen (Life360): bara vägläget, inga tåg. */}
-          {((c.trains && dir === 'out') || (!c.trains && c.all.length > 0 && !goal?.driving)) && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
-          {c.trains && <Road list={c.road} stations={c.stations ?? []} />}
-        </>
+        // Stor skärm: tåg och väg i två kolumner (ingen skroll); mobil: under varandra.
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+          <div className="flex min-w-0 flex-col gap-4">
+            {/* Bara aktuell riktning: mot Stockholm före kl 12, hem efter. */}
+            {c.trains && (dir === 'out'
+              ? <Trains title="Eskilstuna → Stockholm" icon="train" list={soon(c.out)} active journey={perTrain ? 'out' : undefined} />
+              : <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active journey={perTrain ? 'home' : undefined} />)}
+            {c.trains && dir === 'out' && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
+            {/* Utan tågpendling (COMMUTE=road) är vägen viktigast: vägdata först. */}
+            {!c.trains && <Road list={c.road} stations={c.stations ?? []} />}
+          </div>
+          <div className="flex min-w-0 flex-col gap-4">
+            {c.trains && <Road list={c.road} stations={c.stations ?? []} />}
+            {/* I bilen (Life360): bara vägläget, inga tåg. */}
+            {!c.trains && c.all.length > 0 && !goal?.driving && <Trains title="Alla tåg från Eskilstuna C" icon="train" list={soon(c.all)} active={false} />}
+          </div>
+        </div>
       )}
     </>
   );

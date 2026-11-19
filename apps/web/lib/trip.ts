@@ -71,7 +71,7 @@ export function boxFor(points: LatLon[], padKm: number): [number, number, number
 }
 
 /** Kommande tidsatta händelser inom `hours` timmar (pågående räknas inte), med eller utan plats, i tidsordning. */
-export function upcoming(days: CalDay[], now = Date.now(), hours = 30): { title: string; location: string | null; start: number }[] {
+export function upcoming(days: CalDay[], now = Date.now(), hours = 8): { title: string; location: string | null; start: number }[] {
   return days.flatMap((d) => d.timed)
     .filter((e) => e.start != null && e.start >= now - 10 * 60_000 && e.start <= now + hours * 3600_000 && !(e.location && ONLINE.test(e.location)))
     .sort((a, b) => a.start! - b.start!)
