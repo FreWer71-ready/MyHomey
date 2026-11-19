@@ -121,9 +121,19 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
             </section>
           ))}
           {orphans.map((r) => (
-            <section key={r.name} className="flex flex-col gap-1 rounded-[1.25rem] bg-card p-4 lg:p-5">
-              <h2 className="text-[1.1875rem] font-bold">{r.name}</h2>
-              <ActionTiles items={r.items} layout="compact" />
+            <section key={r.name} aria-labelledby={`rum-x-${r.name}`} className="flex flex-col gap-3 rounded-[1.25rem] bg-card p-4 lg:p-5">
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name="bulb" size={22} /></span>
+                <h2 id={`rum-x-${r.name}`} className="min-w-0 grow truncate text-[1.1875rem] font-bold">{r.name}</h2>
+                <span className="shrink-0 text-[0.9375rem] text-dim">{r.items.length} scener</span>
+              </div>
+              <details className="group border-t border-line pt-1">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[1rem] font-semibold text-dim [&::-webkit-details-marker]:hidden">
+                  Detaljer
+                  <span aria-hidden="true" className="text-[1.25rem] transition-transform group-open:rotate-90">›</span>
+                </summary>
+                <div className="pt-2"><ActionTiles items={r.items} layout="compact" /></div>
+              </details>
             </section>
           ))}
         </section>
