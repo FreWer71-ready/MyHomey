@@ -145,3 +145,21 @@ export function PageTrainList({ trains, serverNow, journey }: { trains: Train[];
     </ol>
   );
 }
+
+/** Tåget man sitter på (tågläget): slutstation och beräknad ankomst, var tåget är nu och hela sträckan. */
+export function RiddenTrain({ t, guessed }: { t: Train; guessed?: boolean }) {
+  const ton = trainTone(t);
+  const arr = t.arr != null ? t.arr + (t.delay ?? 0) * 60_000 : null;
+  return (
+    <div className="flex flex-col gap-1.5 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[ton], 0.32) }}>
+      <span className="text-[1.25rem] font-extrabold">{t.product ?? 'Tåg'} {t.ident} → {t.dest}</span>
+      <span className="text-[1rem] font-semibold">
+        {arr ? <>Framme ca <span className="text-[1.5rem] font-extrabold tabular-nums">{hhmm(arr)}</span></> : null}
+        <span style={{ color: ton === 'ok' ? MUTE : TONE_COLOR[ton] }}> · {trainStatus(t).text}</span>
+        {guessed && <span className="text-dim"> · enligt senaste position vid stationen</span>}
+      </span>
+      <TrainProgress ident={t.ident} />
+      <div><TrainRoute ident={t.ident} /></div>
+    </div>
+  );
+}

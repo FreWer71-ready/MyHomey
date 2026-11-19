@@ -13,7 +13,7 @@ import { TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
 import { pingableNames } from '@/app/actions/ping';
-import { freshestPosition } from '@/lib/onboard';
+import { freshestPosition, inferTrain, TERMINALS } from '@/lib/onboard';
 import { detectTrain } from '@/lib/onboard-source';
 import { RoadImpact } from '@/components/RoadImpact';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
@@ -21,7 +21,7 @@ import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
-import { HomeTrains } from '@/components/TrainFocus';
+import { HomeTrains, RiddenTrain } from '@/components/TrainFocus';
 import { tvAppLabel } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
@@ -284,11 +284,17 @@ export default async function HomePage() {
   const leaveIn = nextTransit ? Math.round((nextTransit.dep - now) / 60_000) : 0;
   // Tågläge: sitter dashboardens person på ett tåg (Life360/Apple Watch mot tågens GPS) visar pendlingskortet bara det
   // tåget och resten av resan.
-  const onTrain = commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '', now), now, new Set(commute[dir].map((t) => t.ident))) : null;
-  const ridden = onTrain && commute ? [...commute.out, ...commute.home, ...commute.all].find((t) => t.ident === onTrain.train) ?? null : null;
-  const riddenToWork = !!ridden && !!commute?.out.some((t) => t.id === ridden.id);
+  const me = process.env.HOUSEHOLD ?? '';
+  const dirTrains = commute ? [...commute[dir], ...(commute.recent?.[dir] ?? [])] : [];
+  let onTrain = commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me, now), now, new Set(dirTrains.map((t) => t.ident))) : null;
+  // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
+  const guessed = !onTrain && commute?.trains ? inferTrain(freshestPosition(locate.members, locate.items, me, now, 2 * 3600_000), TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
+  if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
+  const allTrains = commute ? [...commute.out, ...commute.home, ...commute.all, ...(commute.recent?.out ?? []), ...(commute.recent?.home ?? [])] : [];
+  const ridden = onTrain ? allTrains.find((t) => t.ident === onTrain.train) ?? null : null;
+  const riddenToWork = !!ridden && (!!commute?.out.some((t) => t.id === ridden.id) || !!commute?.recent?.out.some((t) => t.id === ridden.id));
   const riddenArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;
-  const onward = ridden && riddenArr && (riddenToWork || commute?.home.some((t) => t.id === ridden.id)) ? await loadOnward(riddenArr, riddenToWork, PLACE) : [];
+  const onward = ridden && riddenArr && (riddenToWork || [...(commute?.home ?? []), ...(commute?.recent?.home ?? [])].some((t) => t.id === ridden.id)) ? await loadOnward(riddenArr, riddenToWork, PLACE) : [];
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
   const tripLine = tripEta && (() => {
     const { eta, trip: t } = tripEta;
@@ -495,12 +501,12 @@ export default async function HomePage() {
             </Card>
           )}
           {commute?.trains && !weekend && (
-            <Card title={ridden ? <>På tåget<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{ridden.product ?? 'Tåg'} {ridden.ident}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
+            <Card title={ridden ? <>{guessed ? 'På tåget (troligen)' : 'På tåget'}<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{ridden.product ?? 'Tåg'} {ridden.ident}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
               label={ridden ? `Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}${ridden.canceled ? ', inställt' : ridden.delay ? `, ${plural(ridden.delay, 'minut', 'minuter')} sent` : ', i tid'}${riddenArr ? `, framme ${ridden.dest} cirka ${hhmm(riddenArr)}` : ''}${onward.length ? `, framme ${riddenToWork ? 'på jobbet' : 'hemma'} ${hhmm(onward.at(-1)!.arr)}` : ''}. Visa trafikläget.` : `Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: ${leaveIn < -1 ? `sen ${plural(-leaveIn, 'minut', 'minuter')}, ta cykel eller taxi` : `gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}`}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
-              <HomeTrains trains={ridden ? [ridden] : trains} serverNow={now} journey={tg && !ridden ? (dir === 'out' ? 'out' : 'home') : undefined} />
+              {ridden ? <RiddenTrain t={ridden} guessed={!!guessed} /> : <HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />}
               {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
               {ridden && onward.length > 0 && commute && (
                 <div className="flex flex-col gap-1 border-t border-line pt-3">

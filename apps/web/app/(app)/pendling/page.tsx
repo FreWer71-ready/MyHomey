@@ -3,14 +3,14 @@ import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
 import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
-import { freshestPosition } from '@/lib/onboard';
+import { freshestPosition, inferTrain, TERMINALS } from '@/lib/onboard';
 import { detectTrain } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
 import { RoadImpact } from '@/components/RoadImpact';
 import { km } from '@/lib/trip';
 import { etaConfigured } from '@/lib/route';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
-import { PageTrainList } from '@/components/TrainFocus';
+import { PageTrainList, RiddenTrain } from '@/components/TrainFocus';
 import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
 
@@ -141,11 +141,16 @@ export default async function CommutePage() {
     : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
   const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
   // Tågläge: på ett tåg i pendlingen visas bara det tåget och resten av resan.
-  const onTrain = c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? ''), Date.now(), new Set(c[direction()].map((t) => t.ident))) : null;
-  const ridden = onTrain ? rtTrains.find((t) => t.ident === onTrain.train) ?? null : null;
-  const toWork = !!ridden && !!c?.out.some((t) => t.id === ridden.id);
+  const me = process.env.HOUSEHOLD ?? '', nowMs = Date.now(), d0 = direction();
+  const dirTrains = c ? [...c[d0], ...(c.recent?.[d0] ?? [])] : [];
+  let onTrain = c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me), nowMs, new Set(dirTrains.map((t) => t.ident))) : null;
+  // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
+  const guessed = !onTrain && c?.trains ? inferTrain(freshestPosition(locate.members, locate.items, me, nowMs, 2 * 3600_000), TERMINALS[d0 === 'out' ? 0 : 1], dirTrains, nowMs) : null;
+  if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
+  const ridden = onTrain ? [...rtTrains, ...(c?.recent?.out ?? []), ...(c?.recent?.home ?? [])].find((t) => t.ident === onTrain.train) ?? null : null;
+  const toWork = !!ridden && [...(c?.out ?? []), ...(c?.recent?.out ?? [])].some((t) => t.id === ridden.id);
   const rArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;
-  const onward = ridden && rArr && (toWork || c?.home.some((t) => t.id === ridden.id)) ? await loadOnward(rArr, toWork, PLACE) : [];
+  const onward = ridden && rArr && (toWork || [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === ridden.id)) ? await loadOnward(rArr, toWork, PLACE) : [];
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
@@ -157,7 +162,10 @@ export default async function CommutePage() {
       </h1>
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
-          <Trains title={`Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}`} icon="train" list={[ridden]} active />
+          <section className="flex flex-col gap-2 rounded-[1.5rem] glass p-3 ring-2 ring-sun/60">
+            <h2 className="text-xl font-extrabold">Du är {guessed ? 'troligen ' : ''}på tåget</h2>
+            <RiddenTrain t={ridden} guessed={!!guessed} />
+          </section>
           {onward.length > 0 && (
             <TransitTripCard trip={{ dep: onward[0].dep, arr: onward.at(-1)!.arr, legs: onward, startAt: null, endAt: null }} trains={rtTrains} first home={!toWork} />
           )}

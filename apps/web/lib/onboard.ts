@@ -10,7 +10,7 @@ export type OnTrain = { train: string; dist: number; src: Pos['src'] };
 const MAX_AGE = 10 * 60_000;
 
 /** Färskaste positionen (högst 10 min gammal) för personen med förnamnet `first`: Life360 eller personens Apple Watch. */
-export function freshestPosition(members: Member[], items: Item[], first: string, now = Date.now()): Pos | null {
+export function freshestPosition(members: Member[], items: Item[], first: string, now = Date.now(), maxAge = MAX_AGE): Pos | null {
   const f = first.toLowerCase();
   const out: Pos[] = [];
   const m = members.find((x) => x.first.toLowerCase() === f);
@@ -18,7 +18,7 @@ export function freshestPosition(members: Member[], items: Item[], first: string
   if (m?.lat != null && m.lon != null && m.posUpdated) out.push({ at: { lat: m.lat, lon: m.lon }, ts: Date.parse(m.posUpdated), speed: m.speed, src: 'life360' });
   const w = items.find((x) => /apple watch/i.test(x.name) && x.name.toLowerCase().includes(f));
   if (w?.lat != null && w.lon != null && w.posUpdated) out.push({ at: { lat: w.lat, lon: w.lon }, ts: Date.parse(w.posUpdated), speed: null, src: 'watch' });
-  return out.filter((p) => now - p.ts <= MAX_AGE).sort((a, b) => b.ts - a.ts)[0] ?? null;
+  return out.filter((p) => now - p.ts <= maxAge).sort((a, b) => b.ts - a.ts)[0] ?? null;
 }
 
 /** "POINT (17.62 59.19)" → { lat, lon }. */
@@ -44,4 +44,21 @@ export function matchTrain(pos: Pos, trains: TrainPos[], now = Date.now(), allow
     .filter((x) => x.d <= 0.5)
     .sort((a, b) => a.d - b.d)[0];
   return hit ? { train: hit.t.train, dist: hit.d, src: pos.src } : null;
+}
+
+type TrainLike = { ident: string; dep: number; est: number | null; arr: number | null; canceled: boolean };
+
+/**
+ * Troligen på tåget, när ingen ny position kommer (telefonen skickar sällan plats under resan): senaste positionen
+ * (högst 2 h gammal) låg vid avgångsstationen högst 20 min före en avgång i aktuell riktning, tåget har gått och är
+ * inte framme än. Ger tågnumret eller null.
+ */
+export function inferTrain(pos: Pos | null, station: LatLon, trains: TrainLike[], now = Date.now()): string | null {
+  if (!pos || now - pos.ts > 2 * 3600_000 || km(pos.at, station) > 0.6) return null;
+  const hit = trains
+    .filter((t) => !t.canceled)
+    .map((t) => ({ t, d: t.est ?? t.dep }))
+    .filter(({ t, d }) => d >= pos.ts - 2 * 60_000 && d <= pos.ts + 20 * 60_000 && d <= now && (t.arr == null || now <= t.arr + 10 * 60_000))
+    .sort((a, b) => a.d - b.d)[0];
+  return hit?.t.ident ?? null;
 }

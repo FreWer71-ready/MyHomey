@@ -100,7 +100,8 @@ export type RoadEvent = {
 export type Commute = {
   out: Train[]; home: Train[]; /** Alla avgångar från Eskilstuna C, alla riktningar. */ all: Train[]; road: RoadEvent[];
   /** Ute-kortet: medel av stationerna nära hemmet (annars Eskilstuna Ö). */ station: RoadStation | null;
-  /** Vägväderstationer längs bilvägen, i körordning. */ stations: RoadStation[]; fetched: number; trains: boolean };
+  /** Vägväderstationer längs bilvägen, i körordning. */ stations: RoadStation[]; fetched: number; trains: boolean;
+  /** Pendlingståg som gått senaste 2 h (för "troligen på tåget"). */ recent?: { out: Train[]; home: Train[] } };
 
 /** Signaturer som syns som slutstation på sträckan. Okända visas som de är. */
 export const STATIONS: Record<string, string> = {
@@ -121,7 +122,7 @@ const PLANNED = /MaintenanceWorks|RoadOrCarriagewayOrLaneManagement|SpeedManagem
 
 const t = (s?: string) => (s ? Date.parse(s) : null);
 
-function trains(raw: RawTrain[], arrivals: RawArrival[], to: string, now: number, max: number): Train[] {
+function trains(raw: RawTrain[], arrivals: RawArrival[], to: string, now: number, max: number, gone = false): Train[] {
   return raw
     .map((r) => {
       const dep = Date.parse(r.AdvertisedTimeAtLocation);
@@ -140,7 +141,7 @@ function trains(raw: RawTrain[], arrivals: RawArrival[], to: string, now: number
         } satisfies Train,
       };
     })
-    .filter((x) => !x.gone)
+    .filter((x) => x.gone === gone && (!gone || (x.train.est ?? x.train.dep) > now - 2 * 3600_000))
     .map((x) => x.train)
     .sort((a, b) => a.dep - b.dep)
     .slice(0, max);
@@ -204,6 +205,7 @@ export function parseCommute(raw: RawCommute, from = 'Et', to = 'Cst', now = Dat
     })(),
     fetched: t(raw.fetched) ?? now,
     trains: true,
+    recent: { out: trains(raw.out ?? [], raw.arrivals ?? [], to, now, max, true), home: trains(raw.home ?? [], raw.arrivals ?? [], from, now, max, true) },
   };
 }
 

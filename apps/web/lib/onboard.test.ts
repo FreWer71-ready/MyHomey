@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { freshestPosition, matchTrain, parsePoint } from './onboard.ts';
+import { freshestPosition, inferTrain, matchTrain, parsePoint, TERMINALS } from './onboard.ts';
 
 const now = Date.parse('2026-11-18T07:30:00+01:00');
 const iso = (minAgo: number) => new Date(now - minAgo * 60_000).toISOString();
@@ -27,4 +27,17 @@ test('tågläge: färskaste position och matchning mot tåg', () => {
   // Vid Eskilstuna C avgörs inget (många tåg passerar).
   const atStation = { at: { lat: 59.3692, lon: 16.5063 }, ts: now, speed: null, src: 'watch' as const };
   assert.equal(matchTrain(atStation, [{ train: '907', at: { lat: 59.3695, lon: 16.5055 }, ts: now, speed: 40 }], now), null);
+});
+
+test('tågläge: troligen på tåget när positionen står kvar vid stationen', () => {
+  const at = (h: number, m: number) => Date.parse(`2026-11-19T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00+01:00`);
+  const pos = { at: { lat: 59.36911, lon: 16.506825 }, ts: at(6, 52), speed: 0.6, src: 'life360' as const };
+  const list = [
+    { ident: '10914', dep: at(6, 57), est: null, arr: at(8, 9), canceled: false },
+    { ident: '914', dep: at(7, 4), est: null, arr: at(8, 5), canceled: false },
+  ];
+  assert.equal(inferTrain(pos, TERMINALS[0], list, at(7, 14)), '10914');
+  assert.equal(inferTrain(pos, TERMINALS[0], list, at(6, 55)), null);
+  assert.equal(inferTrain({ ...pos, at: { lat: 59.3759, lon: 16.5097 } }, TERMINALS[0], list, at(7, 14)), null);
+  assert.equal(inferTrain(pos, TERMINALS[0], list, at(8, 30)), null);
 });
