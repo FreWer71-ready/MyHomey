@@ -33,10 +33,10 @@ export function AlertChips({ alerts, max = 2 }: { alerts: Alert[]; max?: number 
         return (
           <Link key={a.id} href={a.href} role="alert" aria-label={`${st.name}: ${a.text}. Visa detaljer.`}
             className={`flex min-h-14 min-w-0 items-center gap-3 rounded-[0.875rem] border px-4 py-2 text-[1.0625rem] font-semibold leading-snug ${st.box}`}>
-            <span aria-hidden="true" className="w-5 shrink-0 text-center text-[1.25rem] leading-none" style={{ color: st.icon }}>{st.mark}</span>
+            <span aria-hidden="true" className="w-6 shrink-0 text-center text-[1.5rem] leading-none" style={{ color: st.icon }}>{st.mark}</span>
             {a.icon === '!'
-              ? <span aria-hidden="true" className="flex size-[1.375rem] shrink-0 items-center justify-center rounded-full text-[0.875rem] font-black" style={{ background: st.icon, color: st.bang }}>!</span>
-              : <span aria-hidden="true" className="shrink-0" style={{ color: st.icon }}><Icon name={a.icon} size={24} /></span>}
+              ? <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full text-[1.125rem] font-black" style={{ background: st.icon, color: st.bang }}>!</span>
+              : <span aria-hidden="true" className="shrink-0" style={{ color: st.icon }}><Icon name={a.icon} size={32} /></span>}
             <span className="min-w-0 grow">{a.text}</span>
             <span aria-hidden="true" className="shrink-0 text-[1.25rem] leading-none">›</span>
           </Link>

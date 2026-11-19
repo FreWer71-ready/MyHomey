@@ -13,11 +13,25 @@ export function when(ms: number | null): string {
 }
 
 /** Väderlarm som enhetliga varningar: VMA och röd SMHI = röd, orange = orange, gul SMHI och oväder = gul. */
+/** Ikon efter vad SMHI-varningen gäller (vind, snö, regn, åska …); annars "!". */
+export function smhiIcon(event: string): Alert['icon'] {
+  const e = event.toLowerCase();
+  if (/åsk/.test(e)) return 'thunder';
+  if (/vind|storm|by(ar|ig)/.test(e)) return 'wind';
+  if (/snö|yrsnö|drev/.test(e)) return 'snow';
+  if (/halk|is\b|underkyl/.test(e)) return 'road';
+  if (/regn|skyfall|översvämn|flöde|vattenstånd/.test(e)) return 'rain';
+  if (/dimma/.test(e)) return 'fog';
+  if (/värme|temperatur|kyla|kall/.test(e)) return 'thermo';
+  if (/brand/.test(e)) return 'siren';
+  return '!';
+}
+
 export function weatherAlerts(w: Warnings): Alert[] {
   return [
     ...w.vma.map((v): Alert => ({ id: `vma-${v.id}`, level: 'red', icon: 'bellAlert', text: `VMA: ${v.headline}`, href: '/larm#vader' })),
     ...w.smhi.map((s): Alert => ({
-      id: `smhi-${s.id}`, level: s.level, icon: '!', href: '/larm#vader',
+      id: `smhi-${s.id}`, level: s.level, icon: smhiIcon(s.event), href: '/larm#vader',
       text: `${NAME[s.level]}: ${s.event}${s.start && s.start > Date.now() ? ` från ${when(s.start)}` : ''}`,
     })),
     ...w.storms.map((s): Alert => ({

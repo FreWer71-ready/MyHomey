@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { FOCUS_MIN, TONE_COLOR, countdown, countdownTone, departsAt, focusTrain, trainStatus, trainTone, type Train } from '@/lib/commute';
 import { MinutesTo } from '@/components/MinutesTo';
 import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
-import { OnTrainButton } from './OnTrainButton';
+import { OnTrainButton, SkipButton } from './OnTrainButton';
 import { TrainJourney } from '@/components/TrainJourney';
 import { hhmm } from '@/lib/prices';
 import { dayOf } from '@/lib/calendar-view';
@@ -59,7 +59,7 @@ function Focus({ t, now, large, journey }: { t: Train; now: number; large?: bool
       {/* Hela sträckan (alla mellanliggande punkter) och resan dörr till dörr. */}
       {/* Strax före och vid avgång: bekräfta att man är på tåget (tågläget på alla skärmar). */}
       {(() => {
-        const route = <><TrainRoute ident={t.ident} />{kvar <= 10 * 60_000 && <OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} />}</>;
+        const route = <><TrainRoute ident={t.ident} />{kvar <= 10 * 60_000 && <OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} />}<SkipButton ident={t.ident} dep={t.dep} time={hhmm(departsAt(t))} compact /></>;
         return journey ? <TrainJourney ident={t.ident} toWork={journey === 'out'} before={route} /> : <div className="flex flex-wrap gap-2">{route}</div>;
       })()}
       <div className="h-1.5 overflow-hidden rounded-full bg-glass-2" role="presentation">
@@ -146,7 +146,9 @@ export function PageTrainList({ trains, serverNow, journey }: { trains: Train[];
             </span>
             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.875rem] font-extrabold ${s.cls}`}>{s.text}</span>
             </TrainRoute>
-            {journey && !t.canceled && <TrainJourney ident={t.ident} toWork={journey === 'out'} />}
+            {journey && !t.canceled
+              ? <TrainJourney ident={t.ident} toWork={journey === 'out'} before={<SkipButton ident={t.ident} dep={t.dep} time={hhmm(t.dep)} />} />
+              : <div><SkipButton ident={t.ident} dep={t.dep} time={hhmm(t.dep)} /></div>}
           </li>
         );
       })}

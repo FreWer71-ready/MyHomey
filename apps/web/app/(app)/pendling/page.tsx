@@ -12,6 +12,7 @@ import { km } from '@/lib/trip';
 import { etaConfigured } from '@/lib/route';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
 import { PageTrainList, RiddenTrain } from '@/components/TrainFocus';
+import { UnskipButton } from '@/components/OnTrainButton';
 import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
 
@@ -176,7 +177,10 @@ export default async function CommutePage() {
     <>
       <h1 className="flex items-baseline justify-between gap-3 text-2xl font-extrabold">
         {c && !c.trains ? 'Trafik' : 'Pendling'}
-        {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
+        <span className="flex items-center gap-3">
+          {c?.skipped ? <UnskipButton count={c.skipped} /> : null}
+          {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
+        </span>
       </h1>
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
