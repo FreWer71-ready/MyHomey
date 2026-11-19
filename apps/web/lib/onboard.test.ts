@@ -36,8 +36,11 @@ test('tågläge: troligen på tåget när positionen står kvar vid stationen', 
     { ident: '10914', dep: at(6, 57), est: null, arr: at(8, 9), canceled: false },
     { ident: '914', dep: at(7, 4), est: null, arr: at(8, 5), canceled: false },
   ];
-  assert.equal(inferTrain(pos, TERMINALS[0], list, at(7, 14)), '10914');
-  assert.equal(inferTrain(pos, TERMINALS[0], list, at(6, 55)), null);
-  assert.equal(inferTrain({ ...pos, at: { lat: 59.3759, lon: 16.5097 } }, TERMINALS[0], list, at(7, 14)), null);
-  assert.equal(inferTrain(pos, TERMINALS[0], list, at(8, 30)), null);
+  assert.equal(inferTrain([pos], TERMINALS[0], list, at(7, 14)), '10914');
+  assert.equal(inferTrain([pos], TERMINALS[0], list, at(6, 55)), null);
+  assert.equal(inferTrain([{ ...pos, at: { lat: 59.3759, lon: 16.5097 } }], TERMINALS[0], list, at(7, 14)), null);
+  assert.equal(inferTrain([pos], TERMINALS[0], list, at(8, 30)), null);
+  // Klockan rapporterade 06:59 (efter avgång), Life360 06:52: tidigaste observationen avgör → 10914, inte 914.
+  const watch = { at: { lat: 59.3692, lon: 16.5063 }, ts: at(6, 59), speed: null, src: 'watch' as const };
+  assert.equal(inferTrain([watch, pos], TERMINALS[0], list, at(7, 29)), '10914');
 });
