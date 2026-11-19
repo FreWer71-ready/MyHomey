@@ -3,8 +3,8 @@ import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
 import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
-import { allPositions, freshestPosition, inferTrain, pickRun, TERMINALS } from '@/lib/onboard';
-import { detectTrain } from '@/lib/onboard-source';
+import { allPositions, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
+import { detectTrain, positionHistory } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
 import type { TransitLeg } from '@/lib/transit';
 import { RoadImpact } from '@/components/RoadImpact';
@@ -146,17 +146,19 @@ export default async function CommutePage() {
   const dirTrains = c ? [...c[d0], ...(c.recent?.[d0] ?? [])] : [];
   let onTrain = c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me), nowMs, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
-  const guessed = !onTrain && c?.trains ? inferTrain(allPositions(locate.members, locate.items, me, nowMs, 2 * 3600_000), TERMINALS[d0 === 'out' ? 0 : 1], dirTrains, nowMs) : null;
+  const guessed = !onTrain && c?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, nowMs, 2 * 3600_000), ...await positionHistory(positionDevices(locate.members, locate.items, me), nowMs - 2 * 3600_000)], TERMINALS[d0 === 'out' ? 0 : 1], dirTrains, nowMs) : null;
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
-  const ridden = onTrain ? pickRun([...rtTrains, ...(c?.recent?.out ?? []), ...(c?.recent?.home ?? [])], onTrain.train, nowMs) : null;
-  const toWork = !!ridden && [...(c?.out ?? []), ...(c?.recent?.out ?? [])].some((t) => t.id === ridden.id);
-  const rArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;
-  const onward = ridden && rArr && (toWork || [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === ridden.id)) ? await loadOnward(rArr, toWork, PLACE) : [];
-  const tripLegs: TransitLeg[] = ridden && rArr ? [{
+  const run = onTrain ? pickRun([...rtTrains, ...(c?.recent?.out ?? []), ...(c?.recent?.home ?? [])], onTrain.train, nowMs) : null;
+  const toWork = !!run && [...(c?.out ?? []), ...(c?.recent?.out ?? [])].some((t) => t.id === run.id);
+  const rArr = run?.arr != null ? run.arr + (run.delay ?? 0) * 60_000 : null;
+  const onward = run && rArr && (toWork || [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === run.id)) ? await loadOnward(rArr, toWork, PLACE) : [];
+  const tripLegs: TransitLeg[] = run && rArr ? [{
     kind: 'train', from: toWork ? 'Eskilstuna C' : 'Stockholm C', to: toWork ? 'Stockholm C' : 'Eskilstuna C',
-    dep: ridden.est ?? ridden.dep, arr: rArr, minutes: Math.round((rArr - (ridden.est ?? ridden.dep)) / 60_000),
-    label: `${ridden.product ?? 'Tåg'} ${ridden.ident}`, num: ridden.ident, dir: ridden.dest, track: null,
+    dep: run.est ?? run.dep, arr: rArr, minutes: Math.round((rArr - (run.est ?? run.dep)) / 60_000),
+    label: `${run.product ?? 'Tåg'} ${run.ident}`, num: run.ident, dir: run.dest, track: null,
   }, ...onward] : [];
+  const arrived = rArr != null && nowMs > rArr;
+  const ridden = run && (!arrived || (onward.length > 0 && nowMs <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
@@ -168,12 +170,12 @@ export default async function CommutePage() {
       </h1>
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
-          <section className="flex flex-col gap-2 rounded-[1.5rem] glass p-3 ring-2 ring-sun/60">
+          {!arrived && <section className="flex flex-col gap-2 rounded-[1.5rem] glass p-3 ring-2 ring-sun/60">
             <h2 className="text-xl font-extrabold">Du är {guessed ? 'troligen ' : ''}på tåget</h2>
             <RiddenTrain t={ridden} guessed={!!guessed} />
-          </section>
+          </section>}
           {/* Om tågläget har fel: avgångarna i aktuell riktning inom en timme (minst nästa). */}
-          {c && (() => {
+          {c && !arrived && (() => {
             const list = (d0 === 'out' ? c.out : c.home).filter((t) => t.ident !== ridden.ident && (t.est ?? t.dep) > nowMs);
             const hour = list.filter((t) => (t.est ?? t.dep) <= nowMs + 3600_000);
             const show = hour.length ? hour : list.slice(0, 1);

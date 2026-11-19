@@ -58,17 +58,22 @@ type TrainLike = { ident: string; dep: number; est: number | null; arr: number |
  * (högst 2 h gammal) låg vid avgångsstationen högst 20 min före en avgång i aktuell riktning, tåget har gått och är
  * inte framme än. Ger tågnumret eller null.
  */
+/** Hur länge efter tågets ankomst resan kan pågå (byte och sista biten till jobbet/hem). */
+export const ONWARD_MAX = 75 * 60_000;
+
 export function inferTrain(positions: Pos[], station: LatLon, trains: TrainLike[], now = Date.now()): string | null {
   const recent = positions.filter((p) => now - p.ts <= 2 * 3600_000);
   const latest = [...recent].sort((a, b) => b.ts - a.ts)[0];
-  // Den nyaste positionen måste vara vid stationen (annars har man gått därifrån).
-  if (!latest || km(latest.at, station) > 0.6) return null;
+  // Den nyaste positionen ska vara vid stationen, eller långt därifrån (man har åkt tåget och är på väg vidare).
+  if (!latest || (km(latest.at, station) > 0.6 && km(latest.at, station) < 30)) return null;
+  // Står positionen kvar vid stationen vet vi inget efter ankomsten; har man åkt följs resan vidare.
+  const after = km(latest.at, station) <= 0.6 ? 10 * 60_000 : ONWARD_MAX;
   // Tidigaste observationen vid stationen (av alla källor): klockan kan rapportera några minuter efter avgång.
   const first = Math.min(...recent.filter((p) => km(p.at, station) <= 0.6).map((p) => p.ts));
   const hit = trains
     .filter((t) => !t.canceled)
     .map((t) => ({ t, d: t.est ?? t.dep }))
-    .filter(({ t, d }) => d >= first - 3 * 60_000 && d <= first + 20 * 60_000 && d <= now && (t.arr == null || now <= t.arr + 10 * 60_000))
+    .filter(({ t, d }) => d >= first - 3 * 60_000 && d <= first + 20 * 60_000 && d <= now && (t.arr == null || now <= t.arr + after))
     .sort((a, b) => a.d - b.d)[0];
   return hit?.t.ident ?? null;
 }
@@ -79,6 +84,32 @@ export function inferTrain(positions: Pos[], station: LatLon, trains: TrainLike[
  */
 export function pickRun<T extends TrainLike>(list: T[], ident: string, now = Date.now()): T | null {
   const runs = list.filter((t) => t.ident === ident);
-  const ongoing = runs.find((t) => (t.est ?? t.dep) <= now && (t.arr == null || now <= t.arr + 10 * 60_000));
+  const ongoing = runs.find((t) => (t.est ?? t.dep) <= now && (t.arr == null || now <= t.arr + ONWARD_MAX));
   return ongoing ?? runs.sort((a, b) => Math.abs((a.est ?? a.dep) - now) - Math.abs((b.est ?? b.dep) - now))[0] ?? null;
+}
+
+/** Personens positionsenheter: Life360 och egna Apple-prylar (klocka, AirPods) med förnamnet i namnet. */
+export function positionDevices(members: Member[], items: Item[], first: string): { id: string; src: Pos['src'] }[] {
+  const f = first.toLowerCase();
+  const m = members.find((x) => x.first.toLowerCase() === f);
+  return [
+    ...(m ? [{ id: m.id, src: 'life360' as const }] : []),
+    ...items.filter((x) => /apple watch|airpods/i.test(x.name) && x.name.toLowerCase().includes(f)).map((x) => ({ id: x.id, src: 'watch' as const })),
+  ];
+}
+
+type Reading = { device_id: string; capability_id: string; ts: string; value: number };
+/** Ihopparade latitud/longitud-mätningar (samma enhet, högst 90 s isär) till positioner. */
+export function pairReadings(rows: Reading[], devices: { id: string; src: Pos['src'] }[]): Pos[] {
+  const out: Pos[] = [];
+  for (const d of devices) {
+    const mine = rows.filter((r) => r.device_id === d.id);
+    const lons = mine.filter((r) => r.capability_id.endsWith('longitude')).map((r) => ({ ts: Date.parse(r.ts), v: r.value }));
+    for (const r of mine.filter((x) => x.capability_id.endsWith('latitude'))) {
+      const ts = Date.parse(r.ts);
+      const lon = lons.filter((l) => Math.abs(l.ts - ts) <= 90_000).sort((a, b) => Math.abs(a.ts - ts) - Math.abs(b.ts - ts))[0];
+      if (lon) out.push({ at: { lat: r.value, lon: lon.v }, ts, speed: null, src: d.src });
+    }
+  }
+  return out;
 }
