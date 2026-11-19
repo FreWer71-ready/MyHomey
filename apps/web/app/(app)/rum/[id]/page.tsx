@@ -8,6 +8,7 @@ import { SceneButtons } from '@/components/SceneButtons';
 import { loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
 import { TvRemote } from '@/components/TvRemote';
 import { fmtPercent, fmtTemp } from '@/lib/scale';
+import { sameRoom } from '@/lib/home';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +66,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
   const scenes: Action[] = [
     ...room.moods.map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
     ...(process.env.CONTROL !== 'hue'
-      ? hue.scenes.filter((x) => x.room?.trim().toLowerCase() === room.name.trim().toLowerCase())
+      ? hue.scenes.filter((x) => sameRoom(x.room, room.name))
         .map((x) => ({ id: x.id, name: x.name, kind: 'hue' as const, dynamic: x.dynamic, active: x.active, colors: x.colors }))
       : []),
   ];

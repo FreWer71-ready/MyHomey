@@ -280,3 +280,12 @@ export function buildHome(
     favoriteMoods,
   };
 }
+
+/**
+ * Hör Hue-rummet till Homey-zonen? Samma namn, eller zonen är ett par som börjar med Hue-namnet
+ * ("Fredrik" → "Fredrik & Ulrika").
+ */
+export function sameRoom(hueRoom: string | null | undefined, zone: string): boolean {
+  const h = (hueRoom ?? '').trim().toLowerCase(), z = zone.trim().toLowerCase();
+  return !!h && (h === z || z.startsWith(`${h} & `) || z.startsWith(`${h} och `));
+}

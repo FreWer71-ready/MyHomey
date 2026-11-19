@@ -7,6 +7,7 @@ import { TvRemote } from '@/components/TvRemote';
 import { TrendArrow } from '@/components/TrendArrow';
 import { loadFlows, loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
 import { fmtTemp } from '@/lib/scale';
+import { sameRoom } from '@/lib/home';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,12 +41,11 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
 
   // Ett kort per rum: favoriterna synliga, rummets övriga scener i Detaljer.
-  const key = (x: string) => x.trim().toLowerCase();
   const cards = h.rooms.map((room) => {
-    const favs = roomList.find((x) => key(x.name) === key(room.name))?.items ?? [];
+    const favs = roomList.filter((x) => sameRoom(x.name, room.name)).flatMap((x) => x.items);
     const all: Action[] = [
       ...room.moods.map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
-      ...(!hueMode ? hue.scenes.filter((x) => key(x.room ?? '') === key(room.name))
+      ...(!hueMode ? hue.scenes.filter((x) => sameRoom(x.room, room.name))
         .map((x) => ({ id: x.id, name: x.name, kind: 'hue' as const, dynamic: x.dynamic, active: x.active, colors: x.colors })) : []),
     ];
     const more = all.filter((a) => !favs.some((f) => f.kind === a.kind && f.id === a.id)).sort(byName);
@@ -53,7 +53,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
   }).filter((c) => c.room.lights.length > 0 || c.favs.length > 0 || c.more.length > 0 || c.tv);
 
   // Favoriter i rum som inte finns som zon (t.ex. Hue-rum med annat namn): egna enkla kort.
-  const orphans = roomList.filter((x) => !h.rooms.some((r) => key(r.name) === key(x.name)));
+  const orphans = roomList.filter((x) => !h.rooms.some((r) => sameRoom(x.name, r.name)));
 
   // Alla moods (även de som inte är favoriter), bakom en länk.
   const allMoods = [
