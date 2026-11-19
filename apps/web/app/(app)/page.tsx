@@ -371,7 +371,7 @@ export default async function HomePage() {
       {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
       <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-6 cols2:lg:h-auto cols2:lg:grid-cols-2 cols2:lg:grid-rows-[auto_auto_auto_1fr] cols2:lg:items-start">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
-        <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-col lg:items-start lg:gap-3 cols2:lg:col-span-2 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
+        <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-3 lg:flex-col lg:items-start lg:gap-3 cols2:lg:col-span-1 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
           <h1 className="sr-only">Hemma</h1>
           <Clock show="time" className="text-[4.75rem] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:text-[5.5rem] lg:leading-[0.75]" />
           <span className="flex flex-col pb-1 leading-tight">
@@ -380,27 +380,13 @@ export default async function HomePage() {
           </span>
         </header>
 
-        {/* STATUS: närvaro och läget. Lugnt = dämpad rad; något händer = färgade rader. */}
-        <section aria-label="Status" className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 lg:order-none lg:col-span-8 lg:self-end cols2:lg:col-span-2 cols2:lg:row-start-2">
+        {/* VARNINGAR (mitten): det brådskande överst och centralt. Korta rubriker; detaljerna finns på sidan bakom. */}
+        <section aria-label="Varningar" className="order-2 flex min-w-0 flex-col gap-2 md:col-span-2 lg:order-none lg:col-span-6 lg:self-start cols2:lg:col-span-2 cols2:lg:row-start-2">
           <NowPlayingStrip items={playing} />
-          {people.length > 0 && (
-            <Link href="/hitta" aria-label="Närvaro – visa var alla är">
-            <ul aria-label="Närvaro" className="flex flex-wrap items-center gap-x-5 gap-y-1 lg:justify-end">
-              {people.map((p) => (
-                <li key={p.id} className="flex items-center gap-2 text-[1.125rem]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
-                  <span className="size-3 rounded-full" style={{ background: p.present ? C.ok : 'transparent', boxShadow: p.present ? undefined : `inset 0 0 0 2px ${C.mute}` }} />
-                  <span className={p.present ? 'font-semibold' : 'text-dim'}>{p.name}</span>
-                  <span className="-ml-1 text-[0.875rem] text-dim" title={p.src === 'L360' ? 'Life360' : 'Smart Presence'}>({p.src})</span>
-                  {!p.present && (() => { const m = where(p.name); const w = m && !m.home ? [whereText(m), awayKm(m)].filter(Boolean).join(' · ') || null : null; return w ? <span className="text-[1rem] text-dim">{w}</span> : p.since ? <span className="text-[1rem] text-dim">{seenAgo(p.since)}</span> : null; })()}
-                </li>
-              ))}
-            </ul>
-            </Link>
-          )}
           {issues > 0 ? (
             <AlertChips alerts={alerts} />
           ) : (
-            <Link href="/larm" className="flex min-w-0 items-center gap-2.5 text-[1rem] text-dim lg:justify-end">
+            <Link href="/larm" className="flex min-h-12 min-w-0 items-center gap-2.5 rounded-[0.875rem] px-1 text-[1rem] text-dim">
               <span className="size-2.5 shrink-0 rounded-full" style={{ background: C.ok }} />
               <span className="truncate">
                 Inga varningar{trainNote ? ` · ${trainNote}` : ''}{commute ? ` · ${roadNote}` : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
@@ -408,6 +394,27 @@ export default async function HomePage() {
             </Link>
           )}
         </section>
+
+        {/* NÄRVARO (höger, egen yta): vem är hemma, var de andra är. Källa (Life360/Smart Presence) visas på Hitta. */}
+        {people.length > 0 && (
+          <Link href="/hitta" aria-label="Närvaro – visa var alla är" className="order-2 min-w-0 md:col-span-2 lg:order-none lg:col-span-3 lg:self-start cols2:lg:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-1">
+            <ul aria-label="Närvaro" className="flex flex-wrap gap-x-5 gap-y-1.5 lg:flex-col lg:gap-1.5">
+              {people.map((p) => {
+                const m = !p.present ? where(p.name) : undefined;
+                const w = m && !m.home ? [whereText(m), awayKm(m)].filter(Boolean).join(' · ') || null : null;
+                const ago = !p.present && !w && p.since ? seenAgo(p.since) : null;
+                return (
+                  <li key={p.id} className="flex min-w-0 items-baseline gap-2 text-[1.125rem]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
+                    <span className="size-3 shrink-0 self-center rounded-full" style={{ background: p.present ? C.ok : 'transparent', boxShadow: p.present ? undefined : `inset 0 0 0 2px ${C.mute}` }} />
+                    <span className={`shrink-0 ${p.present ? 'font-semibold' : 'text-dim'}`}>{p.name}</span>
+                    {w && <span className="truncate text-[1rem] text-dim">{w}</span>}
+                    {ago && <span className="truncate text-[0.9375rem] text-dim italic">{ago}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </Link>
+        )}
 
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
@@ -439,7 +446,8 @@ export default async function HomePage() {
             {weather && (
               <div className="border-t border-line pt-2"><HourStrip hours={weather.hours.slice(1, 13)} lat={PLACE.lat} lon={PLACE.lon} interactive={false} /></div>
             )}
-            {hint && (
+            {/* Halka står redan i varningsraden: visa inte tipset dubbelt. */}
+            {hint && !(hint.icon === 'road' && alerts.some((x) => x.id.startsWith('halka'))) && (
               <p className="flex items-center gap-2 text-[0.9375rem] font-semibold" style={{ color: C.warn }}>
                 <Icon name={hint.icon} size={18} /><span className="truncate">{hint.text}</span>
               </p>

@@ -233,7 +233,7 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
     const list = bad.slice(0, 3).map((x) => `${fmt(x.dep)} ${x.canceled ? 'inställt' : `+${x.delay} min`}`).join(', ');
     out.push({
       id: `tag-${bad.map((x) => x.id).join('-')}`, kind: 'train', tone: bad.some((x) => x.canceled) ? 'bad' : 'warn',
-      label: `Tåg ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}: ${list}${bad.length > 3 ? ` + ${bad.length - 3} till` : ''}`,
+      label: `Tåg ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}: ${list.split(', ')[0]}${bad.length > 1 ? ` (+${bad.length - 1} till)` : ''}`,
     });
   }
   // Halka längs bilvägen (vägväderstationerna): ett kort, rött om någon station har halt väglag.
@@ -242,7 +242,8 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
     const fmtT = (v: number) => `${v.toLocaleString('sv-SE', { maximumFractionDigits: 1 })}°`;
     out.push({
       id: `halka-${slips.map((x) => `${x.s.id}${x.tone}`).join('-')}`, kind: 'road', tone: slips.some((x) => x.tone === 'bad') ? 'bad' : 'warn',
-      label: `Risk för halka: ${slips.slice(0, 3).map((x) => `${x.s.name} ${fmtT(x.s.road!)}`).join(', ')}`,
+      // Kort: värsta stationen; alla stationer finns på Pendling/Trafik.
+      label: (() => { const w = [...slips].sort((a, b) => a.s.road! - b.s.road!)[0]; return `${slips.some((x) => x.tone === 'bad') ? 'Halt' : 'Risk för halka'} · väg ${fmtT(w.s.road!)} (${w.s.name})${slips.length > 1 ? ` (+${slips.length - 1} till)` : ''}`; })(),
     });
   }
   const inc = c.road.filter((r) => r.incident && (r.severity >= 3 || /Accident|Obstruction|Closure|Restriction/i.test(r.code)));
