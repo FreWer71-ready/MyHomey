@@ -7,10 +7,12 @@ export type Member = {
   id: string; name: string; first: string; home: boolean; place: string | null; address: string | null;
   driving: boolean; speed: number | null; stay: string | null; battery: number | null; charging: boolean;
   lat: number | null; lon: number | null; updated: string | null;
+  /** Senaste ändring av själva positionen (lat/lon), inte t.ex. batteri. */ posUpdated: string | null;
 };
 export type Item = {
   id: string; name: string; home: boolean; moving: boolean; km: number | null; battery: number | null;
   lowBattery: boolean; charging: boolean; lat: number | null; lon: number | null; updated: string | null; canSound: boolean;
+  /** Senaste ändring av själva positionen (lat/lon). */ posUpdated: string | null;
 };
 
 /** "Apple Watch Series 11 - Apple Watch för Fredrik" → "Apple Watch för Fredrik". */
@@ -30,6 +32,7 @@ export function buildLocate(devices: LocDevice[], caps: LocCap[]): { members: Me
   const bool = (id: string, cap: string) => get(id, cap)?.value_bool === true;
   const text = (id: string, cap: string) => get(id, cap)?.value_text?.trim() || null;
   const latest = (id: string) => [...(by.get(id)?.values() ?? [])].map((c) => c.last_updated).filter(Boolean).sort().at(-1) ?? null;
+  const posAt = (id: string, la: string, lo: string) => [get(id, la)?.last_updated, get(id, lo)?.last_updated].filter(Boolean).sort().at(-1) ?? null;
 
   const members = devices.filter(isLife360).map((d): Member => {
     const place = text(d.id, 'life360_place');
@@ -40,6 +43,7 @@ export function buildLocate(devices: LocDevice[], caps: LocCap[]): { members: Me
       driving: bool(d.id, 'life360_driving'), speed: num(d.id, 'life360_speed'), stay: text(d.id, 'life360_stay'),
       battery: num(d.id, 'measure_battery'), charging: bool(d.id, 'life360_charging'),
       lat: num(d.id, 'life360_latitude'), lon: num(d.id, 'life360_longitude'), updated: latest(d.id),
+      posUpdated: posAt(d.id, 'life360_latitude', 'life360_longitude'),
     };
   }).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
 
@@ -50,6 +54,7 @@ export function buildLocate(devices: LocDevice[], caps: LocCap[]): { members: Me
       km: num(d.id, 'measure_distance'), battery, lowBattery: bool(d.id, 'alarm_battery') || (battery != null && battery <= 15),
       charging: bool(d.id, 'alarm_is_charging'), lat: num(d.id, 'measure_latitude'), lon: num(d.id, 'measure_longitude'),
       updated: latest(d.id), canSound: !!get(d.id, 'send_sound'),
+      posUpdated: posAt(d.id, 'measure_latitude', 'measure_longitude'),
     };
   }).sort((a, b) => Number(b.lowBattery) - Number(a.lowBattery) || Number(a.home) - Number(b.home) || a.name.localeCompare(b.name, 'sv'));
 
