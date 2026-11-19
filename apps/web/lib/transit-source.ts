@@ -30,7 +30,7 @@ const SPÅRVAGN = '64';
 const MIN = 60_000;
 
 /** En sökning i ResRobot från tiden `at` (avrundad till minut, cachas 2 min). [] vid fel. */
-async function query(from: Point, to: Point, at: number, opts: { products?: string; via?: string; n?: number } = {}): Promise<TransitTrip[]> {
+async function query(from: Point, to: Point, at: number, opts: { products?: string; via?: string; n?: number; arrival?: boolean } = {}): Promise<TransitTrip[]> {
   const key = process.env.RESROBOT_API_KEY;
   if (!key) return [];
   const p = Object.fromEntries(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
@@ -42,6 +42,7 @@ async function query(from: Point, to: Point, at: number, opts: { products?: stri
     ...('id' in to ? { destId: to.id } : { destCoordLat: to.at.lat.toFixed(5), destCoordLong: to.at.lon.toFixed(5) }),
     ...(opts.products ? { products: opts.products } : {}),
     ...(opts.via ? { viaId: opts.via } : {}),
+    ...(opts.arrival ? { searchForArrival: '1' } : {}),
   });
   const res = await fetch(`https://api.resrobot.se/v2.1/trip?${q}`, { next: { revalidate: 120 }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) { console.error(`ResRobot: status ${res.status}`); return []; }
@@ -140,5 +141,46 @@ export async function loadOnward(arr: number, toWork: boolean, home: LatLon): Pr
   } catch (e) {
     console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);
     return [];
+  }
+}
+
+/** Tågets ben (Eskilstuna C ↔ Stockholm C) i samma form som ResRobots. */
+export type JourneyTrain = { ident: string; dep: number; arr: number | null; track: string | null; product: string | null; dest: string; delay: number; canceled: boolean };
+
+const STATION_ET: LatLon = { lat: 59.369482, lon: 16.505193 };
+
+/**
+ * Resa dörr till dörr runt ett visst tåg (Pendling och Hem). Mot jobbet: promenad hemifrån till Eskilstuna C, tåget,
+ * sedan via bytespunkten till jobbet. Hem: från jobbet via bytespunkten till Stockholm C i tid till tåget, tåget,
+ * promenad hem. `leave` = när man behöver gå. Null om något saknas.
+ */
+export async function journeyFor(t: JourneyTrain, toWork: boolean, home: LatLon): Promise<{ legs: TransitLeg[]; leave: number; arrive: number } | null> {
+  const goal = transitGoal()?.at;
+  const tr = transfer();
+  const via = process.env.TRANSIT_VIA;
+  if (!goal || !tr || !via || t.arr == null) return null;
+  const dep = t.dep + t.delay * MIN, arr = t.arr + t.delay * MIN;
+  const train: TransitLeg = {
+    kind: 'train', from: toWork ? 'Eskilstuna C' : 'Stockholm C', to: toWork ? 'Stockholm C' : 'Eskilstuna C',
+    dep, arr, minutes: Math.round((arr - dep) / MIN), label: `${t.product ?? 'Tåg'} ${t.ident}`, num: t.ident, dir: t.dest, track: t.track,
+  };
+  try {
+    if (toWork) {
+      const walk = walkMin(km(home, STATION_ET));
+      const before = walkLeg('Hemma', 'Eskilstuna C', dep - (walk + 2) * MIN, walk);
+      const after = (await query({ id: via }, { at: goal }, arr + 3 * MIN, { via: tr.id, products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2 }))
+        .sort((a, b) => a.arr - b.arr)[0];
+      const legs = [before, train, ...(after?.legs ?? [])];
+      return { legs, leave: before.dep, arrive: legs.at(-1)!.arr };
+    }
+    const before = (await query({ at: goal }, { id: via }, dep - 4 * MIN, { via: tr.id, products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2, arrival: true }))
+      .filter((x) => x.arr <= dep - 2 * MIN).sort((a, b) => b.dep - a.dep)[0];
+    const walk = walkMin(km(STATION_ET, home));
+    const after = walkLeg('Eskilstuna C', 'Hemma', arr, walk);
+    const legs = [...(before?.legs ?? []), train, after];
+    return { legs, leave: legs[0].dep, arrive: after.arr };
+  } catch (e) {
+    console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);
+    return null;
   }
 }
