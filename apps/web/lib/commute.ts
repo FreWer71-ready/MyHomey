@@ -127,7 +127,10 @@ function trains(raw: RawTrain[], arrivals: RawArrival[], to: string, now: number
     .map((r) => {
       const dep = Date.parse(r.AdvertisedTimeAtLocation);
       const est = t(r.EstimatedTimeAtLocation);
-      const a = arrivals.find((x) => x.AdvertisedTrainIdent === r.AdvertisedTrainIdent && x.LocationSignature === to);
+      // Samma tågnummer går varje dag: ankomsten är den första efter just den här avgången.
+      const a = arrivals
+        .filter((x) => x.AdvertisedTrainIdent === r.AdvertisedTrainIdent && x.LocationSignature === to && Date.parse(x.AdvertisedTimeAtLocation) > dep)
+        .sort((x, y) => Date.parse(x.AdvertisedTimeAtLocation) - Date.parse(y.AdvertisedTimeAtLocation))[0];
       return {
         gone: !!r.TimeAtLocation || (est ?? dep) < now - 60_000,
         train: {
