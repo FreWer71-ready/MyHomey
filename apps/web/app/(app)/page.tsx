@@ -307,7 +307,11 @@ export default async function HomePage() {
   }, ...onward] : [];
   // Efter ankomsten pågår resan till sista delsträckan är klar (byte i Stockholm C, promenad hem).
   const arrived = riddenArr != null && now > riddenArr;
-  const ridden = run && (!arrived || (onward.length > 0 && now <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
+  // Framme (positionen vid jobbet eller hemma, högst 10 min gammal): tillbaka till normalläget.
+  const here = freshestPosition(locate.members, locate.items, me, now);
+  const goalAt = riddenToWork ? transitGoal()?.at : PLACE;
+  const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
+  const ridden = run && !atGoal && (!arrived || (onward.length > 0 && now <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
   const tripEnd = onward.at(-1)?.arr;
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
   const tripLine = tripEta && (() => {
