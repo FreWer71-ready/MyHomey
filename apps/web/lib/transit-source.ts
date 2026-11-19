@@ -184,3 +184,6 @@ export async function journeyFor(t: JourneyTrain, toWork: boolean, home: LatLon)
     return null;
   }
 }
+
+/** Promenaden hem från Eskilstuna C i minuter (för "hemma hh:mm" på hemtågen). Bara med TRANSIT_ORIGIN_STOP. */
+export const homeWalkMin = (home: LatLon) => (process.env.TRANSIT_ORIGIN_STOP ? walkMin(km(home, STATION_ET)) : null);
