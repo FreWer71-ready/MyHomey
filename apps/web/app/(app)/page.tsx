@@ -365,24 +365,24 @@ export default async function HomePage() {
     // Halka hemma, om pendlingens halkvarning inte redan visas.
     ...(homeSlip && !trafficAlerts.some((a) => a.id.startsWith('halka-')) ? [{
       id: `halka-hem-${homeSlip}`, level: homeSlip === 'bad' ? 'red' : 'orange', icon: 'road', href: '/pendling',
-      text: homeSlip === 'bad' ? `Halt väglag hemma · vägbanan ${fmtTemp(station!.road!)}` : `Risk för halka hemma · vägbanan ${fmtTemp(station!.road!)}`,
+      text: homeSlip === 'bad' ? 'Halt väglag hemma' : 'Halkrisk hemma', detail: `Vägtemperatur ${fmtTemp(station!.road!).replace('°', ' °C')}`,
     } as Alert] : []),
     ...trafficAlerts.filter((a) => !((weekend || sunday) && a.kind === 'train')).map((a): Alert => ({
-      id: a.id, icon: a.kind === 'train' ? 'train' : 'road', text: a.label, href: '/pendling',
+      id: a.id, icon: a.kind === 'train' ? 'train' : 'road', text: a.title, detail: a.detail, href: '/pendling',
       level: a.tone === 'bad' ? 'red' : a.kind === 'road' ? 'orange' : 'yellow',
     })),
-    ...(net?.state === 'down' ? [{ id: 'net', level: 'red', icon: 'wifi', text: `Internet nere${net.isp ? ` · ${net.isp}` : ''}`, href: '/larm#natverk' } as Alert] : []),
-    ...(rain ? [{ id: 'rain', level: 'orange', icon: 'rain', text: `Regn kl ${hhmm(rain.at)} – stäng ${rain.windows.map((w) => w.name).join(', ')}`, href: '/larm' } as Alert] : []),
+    ...(net?.state === 'down' ? [{ id: 'net', level: 'red', icon: 'wifi', text: 'Internet nere', detail: net.isp ?? undefined, href: '/larm#natverk' } as Alert] : []),
+    ...(rain ? [{ id: 'rain', level: 'orange', icon: 'rain', text: `Regn kl ${hhmm(rain.at)}`, detail: `Stäng ${rain.windows.map((w) => w.name).join(', ')}`, href: '/larm' } as Alert] : []),
     // Polisen i närheten: allvarligt och färskt (senaste 3 h), högst en platta.
     ...policeAlerts(police, now).slice(0, 1).map((e): Alert => ({
       id: `polis-${e.id}`, level: e.level === 'red' ? 'red' : 'orange', icon: 'siren',
-      text: `${e.type} · ${e.place} ${hhmm(e.at)}`, href: '/larm#narhet',
+      text: e.type, detail: `${e.place} ${hhmm(e.at)}`, href: '/larm#narhet',
     })),
     // Kommunen: nytt ärende i ditt område (startat senaste 3 dygnen), högst en platta.
     ...muni.filter((m) => m.mine && m.start != null && m.start <= now && now - m.start < 3 * 86400_000).slice(0, 1).map((m): Alert => ({
-      id: `kommun-${m.id}`, level: 'yellow', icon: 'roadwork', text: `Kommunen: ${m.title}`, href: '/larm#kommunen',
+      id: `kommun-${m.id}`, level: 'yellow', icon: 'roadwork', text: 'Kommunen informerar', detail: m.title, href: '/larm#kommunen',
     })),
-    ...(damp.length ? [{ id: 'damp', level: 'yellow', icon: 'drop', text: `Fukt ${damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', ')}`, href: '/larm#fukt' } as Alert] : []),
+    ...(damp.length ? [{ id: 'damp', level: 'yellow', icon: 'drop', text: 'Hög fukt', detail: damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', '), href: '/larm#fukt' } as Alert] : []),
   ];
   const issues = alerts.length;
   const roadNote = roads.length ? `Väg 56/E18: ${roads.length === 1 ? roads[0].type.toLowerCase() : `${roads.length} ärenden`}` : 'väg 56/E18 fri';
