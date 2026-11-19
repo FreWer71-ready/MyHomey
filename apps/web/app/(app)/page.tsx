@@ -23,6 +23,7 @@ import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { OnTrainButton } from '@/components/OnTrainButton';
+import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
 import { HomeTrains, RiddenTrain } from '@/components/TrainFocus';
 import { tvAppLabel } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
@@ -321,6 +322,9 @@ export default async function HomePage() {
   const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
   const ridden = run && !atGoal && (!arrived || (onward.length > 0 && now <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
   const tripEnd = onward.at(-1)?.arr;
+  // Säkert på tåget (bekräftat eller tågets GPS, inte gissat): fokus på måltiden och resplanen, inget brus.
+  const sure = !!ridden && (!!confirmed || (!!onTrain && !guessed));
+  const goalTime = tripEnd ?? (riddenToWork ? riddenArr : ridden?.homeAt ?? riddenArr);
   // På jobbet före 12: avgångarna dit behövs inte, pendlingen tar liten plats tills hemresan visas.
   const work = transitGoal()?.at;
   const atWork = dir === 'out' && !ridden && !!here && !!work && km(here.at, work) < 0.4;
@@ -500,7 +504,7 @@ export default async function HomePage() {
         {/* HÄRNÄST: pendling och kalender. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 2xl:col-span-5 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
           {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
-          {tripEta && !(weekend && trip) && (
+          {tripEta && !(weekend && trip) && !sure && (
             <Card title={`Resa · ${tripEta.trip.place}`} icon="road" href="/pendling"
               label={`Resa till ${tripEta.trip.place.replace(/\?$/, ' (gissad plats)')}${tripEta.trip.start != null ? ` klockan ${hhmm(tripEta.trip.start)}` : ''}: ${tripEta.eta.live ? `åk nu, framme ${hhmm(tripEta.eta.arrive)}` : `åk senast ${hhmm(tripEta.eta.depart)}`}, ${plural(tripEta.eta.minutes, 'minut', 'minuter')} plus ${tripEta.margin} minuters marginal. Visa trafikläget.`} className="order-3 lg:order-none lg:shrink-0">
               <p className="truncate text-[1rem] text-dim">
@@ -547,10 +551,10 @@ export default async function HomePage() {
             </Card>
           )}
           {commute?.trains && !weekend && !atWork && (
-            <Card title={ridden ? <>{arrived ? (riddenToWork ? 'På väg till jobbet' : 'På väg hem') : guessed ? 'På tåget (troligen)' : 'På tåget'}<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{arrived && tripEnd ? `framme ${hhmm(tripEnd)}` : `${ridden.product ?? 'Tåg'} ${ridden.ident}`}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
+            <Card title={ridden ? <>{arrived || sure ? (riddenToWork ? 'På väg till jobbet' : 'På väg hem') : guessed ? 'På tåget (troligen)' : 'På tåget'}<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{arrived && tripEnd ? `framme ${hhmm(tripEnd)}` : `${ridden.product ?? 'Tåg'} ${ridden.ident}`}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
               label={ridden && arrived && tripEnd ? `På väg ${riddenToWork ? 'till jobbet' : 'hem'}, ${riddenToWork ? 'framme' : 'hemma'} ${hhmm(tripEnd)}. Visa trafikläget.` : ridden ? `Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}${ridden.canceled ? ', inställt' : ridden.delay ? `, ${plural(ridden.delay, 'minut', 'minuter')} sent` : ', i tid'}${riddenArr ? `, framme ${ridden.dest} cirka ${hhmm(riddenArr)}` : ''}${onward.length ? `, framme ${riddenToWork ? 'på jobbet' : 'hemma'} ${hhmm(onward.at(-1)!.arr)}` : ''}. Visa trafikläget.` : `Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: ${leaveIn < -1 ? `sen ${plural(-leaveIn, 'minut', 'minuter')}, ta cykel eller taxi` : `gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}`}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
-              {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
+              {!ridden && trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               {!ridden && justLeft && (
                 <p className="flex items-center justify-between gap-3 text-[1rem]">
@@ -570,7 +574,31 @@ export default async function HomePage() {
               )}
               {/* Resebeskrivningen för förslaget (gång, tåg, SL) med spår och förseningar. */}
               {!ridden && nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact />}
-              {ridden ? (
+              {ridden && sure ? (
+                // Säkert tågläge: måltiden stort (som utetemperaturen), var tåget är och resplanen.
+                <>
+                  {goalTime != null && (
+                    <div className="flex items-end justify-between gap-3">
+                      <span className="flex flex-col">
+                        <span className="text-[1rem] font-semibold text-dim">{riddenToWork ? 'Framme på jobbet' : 'Hemma'}</span>
+                        <span className="text-[3rem] leading-none font-bold tracking-tight tabular-nums">{hhmm(goalTime)}</span>
+                      </span>
+                      <span className="flex flex-col items-end text-[1rem] font-semibold">
+                        <span>om {plural(Math.max(0, Math.round((goalTime - now) / 60_000)), 'minut', 'minuter')}</span>
+                        <span style={{ color: ridden.canceled ? C.bad : ridden.delay >= 3 ? C.warn : C.mute }}>
+                          {ridden.canceled ? 'Inställt' : ridden.delay >= 1 ? `Tåget +${ridden.delay} min` : 'Tåget i tid'}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {!arrived && <TrainProgress ident={ridden.ident} />}
+                  {commute && tripLegs.length > 0 && <TransitLegs trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} now={now} trains={[...commute.out, ...commute.home, ...commute.all]} compact />}
+                  <div className="flex flex-wrap gap-2">
+                    <TrainRoute ident={ridden.ident} />
+                    {confirmed && <OnTrainButton ident={ridden.ident} dep={ridden.dep} arr={ridden.arr} confirmed />}
+                  </div>
+                </>
+              ) : ridden ? (
                 <>
                   {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
                   {ridden && onward.length > 0 && commute && (
