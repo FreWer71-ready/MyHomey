@@ -50,3 +50,16 @@ test('tågläge: rätt tur av samma tågnummer (idag, inte i morgon)', () => {
   const tomorrow = { ...today, dep: today.dep + 86400_000, arr: today.arr + 86400_000 };
   assert.equal(pickRun([tomorrow, today], '10914', Date.parse('2026-11-19T07:45:00+01:00')), today);
 });
+
+test('tågläge: resan pågår efter ankomst (på tunnelbanan i Stockholm)', () => {
+  const t0 = Date.parse('2026-11-19T06:50:00+01:00');
+  const train = { ident: '10914', dep: Date.parse('2026-11-19T06:57:00+01:00'), est: null, arr: Date.parse('2026-11-19T07:49:00+01:00'), canceled: false };
+  const pos = [
+    { at: TERMINALS[0], ts: t0, src: 'watch' },
+    { at: { lat: 59.3179, lon: 18.0498 }, ts: Date.parse('2026-11-19T08:02:00+01:00'), src: 'life360' },
+  ];
+  assert.equal(inferTrain(pos as never, TERMINALS[0], [train], Date.parse('2026-11-19T08:03:00+01:00')), '10914');
+  // Kvar nära stationen (gått därifrån, inte åkt): inget tågläge.
+  const near = [pos[0], { ...pos[1], at: { lat: 59.38, lon: 16.52 } }];
+  assert.equal(inferTrain(near as never, TERMINALS[0], [train], Date.parse('2026-11-19T07:10:00+01:00')), null);
+});
