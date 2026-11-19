@@ -166,6 +166,13 @@ export default async function CommutePage() {
             <h2 className="text-xl font-extrabold">Du är {guessed ? 'troligen ' : ''}på tåget</h2>
             <RiddenTrain t={ridden} guessed={!!guessed} />
           </section>
+          {/* Om tågläget har fel: avgångarna i aktuell riktning inom en timme (minst nästa). */}
+          {c && (() => {
+            const list = (d0 === 'out' ? c.out : c.home).filter((t) => t.ident !== ridden.ident && (t.est ?? t.dep) > nowMs);
+            const hour = list.filter((t) => (t.est ?? t.dep) <= nowMs + 3600_000);
+            const show = hour.length ? hour : list.slice(0, 1);
+            return show.length > 0 && <Trains title="Inte på det tåget? Nästa avgångar" icon="train" list={show} active={false} journey={perTrain ? d0 : undefined} />;
+          })()}
           {onward.length > 0 && (
             <TransitTripCard trip={{ dep: onward[0].dep, arr: onward.at(-1)!.arr, legs: onward, startAt: null, endAt: null }} trains={rtTrains} first home={!toWork} />
           )}

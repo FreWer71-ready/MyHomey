@@ -293,6 +293,9 @@ export default async function HomePage() {
   const allTrains = commute ? [...commute.out, ...commute.home, ...commute.all, ...(commute.recent?.out ?? []), ...(commute.recent?.home ?? [])] : [];
   const ridden = onTrain ? allTrains.find((t) => t.ident === onTrain.train) ?? null : null;
   const riddenToWork = !!ridden && (!!commute?.out.some((t) => t.id === ridden.id) || !!commute?.recent?.out.some((t) => t.id === ridden.id));
+  // Kommande avgångar inom en timme (minst nästa), som reserv om tågläget har fel.
+  const upcomingDir = trains.filter((t) => !t.canceled && (t.est ?? t.dep) > now && t.ident !== ridden?.ident);
+  const nextHour = upcomingDir.filter((t) => (t.est ?? t.dep) <= now + 3600_000).length ? upcomingDir.filter((t) => (t.est ?? t.dep) <= now + 3600_000) : upcomingDir.slice(0, 1);
   const riddenArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;
   const onward = ridden && riddenArr && (riddenToWork || [...(commute?.home ?? []), ...(commute?.recent?.home ?? [])].some((t) => t.id === ridden.id)) ? await loadOnward(riddenArr, riddenToWork, PLACE) : [];
   const when = (ms: number) => (dayOf(ms) === dayOf(now) ? hhmm(ms) : `imorgon ${hhmm(ms)}`);
@@ -514,7 +517,18 @@ export default async function HomePage() {
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
-              {ridden ? <RiddenTrain t={ridden} guessed={!!guessed} /> : <HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />}
+              {ridden ? (
+                <>
+                  <RiddenTrain t={ridden} guessed={!!guessed} />
+                  {/* Om tågläget har fel: kommande avgångar inom en timme (minst nästa). */}
+                  {nextHour.length > 0 && (
+                    <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+                      <span className="text-[0.9375rem] font-semibold text-dim">Inte på det tåget? Nästa avgångar</span>
+                      <HomeTrains trains={nextHour} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />
+                    </div>
+                  )}
+                </>
+              ) : <HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />}
               {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
               {ridden && onward.length > 0 && commute && (
                 <div className="flex flex-col gap-1 border-t border-line pt-3">
