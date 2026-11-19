@@ -2,8 +2,8 @@ import 'server-only';
 import { createClient } from './supabase/server';
 import { matchTrain, parsePoint, type OnTrain, type Pos, type TrainPos } from './onboard.ts';
 
-/** Tåg (GPS) nära positionen via edge-funktionen trafik, matchat mot positionen. Null om inget tåg passar eller vid fel. */
-export async function detectTrain(pos: Pos | null, now = Date.now()): Promise<OnTrain | null> {
+/** Tåg (GPS) nära positionen via edge-funktionen trafik, matchat mot positionen (bara `allowed`). Null om inget passar eller vid fel. */
+export async function detectTrain(pos: Pos | null, now = Date.now(), allowed?: Set<string>): Promise<OnTrain | null> {
   if (!pos) return null;
   if (pos.src === 'life360' && pos.speed != null && pos.speed < 20) return null;
   try {
@@ -16,7 +16,7 @@ export async function detectTrain(pos: Pos | null, now = Date.now()): Promise<On
         return at && t.Train?.AdvertisedTrainNumber && t.TimeStamp
           ? [{ train: t.Train.AdvertisedTrainNumber, at, ts: Date.parse(t.TimeStamp), speed: t.Speed ?? null }] : [];
       });
-    return matchTrain(pos, trains, now);
+    return matchTrain(pos, trains, now, allowed);
   } catch {
     return null;
   }

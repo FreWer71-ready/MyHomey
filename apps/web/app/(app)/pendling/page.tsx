@@ -137,7 +137,7 @@ export default async function CommutePage() {
     : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
   const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
   // Tågläge: på ett tåg i pendlingen visas bara det tåget och resten av resan.
-  const onTrain = c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '')) : null;
+  const onTrain = c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? ''), Date.now(), new Set(c[direction()].map((t) => t.ident))) : null;
   const ridden = onTrain ? rtTrains.find((t) => t.ident === onTrain.train) ?? null : null;
   const toWork = !!ridden && !!c?.out.some((t) => t.id === ridden.id);
   const rArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;

@@ -26,14 +26,19 @@ export function parsePoint(wkt: string): LatLon | null {
   return m ? { lon: Number(m[1]), lat: Number(m[2]) } : null;
 }
 
+/** Ändstationer där många tåg möts (Eskilstuna C, Stockholm C): där avgörs inget tågläge. */
+export const TERMINALS: LatLon[] = [{ lat: 59.369482, lon: 16.505193 }, { lat: 59.330136, lon: 18.058151 }];
+
 /**
- * Tåget man sitter på: närmaste tåg inom 500 m som rör sig (över 20 km/h, rapport högst 3 min gammal).
- * Är Life360-farten känd och låg (under 20 km/h) räknas man inte som på tåg.
+ * Tåget man sitter på: närmaste tåg inom 500 m som rör sig (över 20 km/h, rapport högst 3 min gammal) och som finns
+ * bland `allowed` (tågen i aktuell pendlingsriktning). Är Life360-farten känd och låg (under 20 km/h), eller är man
+ * inom 1 km från en ändstation, avgörs inget – där passerar för många tåg.
  */
-export function matchTrain(pos: Pos, trains: TrainPos[], now = Date.now()): OnTrain | null {
+export function matchTrain(pos: Pos, trains: TrainPos[], now = Date.now(), allowed?: Set<string>): OnTrain | null {
   if (pos.src === 'life360' && pos.speed != null && pos.speed < 20) return null;
+  if (TERMINALS.some((t) => km(pos.at, t) <= 1)) return null;
   const hit = trains
-    .filter((t) => now - t.ts <= 3 * 60_000 && (t.speed ?? 0) > 20)
+    .filter((t) => now - t.ts <= 3 * 60_000 && (t.speed ?? 0) > 20 && (!allowed || allowed.has(t.train)))
     .map((t) => ({ t, d: km(pos.at, t.at) }))
     .filter((x) => x.d <= 0.5)
     .sort((a, b) => a.d - b.d)[0];

@@ -274,7 +274,7 @@ export default async function HomePage() {
   const leaveIn = nextTransit ? Math.round((nextTransit.dep - now) / 60_000) : 0;
   // Tågläge: sitter dashboardens person på ett tåg (Life360/Apple Watch mot tågens GPS) visar pendlingskortet bara det
   // tåget och resten av resan.
-  const onTrain = commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '', now), now) : null;
+  const onTrain = commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '', now), now, new Set(commute[dir].map((t) => t.ident))) : null;
   const ridden = onTrain && commute ? [...commute.out, ...commute.home, ...commute.all].find((t) => t.ident === onTrain.train) ?? null : null;
   const riddenToWork = !!ridden && !!commute?.out.some((t) => t.id === ridden.id);
   const riddenArr = ridden?.arr != null ? ridden.arr + (ridden.delay ?? 0) * 60_000 : null;

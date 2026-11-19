@@ -20,4 +20,9 @@ test('tågläge: färskaste position och matchning mot tåg', () => {
   ];
   assert.equal(matchTrain(pos, trains, now)?.train, '914');
   assert.equal(matchTrain({ ...pos, speed: 3 }, trains, now), null);
+  // Bara tåg i aktuell riktning: 914 utesluts om bara 20954 är tillåtet (och den är för långt bort).
+  assert.equal(matchTrain(pos, trains, now, new Set(['20954'])), null);
+  // Vid Eskilstuna C avgörs inget (många tåg passerar).
+  const atStation = { at: { lat: 59.3692, lon: 16.5063 }, ts: now, speed: null, src: 'watch' as const };
+  assert.equal(matchTrain(atStation, [{ train: '907', at: { lat: 59.3695, lon: 16.5055 }, ts: now, speed: 40 }], now), null);
 });
