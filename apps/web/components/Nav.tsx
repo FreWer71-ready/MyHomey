@@ -10,7 +10,6 @@ import { Icon, type IconName } from './Icon';
 
 const ITEMS: { href: string; label: string; icon: IconName; ready: boolean }[] = [
   { href: '/', label: 'Hem', icon: 'home', ready: true },
-  { href: '/rum', label: 'Rum', icon: 'rooms', ready: true },
   { href: '/favoriter', label: 'Favoriter', icon: 'star', ready: true },
   { href: '/energi', label: 'Energi', icon: 'bolt', ready: true },
   { href: '/pendling', label: 'Pendling', icon: 'train', ready: true },
@@ -44,7 +43,7 @@ function useNewAlarms(alarms: string[], onLarm: boolean) {
 export function Nav({ alarms = [] }: { alarms?: string[] }) {
   const path = usePathname();
   const fresh = useNewAlarms(alarms, path.startsWith('/larm'));
-  const active = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+  const active = (href: string) => (href === '/' ? path === '/' : path.startsWith(href) || (href === '/favoriter' && path.startsWith('/rum')));
   return (
     <nav
       aria-label="Huvudmeny"

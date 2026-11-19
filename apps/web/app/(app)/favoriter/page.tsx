@@ -1,18 +1,23 @@
 import { BASE_PATH } from '@/lib/paths';
 import { Icon } from '@/components/Icon';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
-import { loadFlows, loadHome, loadHueScenes } from '@/lib/data';
+import { SceneButtons } from '@/components/SceneButtons';
+import { LightControl } from '@/components/LightControl';
+import { TvRemote } from '@/components/TvRemote';
+import { TrendArrow } from '@/components/TrendArrow';
+import { loadFlows, loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
+import { fmtTemp } from '@/lib/scale';
 
 export const dynamic = 'force-dynamic';
 
-// Favoriter sorterade efter var och när: Rutiner (flows och hela hemmet) överst, sedan ett kort per rum
-// med rummets moods och Hue-scener tillsammans. Alla moods finns bakom en länk.
+// Favoriter och rum på en sida: Rutiner (flows och hela hemmet) överst, sedan ett kort per rum med
+// Ljust/Mys/Släck och rummets favoriter. Övriga scener, TV och lampor fälls ut under kortet vid tryck.
 
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
 
 export default async function FavoritesPage({ searchParams }: { searchParams: Promise<{ hue?: string }> }) {
   const { hue: hueResult } = await searchParams;
-  const [h, flows, hue] = await Promise.all([loadHome(), loadFlows(), loadHueScenes()]);
+  const [h, flows, hue, tv, np] = await Promise.all([loadHome(), loadFlows(), loadHueScenes(), loadTv(), loadNowPlaying()]);
   const hueMode = process.env.CONTROL === 'hue';
 
   // Hue-hushåll: alla scener (synkade som moods) räknas som favoriter. Homey: de markerade favoriterna.
@@ -33,6 +38,22 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
   if (!hueMode) for (const s of hue.scenes) add(s.room ?? 'Övrigt', { id: s.id, name: s.name, kind: 'hue', dynamic: s.dynamic, active: s.active, colors: s.colors });
   const roomList = [...rooms.entries()].map(([name, items]) => ({ name, items: items.sort((a, b) => Number(a.kind === 'hue') - Number(b.kind === 'hue') || byName(a, b)) }))
     .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+
+  // Ett kort per rum: favoriterna synliga, rummets övriga scener i Detaljer.
+  const key = (x: string) => x.trim().toLowerCase();
+  const cards = h.rooms.map((room) => {
+    const favs = roomList.find((x) => key(x.name) === key(room.name))?.items ?? [];
+    const all: Action[] = [
+      ...room.moods.map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
+      ...(!hueMode ? hue.scenes.filter((x) => key(x.room ?? '') === key(room.name))
+        .map((x) => ({ id: x.id, name: x.name, kind: 'hue' as const, dynamic: x.dynamic, active: x.active, colors: x.colors })) : []),
+    ];
+    const more = all.filter((a) => !favs.some((f) => f.kind === a.kind && f.id === a.id)).sort(byName);
+    return { room, favs, more, tv: tv && tv.zone === room.id ? tv : null };
+  }).filter((c) => c.room.lights.length > 0 || c.favs.length > 0 || c.more.length > 0 || c.tv);
+
+  // Favoriter i rum som inte finns som zon (t.ex. Hue-rum med annat namn): egna enkla kort.
+  const orphans = roomList.filter((x) => !h.rooms.some((r) => key(r.name) === key(x.name)));
 
   // Alla moods (även de som inte är favoriter), bakom en länk.
   const allMoods = [
@@ -64,15 +85,48 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
         </section>
       )}
 
-      {roomList.length > 0 ? (
-        <div className="columns-1 gap-4 md:columns-2 lg:gap-6 xl:columns-3">
-          {roomList.map((r) => (
-            <section key={r.name} className="mb-4 flex break-inside-avoid flex-col gap-1 rounded-[1.25rem] bg-card p-5 lg:mb-6 lg:p-6">
-              <h2 className="text-[1.125rem] font-semibold text-dim">{r.name}</h2>
-              <ActionTiles items={r.items} />
+      {cards.length + orphans.length > 0 ? (
+        <section aria-label="Rum" className="grid items-start gap-4 md:grid-cols-2 lg:gap-6 xl:grid-cols-3">
+          {cards.map(({ room: r, favs, more, tv: rtv }) => (
+            <section key={r.id} aria-labelledby={`rum-${r.id}`} className="flex flex-col gap-3 rounded-[1.25rem] bg-card p-4 lg:p-5">
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name={r.icon} size={22} /></span>
+                <h2 id={`rum-${r.id}`} className="min-w-0 grow truncate text-[1.1875rem] font-bold">{r.name}</h2>
+                {r.temp != null && <span className="shrink-0 text-[1.125rem] font-semibold tabular-nums">{fmtTemp(r.temp)}<TrendArrow trend={r.tempTrend} /></span>}
+                {r.lights.length > 0 && (
+                  <span className={`flex shrink-0 items-center gap-1 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.9375rem] font-semibold ${r.lightsOn ? 'text-sun' : 'text-dim'}`}>
+                    <Icon name="bulb" size={16} />{r.lightsOn}/{r.lights.length}<span className="sr-only"> lampor tända</span>
+                  </span>
+                )}
+              </div>
+              {r.lights.length > 0 && <SceneButtons zoneId={r.id} room={r.name} size="card" />}
+              {favs.length > 0 && <ActionTiles items={favs} layout="compact" />}
+              {(more.length > 0 || r.lights.length > 0 || rtv) && (
+                <details className="group border-t border-line pt-1">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[1rem] font-semibold text-dim [&::-webkit-details-marker]:hidden">
+                    Detaljer
+                    <span aria-hidden="true" className="text-[1.25rem] transition-transform group-open:rotate-90">›</span>
+                  </summary>
+                  <div className="flex flex-col gap-3 pt-2">
+                    {more.length > 0 && <ActionTiles items={more} layout="compact" />}
+                    {rtv && <TvRemote r={rtv} title={(() => { const p = rtv.cast ? np.find((x) => x.id === rtv.cast!.id) : undefined; return p ? [p.title, p.subtitle].filter(Boolean).join(' · ') : null; })()} />}
+                    {r.lights.length > 0 && (
+                      <ul className="flex flex-col gap-3">
+                        {r.lights.map((l) => <LightControl key={l.id} light={l} />)}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+              )}
             </section>
           ))}
-        </div>
+          {orphans.map((r) => (
+            <section key={r.name} className="flex flex-col gap-1 rounded-[1.25rem] bg-card p-4 lg:p-5">
+              <h2 className="text-[1.1875rem] font-bold">{r.name}</h2>
+              <ActionTiles items={r.items} layout="compact" />
+            </section>
+          ))}
+        </section>
       ) : routines.length === 0 && (
         <p className="rounded-[1.25rem] bg-card p-5 text-[1.0625rem] text-dim">
           {hueMode ? 'Inga scener än. Anslut Philips Hue nedan.' : 'Inga favoriter än. Markera moods och flows som favoriter i Homey-appen så dyker de upp här.'}
