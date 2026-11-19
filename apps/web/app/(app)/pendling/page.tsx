@@ -4,7 +4,7 @@ import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
 import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { allPositions, earliestAt, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
-import { detectTrain, positionHistory } from '@/lib/onboard-source';
+import { detectTrain, loadConfirmed, positionHistory } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
 import type { TransitLeg } from '@/lib/transit';
 import { RoadImpact } from '@/components/RoadImpact';
@@ -144,11 +144,14 @@ export default async function CommutePage() {
   // Tågläge: på ett tåg i pendlingen visas bara det tåget och resten av resan.
   const me = process.env.HOUSEHOLD ?? '', nowMs = Date.now(), d0 = direction();
   const dirTrains = c ? [...c[d0], ...(c.recent?.[d0] ?? [])] : [];
-  let onTrain = c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me), nowMs, new Set(dirTrains.map((t) => t.ident))) : null;
+  const confirmed = c?.trains ? await loadConfirmed(nowMs) : null;
+  let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me), nowMs, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
   const guessed = !onTrain && c?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, nowMs, 2 * 3600_000), ...await positionHistory(positionDevices(locate.members, locate.items, me), nowMs - 2 * 3600_000)], TERMINALS[d0 === 'out' ? 0 : 1], dirTrains, nowMs) : null;
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
-  const run = onTrain ? pickRun([...rtTrains, ...(c?.recent?.out ?? []), ...(c?.recent?.home ?? [])], onTrain.train, nowMs) : null;
+  const pool = [...rtTrains, ...(c?.recent?.out ?? []), ...(c?.recent?.home ?? [])];
+  const run = confirmed ? pool.find((t) => t.ident === confirmed.ident && t.dep === confirmed.dep) ?? pickRun(pool, confirmed.ident, nowMs)
+    : onTrain ? pickRun(pool, onTrain.train, nowMs) : null;
   const toWork = !!run && [...(c?.out ?? []), ...(c?.recent?.out ?? [])].some((t) => t.id === run.id);
   const rArr = run?.arr != null ? run.arr + (run.delay ?? 0) * 60_000 : null;
   const onward = run && rArr && (toWork || [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === run.id)) ? await loadOnward(rArr, toWork, PLACE) : [];
@@ -182,7 +185,7 @@ export default async function CommutePage() {
           )}
           {!arrived && <section className="flex flex-col gap-2 rounded-[1.5rem] glass p-3 ring-2 ring-sun/60">
             <h2 className="text-xl font-extrabold">Du är {guessed ? 'troligen ' : ''}på tåget</h2>
-            <RiddenTrain t={ridden} guessed={!!guessed} />
+            <RiddenTrain t={ridden} guessed={!!guessed} confirmed={!!confirmed} />
           </section>}
           {/* Om tågläget har fel: avgångarna i aktuell riktning inom en timme (minst nästa). */}
           {c && !arrived && (() => {

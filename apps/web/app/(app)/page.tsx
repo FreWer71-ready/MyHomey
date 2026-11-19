@@ -15,13 +15,14 @@ import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
 import { pingableNames } from '@/app/actions/ping';
 import { allPositions, earliestAt, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
-import { detectTrain, positionHistory } from '@/lib/onboard-source';
+import { detectTrain, loadConfirmed, positionHistory } from '@/lib/onboard-source';
 import { RoadImpact } from '@/components/RoadImpact';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
+import { OnTrainButton } from '@/components/OnTrainButton';
 import { HomeTrains, RiddenTrain } from '@/components/TrainFocus';
 import { tvAppLabel } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
@@ -289,12 +290,17 @@ export default async function HomePage() {
   // tåget och resten av resan.
   const me = process.env.HOUSEHOLD ?? '';
   const dirTrains = commute ? [...commute[dir], ...(commute.recent?.[dir] ?? [])] : [];
-  let onTrain = commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me, now), now, new Set(dirTrains.map((t) => t.ident))) : null;
+  // Användarens bekräftelse ("Jag är på tåget") går före positionen.
+  const confirmed = commute?.trains ? await loadConfirmed(now) : null;
+  let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me, now), now, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
   const guessed = !onTrain && commute?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, now, 2 * 3600_000), ...await positionHistory(positionDevices(locate.members, locate.items, me), now - 2 * 3600_000)], TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
   const allTrains = commute ? [...commute.out, ...commute.home, ...commute.all, ...(commute.recent?.out ?? []), ...(commute.recent?.home ?? [])] : [];
-  const run = onTrain ? pickRun(allTrains, onTrain.train, now) : null;
+  const run = confirmed ? allTrains.find((t) => t.ident === confirmed.ident && t.dep === confirmed.dep) ?? pickRun(allTrains, confirmed.ident, now)
+    : onTrain ? pickRun(allTrains, onTrain.train, now) : null;
+  // Tågläget missade (ingen position): erbjud bekräftelse för tåget som just gått (högst 20 min sedan).
+  const justLeft = !onTrain && commute ? [...(commute.recent?.[dir] ?? [])].filter((t) => !t.canceled && (t.est ?? t.dep) > now - 20 * 60_000).sort((a, b) => b.dep - a.dep)[0] ?? null : null;
   const riddenToWork = !!run && (!!commute?.out.some((t) => t.id === run.id) || !!commute?.recent?.out.some((t) => t.id === run.id));
   // Kommande avgångar inom en timme (minst nästa), som reserv om tågläget har fel.
   const upcomingDir = trains.filter((t) => !t.canceled && (t.est ?? t.dep) > now && t.ident !== run?.ident);
@@ -546,6 +552,12 @@ export default async function HomePage() {
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
+              {!ridden && justLeft && (
+                <p className="flex items-center justify-between gap-3 text-[1rem]">
+                  <span>Sitter du på {justLeft.product ?? 'tåg'} {justLeft.ident} ({hhmm(justLeft.est ?? justLeft.dep)})?</span>
+                  <OnTrainButton ident={justLeft.ident} dep={justLeft.dep} arr={justLeft.arr} label="Ja ✓" />
+                </p>
+              )}
               {!ridden && nextTransit && tg && (
                 <p className="flex items-baseline gap-2 text-[1rem]">
                   <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
@@ -567,7 +579,7 @@ export default async function HomePage() {
                       <TransitLegs trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} now={now} trains={[...commute.out, ...commute.home, ...commute.all]} compact />
                     </div>
                   )}
-                  {!arrived && <div className={onward.length > 0 ? "border-t border-line pt-3" : ""}><RiddenTrain t={ridden} guessed={!!guessed} /></div>}
+                  {!arrived && <div className={onward.length > 0 ? "border-t border-line pt-3" : ""}><RiddenTrain t={ridden} guessed={!!guessed} confirmed={!!confirmed} /></div>}
                   {/* Om tågläget har fel: kommande avgångar inom en timme (minst nästa). */}
                   {!arrived && nextHour.length > 0 && (
                     <div className="flex flex-col gap-1.5 border-t border-line pt-3">

@@ -5,7 +5,7 @@ import { km, type LatLon } from './trip.ts';
 
 export type Pos = { at: LatLon; ts: number; speed: number | null; src: 'life360' | 'watch' };
 export type TrainPos = { train: string; at: LatLon; ts: number; speed: number | null };
-export type OnTrain = { train: string; dist: number; src: Pos['src'] };
+export type OnTrain = { train: string; dist: number; src: Pos['src'] | 'user' };
 
 const MAX_AGE = 10 * 60_000;
 

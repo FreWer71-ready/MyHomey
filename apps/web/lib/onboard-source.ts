@@ -36,3 +36,14 @@ export async function positionHistory(devices: { id: string; src: Pos['src'] }[]
     return [];
   }
 }
+
+/** Användarens bekräftelse "Jag är på tåget" (gäller till `until`), annars null. */
+export async function loadConfirmed(now = Date.now()): Promise<{ ident: string; dep: number } | null> {
+  try {
+    const sb = await createClient();
+    const { data } = await sb.from('onboard_confirm').select('ident,dep,until').gt('until', new Date(now).toISOString()).maybeSingle();
+    return data ? { ident: data.ident as string, dep: Date.parse(data.dep as string) } : null;
+  } catch {
+    return null;
+  }
+}

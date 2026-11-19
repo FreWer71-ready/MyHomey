@@ -10,7 +10,9 @@ const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/
 /** Hela sträckan som tidslinje (stationer och driftplatser) i en ruta i body (kortet runt kan vara en länk). */
 function TrainTimeline({ id, ident, p, box }: { id: string; ident: string; p: TrainPath | null; box: React.RefObject<HTMLDivElement | null> }) {
   if (typeof document === 'undefined') return null;
-  return createPortal(<div ref={box} id={id} popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,560px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
+  // Rutan ligger i body men React-händelser bubblar ändå till förälderkomponenten (ofta en länk till Pendling):
+  // stoppa dem så att Stäng eller tryck utanför bara stänger rutan.
+  return createPortal(<div ref={box} id={id} popover="auto" onClick={(e) => e.stopPropagation()} className="m-auto max-h-[88dvh] w-[min(94vw,560px)] overflow-hidden rounded-[20px] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
           <h2 className="text-[20px] font-semibold">Tåg {ident}</h2>
           <button type="button" popoverTarget={id} popoverTargetAction="hide" className="pill">Stäng</button>
