@@ -14,9 +14,10 @@ export function freshestPosition(members: Member[], items: Item[], first: string
   const f = first.toLowerCase();
   const out: Pos[] = [];
   const m = members.find((x) => x.first.toLowerCase() === f);
-  if (m?.lat != null && m.lon != null && m.updated) out.push({ at: { lat: m.lat, lon: m.lon }, ts: Date.parse(m.updated), speed: m.speed, src: 'life360' });
+  // Åldern räknas från senaste positionsändringen, inte t.ex. ett nytt batterivärde.
+  if (m?.lat != null && m.lon != null && m.posUpdated) out.push({ at: { lat: m.lat, lon: m.lon }, ts: Date.parse(m.posUpdated), speed: m.speed, src: 'life360' });
   const w = items.find((x) => /apple watch/i.test(x.name) && x.name.toLowerCase().includes(f));
-  if (w?.lat != null && w.lon != null && w.updated) out.push({ at: { lat: w.lat, lon: w.lon }, ts: Date.parse(w.updated), speed: null, src: 'watch' });
+  if (w?.lat != null && w.lon != null && w.posUpdated) out.push({ at: { lat: w.lat, lon: w.lon }, ts: Date.parse(w.posUpdated), speed: null, src: 'watch' });
   return out.filter((p) => now - p.ts <= MAX_AGE).sort((a, b) => b.ts - a.ts)[0] ?? null;
 }
 

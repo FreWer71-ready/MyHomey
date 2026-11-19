@@ -4,13 +4,15 @@ import { freshestPosition, matchTrain, parsePoint } from './onboard.ts';
 
 const now = Date.parse('2026-11-18T07:30:00+01:00');
 const iso = (minAgo: number) => new Date(now - minAgo * 60_000).toISOString();
-const member = (o: object) => ({ id: 'm', name: 'Fredrik T', first: 'Fredrik', home: false, place: null, address: null, driving: true, speed: 110, stay: null, battery: 80, charging: false, lat: 59.2, lon: 17.6, updated: iso(4), ...o });
-const watch = (o: object) => ({ id: 'w', name: 'Apple Watch för Fredrik', home: false, moving: true, km: null, battery: 70, lowBattery: false, charging: false, lat: 59.21, lon: 17.61, updated: iso(1), canSound: true, ...o });
+const member = (o: object) => ({ id: 'm', name: 'Fredrik T', first: 'Fredrik', home: false, place: null, address: null, driving: true, speed: 110, stay: null, battery: 80, charging: false, lat: 59.2, lon: 17.6, updated: iso(4), posUpdated: iso(4), ...o });
+const watch = (o: object) => ({ id: 'w', name: 'Apple Watch för Fredrik', home: false, moving: true, km: null, battery: 70, lowBattery: false, charging: false, lat: 59.21, lon: 17.61, updated: iso(1), posUpdated: iso(1), canSound: true, ...o });
 
 test('tågläge: färskaste position och matchning mot tåg', () => {
   assert.equal(freshestPosition([member({})], [watch({})], 'Fredrik', now)!.src, 'watch');
-  assert.equal(freshestPosition([member({})], [watch({ updated: iso(20) })], 'Fredrik', now)!.src, 'life360');
-  assert.equal(freshestPosition([member({ updated: iso(30) })], [], 'Fredrik', now), null);
+  assert.equal(freshestPosition([member({})], [watch({ posUpdated: iso(20) })], 'Fredrik', now)!.src, 'life360');
+  // Nytt batterivärde gör inte en gammal position färsk.
+  assert.equal(freshestPosition([member({ updated: iso(1), posUpdated: iso(30) })], [], 'Fredrik', now), null);
+  assert.equal(freshestPosition([member({ updated: iso(30), posUpdated: iso(30) })], [], 'Fredrik', now), null);
   assert.deepEqual(parsePoint('POINT (17.628788 59.190920)'), { lon: 17.628788, lat: 59.19092 });
   const pos = { at: { lat: 59.19, lon: 17.629 }, ts: now, speed: 110, src: 'life360' as const };
   const trains = [
