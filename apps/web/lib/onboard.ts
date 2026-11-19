@@ -11,6 +11,11 @@ const MAX_AGE = 10 * 60_000;
 
 /** Färskaste positionen (högst 10 min gammal) för personen med förnamnet `first`: Life360 eller personens Apple Watch. */
 export function freshestPosition(members: Member[], items: Item[], first: string, now = Date.now(), maxAge = MAX_AGE): Pos | null {
+  return allPositions(members, items, first, now, maxAge)[0] ?? null;
+}
+
+/** Alla positioner (Life360 och Apple Watch) för personen, högst `maxAge` gamla, nyast först. */
+export function allPositions(members: Member[], items: Item[], first: string, now = Date.now(), maxAge = MAX_AGE): Pos[] {
   const f = first.toLowerCase();
   const out: Pos[] = [];
   const m = members.find((x) => x.first.toLowerCase() === f);
@@ -18,7 +23,7 @@ export function freshestPosition(members: Member[], items: Item[], first: string
   if (m?.lat != null && m.lon != null && m.posUpdated) out.push({ at: { lat: m.lat, lon: m.lon }, ts: Date.parse(m.posUpdated), speed: m.speed, src: 'life360' });
   const w = items.find((x) => /apple watch/i.test(x.name) && x.name.toLowerCase().includes(f));
   if (w?.lat != null && w.lon != null && w.posUpdated) out.push({ at: { lat: w.lat, lon: w.lon }, ts: Date.parse(w.posUpdated), speed: null, src: 'watch' });
-  return out.filter((p) => now - p.ts <= maxAge).sort((a, b) => b.ts - a.ts)[0] ?? null;
+  return out.filter((p) => now - p.ts <= maxAge).sort((a, b) => b.ts - a.ts);
 }
 
 /** "POINT (17.62 59.19)" → { lat, lon }. */
@@ -53,12 +58,17 @@ type TrainLike = { ident: string; dep: number; est: number | null; arr: number |
  * (högst 2 h gammal) låg vid avgångsstationen högst 20 min före en avgång i aktuell riktning, tåget har gått och är
  * inte framme än. Ger tågnumret eller null.
  */
-export function inferTrain(pos: Pos | null, station: LatLon, trains: TrainLike[], now = Date.now()): string | null {
-  if (!pos || now - pos.ts > 2 * 3600_000 || km(pos.at, station) > 0.6) return null;
+export function inferTrain(positions: Pos[], station: LatLon, trains: TrainLike[], now = Date.now()): string | null {
+  const recent = positions.filter((p) => now - p.ts <= 2 * 3600_000);
+  const latest = [...recent].sort((a, b) => b.ts - a.ts)[0];
+  // Den nyaste positionen måste vara vid stationen (annars har man gått därifrån).
+  if (!latest || km(latest.at, station) > 0.6) return null;
+  // Tidigaste observationen vid stationen (av alla källor): klockan kan rapportera några minuter efter avgång.
+  const first = Math.min(...recent.filter((p) => km(p.at, station) <= 0.6).map((p) => p.ts));
   const hit = trains
     .filter((t) => !t.canceled)
     .map((t) => ({ t, d: t.est ?? t.dep }))
-    .filter(({ t, d }) => d >= pos.ts - 2 * 60_000 && d <= pos.ts + 20 * 60_000 && d <= now && (t.arr == null || now <= t.arr + 10 * 60_000))
+    .filter(({ t, d }) => d >= first - 3 * 60_000 && d <= first + 20 * 60_000 && d <= now && (t.arr == null || now <= t.arr + 10 * 60_000))
     .sort((a, b) => a.d - b.d)[0];
   return hit?.t.ident ?? null;
 }

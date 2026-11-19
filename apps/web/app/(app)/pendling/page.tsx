@@ -3,7 +3,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
 import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
-import { freshestPosition, inferTrain, TERMINALS } from '@/lib/onboard';
+import { allPositions, freshestPosition, inferTrain, TERMINALS } from '@/lib/onboard';
 import { detectTrain } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
 import { RoadImpact } from '@/components/RoadImpact';
@@ -145,7 +145,7 @@ export default async function CommutePage() {
   const dirTrains = c ? [...c[d0], ...(c.recent?.[d0] ?? [])] : [];
   let onTrain = c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me), nowMs, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
-  const guessed = !onTrain && c?.trains ? inferTrain(freshestPosition(locate.members, locate.items, me, nowMs, 2 * 3600_000), TERMINALS[d0 === 'out' ? 0 : 1], dirTrains, nowMs) : null;
+  const guessed = !onTrain && c?.trains ? inferTrain(allPositions(locate.members, locate.items, me, nowMs, 2 * 3600_000), TERMINALS[d0 === 'out' ? 0 : 1], dirTrains, nowMs) : null;
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
   const ridden = onTrain ? [...rtTrains, ...(c?.recent?.out ?? []), ...(c?.recent?.home ?? [])].find((t) => t.ident === onTrain.train) ?? null : null;
   const toWork = !!ridden && [...(c?.out ?? []), ...(c?.recent?.out ?? [])].some((t) => t.id === ridden.id);

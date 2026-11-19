@@ -13,7 +13,7 @@ import { TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
 import { pingableNames } from '@/app/actions/ping';
-import { freshestPosition, inferTrain, TERMINALS } from '@/lib/onboard';
+import { allPositions, freshestPosition, inferTrain, TERMINALS } from '@/lib/onboard';
 import { detectTrain } from '@/lib/onboard-source';
 import { RoadImpact } from '@/components/RoadImpact';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
@@ -288,7 +288,7 @@ export default async function HomePage() {
   const dirTrains = commute ? [...commute[dir], ...(commute.recent?.[dir] ?? [])] : [];
   let onTrain = commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me, now), now, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
-  const guessed = !onTrain && commute?.trains ? inferTrain(freshestPosition(locate.members, locate.items, me, now, 2 * 3600_000), TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
+  const guessed = !onTrain && commute?.trains ? inferTrain(allPositions(locate.members, locate.items, me, now, 2 * 3600_000), TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
   const allTrains = commute ? [...commute.out, ...commute.home, ...commute.all, ...(commute.recent?.out ?? []), ...(commute.recent?.home ?? [])] : [];
   const ridden = onTrain ? allTrains.find((t) => t.ident === onTrain.train) ?? null : null;
@@ -374,18 +374,21 @@ export default async function HomePage() {
       {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
       <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-6 cols2:lg:h-auto cols2:lg:grid-cols-2 cols2:lg:grid-rows-[auto_auto_auto_1fr] cols2:lg:items-start">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
-        <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-3 lg:flex-col lg:items-start lg:gap-3 cols2:lg:col-span-1 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
+        <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-2 lg:self-start cols2:lg:col-span-1 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
           <h1 className="sr-only">Hemma</h1>
           <Clock show="time" className="text-[4.75rem] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:text-[5.5rem] lg:leading-[0.75]" />
           <span className="flex flex-col pb-1 leading-tight">
             <Clock show="date" className="text-[1.125rem] font-semibold first-letter:uppercase" />
             {names && <span className="text-[1rem] text-dim">Namnsdag <span className="text-sun">{names}</span></span>}
           </span>
+          {/* Spelar nu under klockan: fyller ytan och låter varningarna ligga högst upp i mitten. */}
+          <div className="min-w-0 basis-full overflow-hidden lg:mt-1">
+            <NowPlayingStrip items={playing} />
+          </div>
         </header>
 
         {/* VARNINGAR (mitten): det brådskande överst och centralt. Korta rubriker; detaljerna finns på sidan bakom. */}
-        <section aria-label="Varningar" className="order-2 flex min-w-0 flex-col gap-2 md:col-span-2 lg:order-none lg:col-span-6 lg:self-start cols2:lg:col-span-2 cols2:lg:row-start-2">
-          <NowPlayingStrip items={playing} />
+        <section aria-label="Varningar" className="order-2 flex min-w-0 flex-col gap-2 md:col-span-2 lg:order-none lg:col-span-4 lg:self-start 2xl:col-span-5 cols2:lg:col-span-2 cols2:2xl:col-span-2 cols2:lg:row-start-2">
           {issues > 0 ? (
             <AlertChips alerts={alerts} />
           ) : (
@@ -400,7 +403,7 @@ export default async function HomePage() {
 
         {/* NÄRVARO (höger, egen yta): vem är hemma, var de andra är. Källa (Life360/Smart Presence) visas på Hitta. */}
         {people.length > 0 && (
-          <Link href="/hitta" aria-label="Närvaro – visa var alla är" className="order-2 min-w-0 md:col-span-2 lg:order-none lg:col-span-3 lg:self-start cols2:lg:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-1">
+          <Link href="/hitta" aria-label="Närvaro – visa var alla är" className="order-2 min-w-0 md:col-span-2 lg:order-none lg:col-span-4 lg:self-start 2xl:col-span-3 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-1">
             <ul aria-label="Närvaro" className="flex flex-wrap gap-x-5 gap-y-1.5 lg:flex-col lg:gap-1.5">
               {people.map((p) => {
                 const m = !p.present ? where(p.name) : undefined;
@@ -469,7 +472,7 @@ export default async function HomePage() {
         </div>
 
         {/* HÄRNÄST: pendling och kalender. */}
-        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
+        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 2xl:col-span-5 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
           {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
           {tripEta && !(weekend && trip) && (
             <Card title={`Resa · ${tripEta.trip.place}`} icon="road" href="/pendling"
@@ -614,7 +617,7 @@ export default async function HomePage() {
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
-        <Card className="order-6 lg:order-none lg:col-span-4 lg:self-start lg:py-3 lg:max-h-full cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-4 cols2:lg:max-h-none">
+        <Card className="order-6 lg:order-none lg:col-span-4 2xl:col-span-3 cols2:2xl:col-span-1 lg:self-start lg:py-3 lg:max-h-full cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-4 cols2:lg:max-h-none">
           <h2 className="sr-only">Hemmet</h2>
           <div className="scroll-x flex min-h-0 flex-col overflow-y-auto lg:grow" style={{ '--row-h': rowCount > 6 ? '3.1875rem' : '3.625rem' } as React.CSSProperties}>
             {tempAvg != null && (
