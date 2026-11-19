@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { FOCUS_MIN, TONE_COLOR, countdown, countdownTone, departsAt, focusTrain, trainStatus, trainTone, type Train } from '@/lib/commute';
 import { MinutesTo } from '@/components/MinutesTo';
-import { TrainProgress } from '@/components/TrainProgress';
+import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
+import { TrainJourney } from '@/components/TrainJourney';
 import { hhmm } from '@/lib/prices';
 import { dayOf } from '@/lib/calendar-view';
 import { tint } from '@/lib/scale';
@@ -25,7 +26,7 @@ function useNow(serverNow: number, list: Train[]) {
 }
 
 /** Det framlyfta tåget: avgångstid till vänster, stor nedräkning till höger och en stapel som krymper mot avgång. */
-function Focus({ t, now, large }: { t: Train; now: number; large?: boolean }) {
+function Focus({ t, now, large, journey }: { t: Train; now: number; large?: boolean; journey?: 'out' | 'home' }) {
   const kvar = departsAt(t) - now;
   const farg = countdownTone(kvar) === 'ok' ? 'var(--color-fg)' : TONE_COLOR[countdownTone(kvar)];
   const andel = Math.max(0, Math.min(1, kvar / (FOCUS_MIN * 60_000)));
@@ -51,6 +52,8 @@ function Focus({ t, now, large }: { t: Train; now: number; large?: boolean }) {
       </div>
       {/* Var tåget är nu (stationer och driftplatser), tryck för hela sträckan. */}
       <TrainProgress ident={t.ident} />
+      {/* Hela sträckan (alla mellanliggande punkter) och resan dörr till dörr. */}
+      {journey ? <TrainJourney ident={t.ident} toWork={journey === 'out'} before={<TrainRoute ident={t.ident} />} /> : <div><TrainRoute ident={t.ident} /></div>}
       <div className="h-1.5 overflow-hidden rounded-full bg-glass-2" role="presentation">
         <div className="h-full rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${andel * 100}%`, background: farg }} suppressHydrationWarning />
       </div>
@@ -59,7 +62,7 @@ function Focus({ t, now, large }: { t: Train; now: number; large?: boolean }) {
 }
 
 /** Pendlingskortet på Hem: fokuståget stort och två följande på en rad, annars fyra avgångar i 2×2. */
-export function HomeTrains({ trains, serverNow }: { trains: Train[]; serverNow: number }) {
+export function HomeTrains({ trains, serverNow, journey }: { trains: Train[]; serverNow: number; journey?: 'out' | 'home' }) {
   const now = useNow(serverNow, trains);
   const fokus = focusTrain(trains, now);
   const kommande = trains.filter((t) => t !== fokus && departsAt(t) >= now - 30_000);
@@ -67,14 +70,16 @@ export function HomeTrains({ trains, serverNow }: { trains: Train[]; serverNow: 
     const efter = kommande.filter((t) => departsAt(t) > departsAt(fokus)).slice(0, 2);
     return (
       <div className="flex flex-col gap-2">
-        <Focus t={fokus} now={now} />
+        <Focus t={fokus} now={now} journey={journey} />
         {efter.length > 0 && (
           <ul className="grid grid-cols-1 gap-x-5 gap-y-1 lg:grid-cols-2">
             {efter.map((t) => (
-              <li key={t.id} className="flex min-w-0 items-baseline gap-2 text-[1rem] leading-tight">
+              <li key={t.id} className="min-w-0">
+                <TrainRoute ident={t.ident} className="flex min-w-0 items-baseline gap-2 text-[1rem] leading-tight">
                 <span className={`font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : departsAt(t))}</span>
                 <span className="truncate text-dim">{t.canceled ? '' : <MinutesTo at={departsAt(t)} className="tabular-nums" />}{t.track ? ` · spår ${t.track}` : ''}</span>
                 <span className="ml-auto shrink-0 text-[0.875rem] font-semibold" style={{ color: trainTone(t) === 'ok' ? MUTE : TONE_COLOR[trainTone(t)] }}>{trainStatus(t).text}</span>
+                </TrainRoute>
               </li>
             ))}
           </ul>
@@ -87,7 +92,8 @@ export function HomeTrains({ trains, serverNow }: { trains: Train[]; serverNow: 
       {kommande.slice(0, 4).map((t) => {
         const tone = trainTone(t);
         return (
-          <li key={t.id} className="flex min-w-0 flex-col leading-tight">
+          <li key={t.id} className="min-w-0">
+            <TrainRoute ident={t.ident} className="flex min-w-0 flex-col leading-tight">
             <span className="flex items-baseline gap-2">
               <span className={`text-[1.75rem] font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : departsAt(t))}</span>
               <span className="ml-auto shrink-0 text-[0.9375rem] font-semibold" style={{ color: tone === 'ok' ? MUTE : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
@@ -96,6 +102,7 @@ export function HomeTrains({ trains, serverNow }: { trains: Train[]; serverNow: 
               {!t.canceled && (dayOf(t.dep) !== dayOf(now) ? <span className="font-semibold text-fg">imorgon</span> : <MinutesTo at={departsAt(t)} className="font-semibold text-fg tabular-nums" />)}
               {t.canceled ? '' : ' · '}{t.track ? `spår ${t.track}` : t.dest}
             </span>
+            </TrainRoute>
           </li>
         );
       })}
@@ -104,16 +111,18 @@ export function HomeTrains({ trains, serverNow }: { trains: Train[]; serverNow: 
 }
 
 /** Avgångslistan på Pendling-sidan: tåget inom 45 minuter som stort fokus, övriga som vanliga rader. */
-export function PageTrainList({ trains, serverNow }: { trains: Train[]; serverNow: number }) {
+export function PageTrainList({ trains, serverNow, journey }: { trains: Train[]; serverNow: number; journey?: 'out' | 'home' }) {
   const now = useNow(serverNow, trains);
   const fokus = focusTrain(trains, now);
   return (
     <ol className="flex flex-col gap-1.5">
       {trains.map((t) => {
-        if (t === fokus) return <li key={t.id}><Focus t={t} now={now} large /></li>;
+        if (t === fokus) return <li key={t.id}><Focus t={t} now={now} large journey={journey} /></li>;
         const s = trainStatus(t);
         return (
-          <li key={t.id} className="flex items-center gap-3 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[trainTone(t)], 0.4) }}>
+          <li key={t.id} className="flex flex-col gap-2 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[trainTone(t)], 0.4) }}>
+            {/* Tryck på raden: hela sträckan med alla mellanliggande punkter. */}
+            <TrainRoute ident={t.ident} className="flex items-center gap-3">
             <span className="flex w-[4rem] shrink-0 flex-col leading-tight">
               <span className={`text-xl font-extrabold tabular-nums ${t.canceled || t.delay >= 3 ? 'line-through decoration-2 opacity-70' : ''}`}>{hhmm(t.dep)}</span>
               {dayOf(t.dep) !== dayOf(now) && <span className="text-[0.875rem] font-semibold text-dim">imorgon</span>}
@@ -128,6 +137,8 @@ export function PageTrainList({ trains, serverNow }: { trains: Train[]; serverNo
               </span>
             </span>
             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.875rem] font-extrabold ${s.cls}`}>{s.text}</span>
+            </TrainRoute>
+            {journey && !t.canceled && <TrainJourney ident={t.ident} toWork={journey === 'out'} />}
           </li>
         );
       })}

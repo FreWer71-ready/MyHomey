@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 const fmtDate = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', day: 'numeric', month: 'short', year: 'numeric' }).format(ms);
 
-function Trains({ title, icon, list, active }: { title: string; icon: IconName; list: Train[]; active: boolean }) {
+function Trains({ title, icon, list, active, journey }: { title: string; icon: IconName; list: Train[]; active: boolean; journey?: 'out' | 'home' }) {
   return (
     // Högst 2/3 av skärmhöjden; listan skrollar inuti så att vägläget under alltid syns.
     <section className={`flex max-h-[66dvh] min-h-0 min-w-0 flex-col gap-2 rounded-[1.5rem] glass p-3 ${active ? 'ring-2 ring-sun/60' : ''}`}>
@@ -28,7 +28,7 @@ function Trains({ title, icon, list, active }: { title: string; icon: IconName; 
       </h2>
       {list.length === 0 && <p className="rounded-2xl bg-glass-2 p-3 font-bold text-dim">Inga avgångar de närmaste 5 timmarna</p>}
       {/* Tåget som går inom 45 min visas stort med nedräkning. */}
-      <div className="scroll-x -mr-1 min-h-0 overflow-y-auto pr-1"><PageTrainList trains={list} serverNow={Date.now()} /></div>
+      <div className="scroll-x -mr-1 min-h-0 overflow-y-auto pr-1"><PageTrainList trains={list} serverNow={Date.now()} journey={journey} /></div>
     </section>
   );
 }
@@ -132,7 +132,11 @@ export default async function CommutePage() {
   // Eftermiddag (riktning hem): hem från positionen, annars från jobbet. Annars till jobbet om man inte redan är där.
   const goingHome = !!tg && direction() === 'home' && (o.away || !o.pos);
   // Efter kl 12 bara hemresan (om man inte redan är hemma); före kl 12 bara resan till jobbet (om man inte redan är där).
-  const transit = !tg ? []
+  // Dörr till dörr per tåg (ResRobot vid tryck) när föredragen väg finns; två förslag härifrån bara när man är någon
+  // annanstans än hemma eller på jobbet.
+  const perTrain = !!tg && !!process.env.TRANSIT_VIA && !!process.env.TRANSIT_TRANSFER;
+  const elsewhere = o.away && !(o.pos && km(o.pos, tg?.at ?? PLACE) <= 1);
+  const transit = !tg || (perTrain && !elsewhere) ? []
     : direction() === 'home' ? (goingHome ? await loadTransit(o.away ? o.pos! : tg.at, PLACE, Date.now(), 2, false, true) : [])
     : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
   const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
@@ -197,8 +201,8 @@ export default async function CommutePage() {
         <>
           {/* Bara aktuell riktning: mot Stockholm före kl 12, hem efter. */}
           {c.trains && (dir === 'out'
-            ? <Trains title="Eskilstuna → Stockholm" icon="train" list={soon(c.out)} active />
-            : <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active />)}
+            ? <Trains title="Eskilstuna → Stockholm" icon="train" list={soon(c.out)} active journey={perTrain ? 'out' : undefined} />
+            : <Trains title="Stockholm → Eskilstuna" icon="train" list={soon(c.home)} active journey={perTrain ? 'home' : undefined} />)}
           {/* Utan tågpendling (COMMUTE=road) är vägen viktigast: vägdata först, sedan tågen från Eskilstuna C. */}
           {!c.trains && <Road list={c.road} stations={c.stations ?? []} />}
           {/* I bilen (Life360): bara vägläget, inga tåg. */}

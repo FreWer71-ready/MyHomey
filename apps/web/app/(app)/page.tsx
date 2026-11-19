@@ -8,7 +8,7 @@ import { alongRoute, boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nex
 import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
-import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
@@ -267,8 +267,18 @@ export default async function HomePage() {
   let nextTransit: Awaited<ReturnType<typeof loadTransit>>[number] | null = null;
   const transitHome = !!tg && dir === 'home';
   if (tg && o2) {
-    if (!transitHome && !(o2.pos && km(o2.pos, tg.at) <= 1)) nextTransit = (await loadTransit(o2.from, tg.at, now, 1, !o2.away))[0] ?? null;
-    if (transitHome && (o2.away || !o2.pos)) nextTransit = (await loadTransit(o2.away ? o2.pos! : tg.at, PLACE, now, 1, false, true))[0] ?? null;
+    const atGoal = !!o2.pos && km(o2.pos, tg.at) <= 1;
+    const elsewhere = o2.away && !atGoal;
+    // Hemifrån/från jobbet: resan runt nästa tåg (visas tills tåget gått, även om man är sen). Annars snabbaste härifrån.
+    const next = trains.find((t) => !t.canceled && (t.est ?? t.dep) > now);
+    const viaPref = !!process.env.TRANSIT_VIA && !!process.env.TRANSIT_TRANSFER;
+    if (viaPref && next && !elsewhere && (transitHome ? atGoal || !o2.pos : !atGoal)) {
+      const j = await journeyFor(next, !transitHome, PLACE);
+      if (j) nextTransit = { dep: j.leave, arr: j.arrive, legs: j.legs, startAt: null, endAt: null };
+    } else {
+      if (!transitHome && !atGoal) nextTransit = (await loadTransit(o2.from, tg.at, now, 1, !o2.away))[0] ?? null;
+      if (transitHome && (o2.away || !o2.pos)) nextTransit = (await loadTransit(o2.away ? o2.pos! : tg.at, PLACE, now, 1, false, true))[0] ?? null;
+    }
   }
   const transitLate = nextTransit && commute ? tripDelay(nextTransit, [...commute.out, ...commute.home, ...commute.all]) : null;
   const leaveIn = nextTransit ? Math.round((nextTransit.dep - now) / 60_000) : 0;
@@ -486,11 +496,11 @@ export default async function HomePage() {
           )}
           {commute?.trains && !weekend && (
             <Card title={ridden ? <>På tåget<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{ridden.product ?? 'Tåg'} {ridden.ident}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
-              label={ridden ? `Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}${ridden.canceled ? ', inställt' : ridden.delay ? `, ${plural(ridden.delay, 'minut', 'minuter')} sent` : ', i tid'}${riddenArr ? `, framme ${ridden.dest} cirka ${hhmm(riddenArr)}` : ''}${onward.length ? `, framme ${riddenToWork ? 'på jobbet' : 'hemma'} ${hhmm(onward.at(-1)!.arr)}` : ''}. Visa trafikläget.` : `Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
+              label={ridden ? `Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}${ridden.canceled ? ', inställt' : ridden.delay ? `, ${plural(ridden.delay, 'minut', 'minuter')} sent` : ', i tid'}${riddenArr ? `, framme ${ridden.dest} cirka ${hhmm(riddenArr)}` : ''}${onward.length ? `, framme ${riddenToWork ? 'på jobbet' : 'hemma'} ${hhmm(onward.at(-1)!.arr)}` : ''}. Visa trafikläget.` : `Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: ${leaveIn < -1 ? `sen ${plural(-leaveIn, 'minut', 'minuter')}, ta cykel eller taxi` : `gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}`}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
               {trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
-              <HomeTrains trains={ridden ? [ridden] : trains} serverNow={now} />
+              <HomeTrains trains={ridden ? [ridden] : trains} serverNow={now} journey={tg && !ridden ? (dir === 'out' ? 'out' : 'home') : undefined} />
               {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
               {ridden && onward.length > 0 && commute && (
                 <div className="flex flex-col gap-1 border-t border-line pt-3">
@@ -502,7 +512,7 @@ export default async function HomePage() {
                 <p className="flex items-baseline gap-2 border-t border-line pt-3 text-[1rem]">
                   <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
                   <span>
-                    <span className="font-semibold">{leaveIn <= 0 ? 'gå nu' : `gå om ${leaveIn} min`}</span>
+                    <span className="font-semibold" style={leaveIn < -1 ? { color: C.warn } : undefined}>{leaveIn < -1 ? `sen ${-leaveIn} min – ta cykel eller taxi` : leaveIn <= 0 ? 'gå nu' : `gå om ${leaveIn} min`}</span>
                     {' · '}{transitHome ? 'hemma' : 'framme'} {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}
                   </span>
                   {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
