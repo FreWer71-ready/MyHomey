@@ -523,6 +523,13 @@ export default async function HomePage() {
               {ridden ? (
                 <>
                   <RiddenTrain t={ridden} guessed={!!guessed} />
+                  {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
+                  {ridden && onward.length > 0 && commute && (
+                    <div className="flex flex-col gap-1 border-t border-line pt-3">
+                      <p className="text-[1rem]"><span className="font-semibold">{riddenToWork ? 'Jobbet' : 'Hem'}:</span> {riddenToWork ? 'framme' : 'hemma'} ca {hhmm(onward.at(-1)!.arr)}</p>
+                      <TransitLegs trip={{ dep: onward[0].dep, arr: onward.at(-1)!.arr, legs: onward, startAt: null, endAt: null }} trains={[...commute.out, ...commute.home, ...commute.all]} compact />
+                    </div>
+                  )}
                   {/* Om tågläget har fel: kommande avgångar inom en timme (minst nästa). */}
                   {nextHour.length > 0 && (
                     <div className="flex flex-col gap-1.5 border-t border-line pt-3">
@@ -532,13 +539,6 @@ export default async function HomePage() {
                   )}
                 </>
               ) : <HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />}
-              {/* Tågläge: resten av resan efter tåget (byte i Stockholm C eller promenad hem). */}
-              {ridden && onward.length > 0 && commute && (
-                <div className="flex flex-col gap-1 border-t border-line pt-3">
-                  <p className="text-[1rem]"><span className="font-semibold">{riddenToWork ? 'Jobbet' : 'Hem'}:</span> {riddenToWork ? 'framme' : 'hemma'} ca {hhmm(onward.at(-1)!.arr)}</p>
-                  <TransitLegs trip={{ dep: onward[0].dep, arr: onward.at(-1)!.arr, legs: onward, startAt: null, endAt: null }} trains={[...commute.out, ...commute.home, ...commute.all]} compact />
-                </div>
-              )}
               {!ridden && nextTransit && tg && (
                 <p className="flex items-baseline gap-2 border-t border-line pt-3 text-[1rem]">
                   <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
