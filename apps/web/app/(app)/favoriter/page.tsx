@@ -100,15 +100,15 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
                 )}
               </div>
               {r.lights.length > 0 && <SceneButtons zoneId={r.id} room={r.name} size="card" />}
-              {favs.length > 0 && <ActionTiles items={favs} layout="compact" />}
-              {(more.length > 0 || r.lights.length > 0 || rtv) && (
+              {/* Minimerat som standard: fakta och Ljust/Mys/Släck. Favoriter, scener, TV och lampor under Detaljer. */}
+              {(favs.length > 0 || more.length > 0 || r.lights.length > 0 || rtv) && (
                 <details className="group border-t border-line pt-1">
                   <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[1rem] font-semibold text-dim [&::-webkit-details-marker]:hidden">
                     Detaljer
                     <span aria-hidden="true" className="text-[1.25rem] transition-transform group-open:rotate-90">›</span>
                   </summary>
                   <div className="flex flex-col gap-3 pt-2">
-                    {more.length > 0 && <ActionTiles items={more} layout="compact" />}
+                    {favs.length + more.length > 0 && <ActionTiles items={[...favs, ...more]} layout="compact" />}
                     {rtv && <TvRemote r={rtv} title={(() => { const p = rtv.cast ? np.find((x) => x.id === rtv.cast!.id) : undefined; return p ? [p.title, p.subtitle].filter(Boolean).join(' · ') : null; })()} />}
                     {r.lights.length > 0 && (
                       <ul className="flex flex-col gap-3">
