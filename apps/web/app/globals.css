@@ -6,6 +6,12 @@
 
 /* Textstorlek per läge (se app/layout.tsx). Utgår från webbläsarens inställning, så systemets textstorlek gäller också. */
 html { font-size: calc(100% * var(--ui-scale, 1)); }
+/* Stort läge anpassas efter fönstret (t.ex. installerad app i ett mindre fönster): fullt på stor skärm, mindre
+   förstoring när fönstret är smalt eller lågt – aldrig mindre än standard. Mobil: högst 5vw. */
+html[data-mode="stor"] { font-size: max(100%, min(calc(100% * var(--ui-scale, 1)), 5vw)); }
+@media (min-width: 1024px) {
+  html[data-mode="stor"] { font-size: max(100%, min(calc(100% * var(--ui-scale, 1)), calc(100vw / 72), calc(100vh / 40))); }
+}
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;

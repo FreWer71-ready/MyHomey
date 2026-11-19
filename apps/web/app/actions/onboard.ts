@@ -24,3 +24,21 @@ export async function clearTrain(): Promise<Result> {
   const { error } = await sb.from('onboard_confirm').delete().neq('ident', '');
   return { ok: !error };
 }
+
+/** Dölj en avgång (gäller hushållets alla skärmar). Gamla dolda rensas samtidigt. */
+export async function skipTrain(ident: string, dep: number): Promise<Result> {
+  if (!/^\d{1,6}$/.test(ident) || !Number.isFinite(dep)) return { ok: false };
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return { ok: false };
+  await sb.from('commute_skip').delete().lt('dep', new Date(Date.now() - 86400_000).toISOString());
+  const { error } = await sb.from('commute_skip').upsert({ ident, dep: new Date(dep).toISOString(), created_by: user.id }, { onConflict: 'household_id,ident,dep' });
+  return { ok: !error };
+}
+
+/** Visa alla dolda avgångar igen. */
+export async function unskipAll(): Promise<Result> {
+  const sb = await createClient();
+  const { error } = await sb.from('commute_skip').delete().neq('ident', '');
+  return { ok: !error };
+}

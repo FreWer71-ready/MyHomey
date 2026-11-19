@@ -397,7 +397,14 @@ export async function loadCommute(): Promise<Commute | null> {
   const sb = await createClient();
   const { data, error } = await sb.functions.invoke('trafik', { body: {} });
   if (error || !data || data.error) return null;
-  return withHomeAt(roadOnly(parseCommute(data as RawCommute)));
+  const c = withHomeAt(roadOnly(parseCommute(data as RawCommute)));
+  // Avgångar som hushållet valt att dölja ("Dölj").
+  const { data: skip } = c?.trains ? await sb.from('commute_skip').select('ident,dep').gt('dep', new Date(Date.now() - 3 * 3600_000).toISOString()) : { data: null };
+  if (!c || !skip?.length) return c;
+  const hidden = new Set(skip.map((s) => `${s.ident}|${Date.parse(s.dep as string)}`));
+  const keep = (l: Train[]) => l.filter((t) => !hidden.has(`${t.ident}|${t.dep}`));
+  const skipped = [...c.out, ...c.home].filter((t) => hidden.has(`${t.ident}|${t.dep}`)).length;
+  return { ...c, out: keep(c.out), home: keep(c.home), all: keep(c.all), skipped };
 }
 
 /** TV-fjärren (The Frame via SmartThings, Google TV och soundbar via Chromecast). Null utan TV i Homey. */

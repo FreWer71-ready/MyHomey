@@ -103,7 +103,8 @@ export type Commute = {
   out: Train[]; home: Train[]; /** Alla avgångar från Eskilstuna C, alla riktningar. */ all: Train[]; road: RoadEvent[];
   /** Ute-kortet: medel av stationerna nära hemmet (annars Eskilstuna Ö). */ station: RoadStation | null;
   /** Vägväderstationer längs bilvägen, i körordning. */ stations: RoadStation[]; fetched: number; trains: boolean;
-  /** Pendlingståg som gått senaste 2 h (för "troligen på tåget"). */ recent?: { out: Train[]; home: Train[] } };
+  /** Pendlingståg som gått senaste 2 h (för "troligen på tåget"). */ recent?: { out: Train[]; home: Train[] };
+  /** Antal kommande avgångar som användaren har dolt. */ skipped?: number };
 
 /** Signaturer som syns som slutstation på sträckan. Okända visas som de är. */
 export const STATIONS: Record<string, string> = {
