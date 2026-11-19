@@ -26,7 +26,7 @@ export async function defaultGoal(): Promise<{ label: string; address: string; a
   return at ? { label: process.env.DEFAULT_DESTINATION_LABEL || 'Jobbet', address, at } : null;
 }
 
-export type GoalEta = { label: string; address: string; eta: Eta; fromHere: boolean; km: number; home?: boolean; driving?: boolean };
+export type GoalEta = { label: string; address: string; eta: Eta; fromHere: boolean; km: number; home?: boolean; driving?: boolean; atGoal?: boolean };
 
 /** Restid nu ("åk nu", aktuell trafik) till standardmålet, eller hem om personen är vid målet. Null om målet saknas. */
 export async function goalEta(members: Member[], now = Date.now()): Promise<GoalEta | null> {
@@ -38,7 +38,7 @@ export async function goalEta(members: Member[], now = Date.now()): Promise<Goal
   const homeward = atGoal || (o.away && (o.driving || km(o.pos!, goal.at) > 1) && direction(now) === 'home');
   if (homeward && o.pos) {
     const eta = await routeEta(o.pos, PLACE, null, now);
-    return eta ? { label: 'Hem', address: '', eta, fromHere: true, km: km(o.pos, PLACE), home: true, driving: o.driving } : null;
+    return eta ? { label: 'Hem', address: '', eta, fromHere: true, km: km(o.pos, PLACE), home: true, driving: o.driving, atGoal } : null;
   }
   const eta = await routeEta(o.from, goal.at, null, now);
   return eta ? { label: goal.label, address: goal.address, eta, fromHere: o.away, km: km(o.from, goal.at), driving: o.driving } : null;

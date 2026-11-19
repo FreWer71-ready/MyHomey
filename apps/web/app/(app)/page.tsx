@@ -597,7 +597,13 @@ export default async function HomePage() {
               </ul>
             </Card>
           )}
-          {commute && !commute.trains && (
+          {commute && !commute.trains && homeGoal?.atGoal && dir === 'out' && (
+            <Card title={<>Trafik<span className="ml-auto rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">På jobbet</span></>} icon="road" href="/pendling"
+              label="Du är på jobbet. Hemresan visas från klockan 12. Visa trafikläget." className="order-3 lg:order-none lg:shrink-0">
+              <p className="text-[1rem] text-dim">Hemresan visas från 12:00</p>
+            </Card>
+          )}
+          {commute && !commute.trains && !(homeGoal?.atGoal && dir === 'out') && (
             <Card
               title={homeGoal ? `${homeGoal.driving ? 'Du kör · ' : ''}${homeGoal.home ? (homeGoal.driving ? 'hem' : 'Hem') : `${homeGoal.driving ? 'till' : 'Till'} ${homeGoal.label.toLowerCase()}`}` : 'Väg 56/E18 · Eskilstuna–Västerås'}
               icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0"
