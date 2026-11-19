@@ -29,14 +29,15 @@ export function smhiIcon(event: string): Alert['icon'] {
 
 export function weatherAlerts(w: Warnings): Alert[] {
   return [
-    ...w.vma.map((v): Alert => ({ id: `vma-${v.id}`, level: 'red', icon: 'bellAlert', text: `VMA: ${v.headline}`, href: '/larm#vader' })),
+    ...w.vma.map((v): Alert => ({ id: `vma-${v.id}`, level: 'red', icon: 'bellAlert', text: 'VMA – viktigt meddelande', detail: v.headline, href: '/larm#vader' })),
     ...w.smhi.map((s): Alert => ({
       id: `smhi-${s.id}`, level: s.level, icon: smhiIcon(s.event), href: '/larm#vader',
-      text: `${NAME[s.level]}: ${s.event}${s.start && s.start > Date.now() ? ` från ${when(s.start)}` : ''}`,
+      text: s.event.charAt(0).toUpperCase() + s.event.slice(1),
+      detail: `${NAME[s.level]}${s.start && s.start > Date.now() ? ` från ${when(s.start)}` : ''}`,
     })),
     ...w.storms.map((s): Alert => ({
       id: `storm-${s.kind}`, level: 'yellow', icon: s.kind === 'thunder' ? 'thunder' : s.kind === 'snow' ? 'snow' : 'rain',
-      text: `${s.label} från ${when(s.at)}`, href: '/larm#vader',
+      text: s.label, detail: `Från ${when(s.at)}`, href: '/larm#vader',
     })),
   ];
 }

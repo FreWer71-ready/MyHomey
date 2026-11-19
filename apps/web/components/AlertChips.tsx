@@ -4,16 +4,16 @@ import Link from 'next/link';
 
 import { Icon, type IconName } from './Icon';
 
-/** En varning på Hem. Samma form för alla; bara nivån styr färgen. */
-export type Alert = { id: string; level: 'yellow' | 'orange' | 'red'; icon: IconName | '!'; text: string; href: string };
+/** En varning på Hem: kort rubrik (text) och detalj under. Samma form för alla; nivån styr färg och form. */
+export type Alert = { id: string; level: 'yellow' | 'orange' | 'red'; icon: IconName | '!'; text: string; detail?: string; href: string };
 
 const RANK = { red: 0, orange: 1, yellow: 2 } as const;
-// Gul/orange: tonad platta med färgad kant och ikon. Röd: helfylld och pulserar svagt.
+// Mörk, tonad platta med färgad kant (tjock till vänster) och ikonruta i nivåns färg; vit text (kontrast ≥ 7:1).
+// Röd sticker ut mest: starkare platta och svag puls. Formen (▲ ◆ ●) i ikonrutans hörn – nivån syns utan färg.
 const STYLE = {
-  // Helfyllda plattor (tydliga på håll); mörk text på gul/orange, vit på röd (kontrast ≥ 4.5:1).
-  yellow: { box: 'border-[#F2C94C] bg-[#F2C94C] text-[#0B0F14]', icon: '#0B0F14', bang: '#F2C94C', mark: '●', name: 'Gul varning' },
-  orange: { box: 'border-[#F0883E] bg-[#F0883E] text-[#0B0F14]', icon: '#0B0F14', bang: '#F0883E', mark: '◆', name: 'Orange varning' },
-  red: { box: 'alert-pulse border-[#F85149] bg-[#DA3633] text-white', icon: '#FFFFFF', bang: '#DA3633', mark: '▲', name: 'Röd varning' },
+  yellow: { box: 'border-[#E3B341] bg-[#3A3212]', tile: '#7A6414', mark: '●', markColor: '#F2C94C', name: 'Gul varning' },
+  orange: { box: 'border-[#F0883E] bg-[#45260E]', tile: '#9A4A12', mark: '◆', markColor: '#F0883E', name: 'Orange varning' },
+  red: { box: 'alert-pulse border-[#FF6B61] bg-[#6E1A17]', tile: '#C9302C', mark: '▲', markColor: '#FF7B72', name: 'Röd varning' },
 } as const;
 
 /**
@@ -31,17 +31,17 @@ export function AlertChips({ alerts, max = 2 }: { alerts: Alert[]; max?: number 
       {shown.map((a) => {
         const st = STYLE[a.level];
         return (
-          <Link key={a.id} href={a.href} role="alert" aria-label={`${st.name}: ${a.text}. Visa detaljer.`}
-            className={`flex min-h-16 min-w-0 items-center gap-3 rounded-[0.875rem] border py-2 pr-4 pl-3 text-[1.0625rem] font-semibold leading-snug ${st.box}`}>
-            {/* Nivå (form) stort, ikonen i en mörk platta så att den syns på alla färger. */}
-            <span aria-hidden="true" className="w-7 shrink-0 text-center text-[1.75rem] leading-none" style={{ color: st.icon }}>{st.mark}</span>
-            <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-[0.75rem] bg-[#0B0F14] text-white">
-              {a.icon === '!'
-                ? <span className="text-[1.75rem] leading-none font-black" style={{ color: st.bang === '#DA3633' ? '#FF7B72' : st.bang }}>!</span>
-                : <Icon name={a.icon} size={34} />}
+          <Link key={a.id} href={a.href} role="alert" aria-label={`${st.name}: ${a.text}${a.detail ? `, ${a.detail}` : ''}. Visa detaljer.`}
+            className={`flex min-h-16 min-w-0 items-center gap-3 rounded-[0.875rem] border border-l-[6px] py-2.5 pr-4 pl-3 text-white ${st.box}`}>
+            <span aria-hidden="true" className="relative flex size-12 shrink-0 items-center justify-center rounded-[0.75rem]" style={{ background: st.tile }}>
+              {a.icon === '!' ? <span className="text-[1.75rem] leading-none font-black">!</span> : <Icon name={a.icon} size={32} />}
+              <span className="absolute -top-1.5 -left-1.5 flex size-6 items-center justify-center rounded-full bg-[#0B0F14] text-[0.875rem] leading-none" style={{ color: st.markColor }}>{st.mark}</span>
             </span>
-            <span className="min-w-0 grow">{a.text}</span>
-            <span aria-hidden="true" className="shrink-0 text-[1.25rem] leading-none">›</span>
+            <span className="flex min-w-0 grow flex-col leading-tight">
+              <span className="text-[1.1875rem] font-bold">{a.text}</span>
+              {a.detail && <span className="text-[0.9375rem] text-white/85">{a.detail}</span>}
+            </span>
+            <span aria-hidden="true" className="shrink-0 text-[1.375rem] leading-none">›</span>
           </Link>
         );
       })}

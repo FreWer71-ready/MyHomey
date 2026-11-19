@@ -224,7 +224,7 @@ export function direction(now = Date.now()): 'out' | 'home' {
   return h < 12 ? 'out' : 'home';
 }
 
-export type CommuteAlert = { id: string; kind: 'train' | 'road'; tone: 'warn' | 'bad'; label: string };
+export type CommuteAlert = { id: string; kind: 'train' | 'road'; tone: 'warn' | 'bad'; label: string; /** Rubrik och detalj för varningsplattan. */ title: string; detail: string };
 
 /**
  * Sammanfattade störningar för startsidan, högst ett kort för tåg och ett för väg.
@@ -240,6 +240,8 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
     out.push({
       id: `tag-${bad.map((x) => x.id).join('-')}`, kind: 'train', tone: bad.some((x) => x.canceled) ? 'bad' : 'warn',
       label: `Tåg ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}: ${list.split(', ')[0]}${bad.length > 1 ? ` (+${bad.length - 1} till)` : ''}`,
+      title: `Tåg ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}`,
+      detail: `${list.split(', ')[0]}${bad.length > 1 ? ` (+${bad.length - 1} till)` : ''}`,
     });
   }
   // Halka längs bilvägen (vägväderstationerna): ett kort, rött om någon station har halt väglag.
@@ -250,6 +252,8 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
       id: `halka-${slips.map((x) => `${x.s.id}${x.tone}`).join('-')}`, kind: 'road', tone: slips.some((x) => x.tone === 'bad') ? 'bad' : 'warn',
       // Kort: värsta stationen; alla stationer finns på Pendling/Trafik.
       label: (() => { const w = [...slips].sort((a, b) => a.s.road! - b.s.road!)[0]; return `${slips.some((x) => x.tone === 'bad') ? 'Halt' : 'Risk för halka'} · väg ${fmtT(w.s.road!)} (${w.s.name})${slips.length > 1 ? ` (+${slips.length - 1} till)` : ''}`; })(),
+      title: slips.some((x) => x.tone === 'bad') ? 'Halt väglag' : 'Halkrisk',
+      detail: (() => { const w = [...slips].sort((a, b) => a.s.road! - b.s.road!)[0]; return `Vägtemperatur ${fmtT(w.s.road!).replace('°', ' °C')} · ${w.s.name}${slips.length > 1 ? ` (+${slips.length - 1} till)` : ''}`; })(),
     });
   }
   const inc = c.road.filter((r) => r.incident && (r.severity >= 3 || /Accident|Obstruction|Closure|Restriction/i.test(r.code)));
@@ -260,6 +264,7 @@ export function commuteAlerts(c: Commute, now = Date.now(), fmt: (ms: number) =>
       // Samma bedömning som pendlingskortet: "Stor påverkan" (roadTone = bad) ger röd varning, annars orange.
       id: `vag-${inc.map((r) => r.id).join('-')}`, kind: 'road', tone: inc.some((r) => roadTone(r, now) === 'bad') ? 'bad' : 'warn',
       label: `${roads}: ${first.type.toLowerCase()}${first.place ? ` · ${first.place}` : ''}${inc.length > 1 ? ` + ${inc.length - 1} till` : ''}`,
+      title: first.type, detail: `${roads}${first.place ? ` · ${first.place}` : ''}${inc.length > 1 ? ` (+${inc.length - 1} till)` : ''}`,
     });
   }
   return out;
