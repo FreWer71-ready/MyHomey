@@ -113,3 +113,13 @@ export function pairReadings(rows: Reading[], devices: { id: string; src: Pos['s
   }
   return out;
 }
+
+/**
+ * Tidigast man kan vara på stationen härifrån med snabbaste sättet (taxi/cykel): 5 min (komma iväg, till perrongen) + vägen (≈ 1,4 × fågelvägen)
+ * i 30 km/h. Null utan position. Tåg som går före det hinner man inte – planen håller inte.
+ */
+export function earliestAt(pos: Pos | null, station: LatLon, now = Date.now()): number | null {
+  if (!pos) return null;
+  const d = km(pos.at, station);
+  return d < 0.3 ? now : now + (5 + d * 1.4 * 2) * 60_000;
+}
