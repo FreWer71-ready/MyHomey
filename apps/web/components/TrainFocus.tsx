@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { FOCUS_MIN, TONE_COLOR, countdown, countdownTone, departsAt, focusTrain, trainStatus, trainTone, type Train } from '@/lib/commute';
 import { MinutesTo } from '@/components/MinutesTo';
 import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
+import { OnTrainButton } from './OnTrainButton';
 import { TrainJourney } from '@/components/TrainJourney';
 import { hhmm } from '@/lib/prices';
 import { dayOf } from '@/lib/calendar-view';
@@ -56,7 +57,11 @@ function Focus({ t, now, large, journey }: { t: Train; now: number; large?: bool
       {/* Var tåget är nu (stationer och driftplatser), tryck för hela sträckan. */}
       <TrainProgress ident={t.ident} />
       {/* Hela sträckan (alla mellanliggande punkter) och resan dörr till dörr. */}
-      {journey ? <TrainJourney ident={t.ident} toWork={journey === 'out'} before={<TrainRoute ident={t.ident} />} /> : <div><TrainRoute ident={t.ident} /></div>}
+      {/* Strax före och vid avgång: bekräfta att man är på tåget (tågläget på alla skärmar). */}
+      {(() => {
+        const route = <><TrainRoute ident={t.ident} />{kvar <= 10 * 60_000 && <OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} />}</>;
+        return journey ? <TrainJourney ident={t.ident} toWork={journey === 'out'} before={route} /> : <div className="flex flex-wrap gap-2">{route}</div>;
+      })()}
       <div className="h-1.5 overflow-hidden rounded-full bg-glass-2" role="presentation">
         <div className="h-full rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${andel * 100}%`, background: farg }} suppressHydrationWarning />
       </div>
@@ -150,7 +155,7 @@ export function PageTrainList({ trains, serverNow, journey }: { trains: Train[];
 }
 
 /** Tåget man sitter på (tågläget): slutstation och beräknad ankomst, var tåget är nu och hela sträckan. */
-export function RiddenTrain({ t, guessed }: { t: Train; guessed?: boolean }) {
+export function RiddenTrain({ t, guessed, confirmed }: { t: Train; guessed?: boolean; confirmed?: boolean }) {
   const ton = trainTone(t);
   const arr = t.arr != null ? t.arr + (t.delay ?? 0) * 60_000 : null;
   return (
@@ -159,10 +164,10 @@ export function RiddenTrain({ t, guessed }: { t: Train; guessed?: boolean }) {
       <span className="text-[1rem] font-semibold">
         {arr ? <>Framme ca <span className="text-[1.5rem] font-extrabold tabular-nums">{hhmm(arr)}</span></> : null}
         <span style={{ color: ton === 'ok' ? MUTE : TONE_COLOR[ton] }}> · {trainStatus(t).text}</span>
-        {guessed && <span className="text-dim"> · enligt senaste position vid stationen</span>}
+        {confirmed ? <span className="text-dim"> · bekräftat</span> : guessed && <span className="text-dim"> · enligt senaste position vid stationen</span>}
       </span>
       <TrainProgress ident={t.ident} />
-      <div><TrainRoute ident={t.ident} /></div>
+      <div className="flex flex-wrap gap-2"><TrainRoute ident={t.ident} /><OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} confirmed={confirmed} label={confirmed ? undefined : 'Stämmer ✓'} /></div>
     </div>
   );
 }
