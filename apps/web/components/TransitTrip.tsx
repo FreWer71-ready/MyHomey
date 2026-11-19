@@ -20,7 +20,7 @@ export function tripDelay(trip: TransitTrip, trains: Train[]): { delay: number; 
 }
 
 /** En kollektivresa: avresa, ankomst och benen (gång, buss, tåg, SL) med spår och tågens realtid. */
-export function TransitTripCard({ trip, trains, first, home = false }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean }) {
+export function TransitTripCard({ trip, trains, first, home = false, ongoing = false }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean; ongoing?: boolean }) {
   const { delay, canceled } = tripDelay(trip, trains);
   const total = Math.round((trip.arr - trip.dep) / 60_000);
   // Serverrenderat per sidvisning (sidan är dynamisk), så "om X min" stämmer när sidan laddas.
@@ -28,8 +28,12 @@ export function TransitTripCard({ trip, trains, first, home = false }: { trip: T
   return (
     <section className={`flex flex-col gap-2 rounded-2xl glass p-4 ${first ? '' : 'border border-line'}`}>
       <div className="flex flex-wrap items-baseline gap-x-3">
-        <span className="text-[1.375rem] font-extrabold tabular-nums">{leaveIn <= 0 ? 'Gå nu' : `Gå om ${leaveIn} min`}</span>
-        <span className="text-[0.9375rem] text-dim tabular-nums">kl {hhmm(trip.dep)}</span>
+        {ongoing
+          ? <span className="text-[1.375rem] font-extrabold">Pågående resa</span>
+          : <>
+              <span className="text-[1.375rem] font-extrabold tabular-nums">{leaveIn <= 0 ? 'Gå nu' : `Gå om ${leaveIn} min`}</span>
+              <span className="text-[0.9375rem] text-dim tabular-nums">kl {hhmm(trip.dep)}</span>
+            </>}
         <span className="text-[1.0625rem] font-semibold">
           {home ? 'hemma' : 'framme'} {delay ? <>ca <span style={{ color: TONE_COLOR.warn }}>{hhmm(trip.arr + delay * 60_000)}</span></> : hhmm(trip.arr)}
         </span>
@@ -42,25 +46,32 @@ export function TransitTripCard({ trip, trains, first, home = false }: { trip: T
 }
 
 /** Benen i en resa (gång, buss, tåg, SL) med spår och tågens realtid. `compact` för kortet på Hem. */
-export function TransitLegs({ trip, trains, compact = false }: { trip: TransitTrip; trains: Train[]; compact?: boolean }) {
+export function TransitLegs({ trip, trains, compact = false, now = Date.now() }: { trip: TransitTrip; trains: Train[]; compact?: boolean; now?: number }) {
+  // Pågående delsträcka markeras ("Nu · framme 07:49"); avklarade blir grå.
+  const current = trip.legs.findIndex((l) => l.dep <= now && now < l.arr);
   return (
       <ol className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1'}`}>
         {trip.legs.map((l, i) => {
           const rt = legRealtime(l, trains);
+          const live = i === current;
+          const done = l.arr <= now;
           return (
-            <li key={i} className="flex min-w-0 items-baseline gap-3">
+            <li key={i} aria-current={live ? 'step' : undefined}
+              className={`flex min-w-0 items-baseline gap-3 ${live ? '-mx-1.5 rounded-lg bg-white/[0.14] px-1.5 py-0.5 ring-1 ring-sun/60' : ''} ${done && !live ? 'text-dim' : ''}`}>
               <span className={`w-12 shrink-0 ${compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
-              <span className="w-[4.75rem] shrink-0 whitespace-nowrap rounded-md bg-white/[0.08] px-1.5 text-center text-[0.875rem] font-bold">{KIND[l.kind]}</span>
+              <span className={`w-[4.75rem] shrink-0 whitespace-nowrap rounded-md px-1.5 text-center text-[0.875rem] font-bold ${live ? 'bg-sun text-ink' : 'bg-white/[0.08]'}`}>{KIND[l.kind]}</span>
               <span className={`min-w-0 grow truncate ${compact ? 'text-[0.875rem]' : 'text-[0.9375rem]'}`}>
                 {l.kind === 'walk'
                   ? <>{l.minutes} min → {l.to}</>
-                  : <><span className="font-semibold">{l.label}</span> → {l.to}{l.track ? <span className="text-dim"> · spår {l.track}</span> : null}</>}
+                  : <><span className="font-semibold">{l.label}</span> → {l.to}{l.track && !done ? <span className="text-dim"> · spår {l.track}</span> : null}</>}
               </span>
-              {rt && (rt.canceled || rt.delay > 0) && (
-                <span className="shrink-0 text-[0.875rem] font-bold" style={{ color: rt.canceled ? TONE_COLOR.bad : TONE_COLOR.warn }}>
-                  {rt.canceled ? 'Inställt' : `+${rt.delay} min`}
-                </span>
-              )}
+              {live
+                ? <span className="shrink-0 text-[0.875rem] font-bold text-sun">Nu · framme {hhmm(l.arr)}</span>
+                : rt && (rt.canceled || rt.delay > 0) && (
+                  <span className="shrink-0 text-[0.875rem] font-bold" style={{ color: rt.canceled ? TONE_COLOR.bad : TONE_COLOR.warn }}>
+                    {rt.canceled ? 'Inställt' : `+${rt.delay} min`}
+                  </span>
+                )}
             </li>
           );
         })}
