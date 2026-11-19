@@ -158,7 +158,11 @@ export default async function CommutePage() {
     label: `${run.product ?? 'Tåg'} ${run.ident}`, num: run.ident, dir: run.dest, track: null,
   }, ...onward] : [];
   const arrived = rArr != null && nowMs > rArr;
-  const ridden = run && (!arrived || (onward.length > 0 && nowMs <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
+  // Framme (positionen vid jobbet eller hemma): tillbaka till normalläget.
+  const here = freshestPosition(locate.members, locate.items, me, nowMs);
+  const goalAt = toWork ? transitGoal()?.at : PLACE;
+  const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
+  const ridden = run && !atGoal && (!arrived || (onward.length > 0 && nowMs <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);
