@@ -90,6 +90,7 @@ export type Train = {
   id: string; ident: string; dep: number; est: number | null; delay: number; canceled: boolean; track: string | null;
   dest: string; arr: number | null; notes: string[]; product: string | null;
   /** Stationen som `arr` gäller (pendlingens mål, t.ex. Eskilstuna C när tåget går vidare till Örebro). */ arrAt?: string;
+  /** Beräknat hemma (ankomst + promenad hem), bara hemtåg. */ homeAt?: number;
 };
 export type RoadEvent = {
   id: string; road: string; type: string; code: string; incident: boolean; text: string | null; place: string | null; severity: number;

@@ -9,7 +9,8 @@ import { MEDIA_CAPS, TV_CAPS, nowPlaying, tvRemote, type MediaCap, type NowPlayi
 import { summarizeNet, type Net, type NetDevice, type NetIsp, type NetStatusRow } from './net';
 import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } from './warnings';
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
-import { parseCommute, parseRoad, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
+import { parseCommute, parseRoad, type Train, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
+import { homeWalkMin } from './transit-source';
 import { parsePolice, type PoliceEvent, type RawPolice } from './police';
 import { buildLocate, type Item, type LocCap, type Member } from './locate';
 import { extractHits, toItems, type MuniItem } from './municipal';
@@ -382,7 +383,7 @@ export async function loadCommute(): Promise<Commute | null> {
   const roadOnly = (c: Commute): Commute => (process.env.COMMUTE === 'road' ? { ...c, out: [], home: [], trains: false } : c);
   if (DEMO) {
     const at = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
-    return roadOnly(parseCommute({
+    return withHomeAt(roadOnly(parseCommute({
       out: [
         { AdvertisedTrainIdent: '954', AdvertisedTimeAtLocation: at(12), EstimatedTimeAtLocation: at(19), LocationSignature: 'Et', ToLocation: [{ LocationName: 'U' }], TrackAtLocation: '1', Deviation: [{ Description: 'Försenad' }] },
         { AdvertisedTrainIdent: '10922', AdvertisedTimeAtLocation: at(44), LocationSignature: 'Et', ToLocation: [{ LocationName: 'Cst' }], TrackAtLocation: '1' },
@@ -391,12 +392,12 @@ export async function loadCommute(): Promise<Commute | null> {
       home: [{ AdvertisedTrainIdent: '10921', AdvertisedTimeAtLocation: at(25), LocationSignature: 'Cst', ToLocation: [{ LocationName: 'Et' }], TrackAtLocation: '16a' }],
       arrivals: [{ AdvertisedTrainIdent: '954', LocationSignature: 'Cst', AdvertisedTimeAtLocation: at(75) }],
       situations: [{ Deviation: [{ Id: 'k', MessageType: 'Vägarbete', MessageTypeValue: 'MaintenanceWorks', SeverityCode: 4, Message: 'Ett avstängt körfält. Risk för köbildning.', LocationDescriptor: 'Väg 56 från Stora Ekeby till Kvicksund S', EndTime: '2027-09-30T16:00:00+02:00' }] }],
-    }));
+    })));
   }
   const sb = await createClient();
   const { data, error } = await sb.functions.invoke('trafik', { body: {} });
   if (error || !data || data.error) return null;
-  return roadOnly(parseCommute(data as RawCommute));
+  return withHomeAt(roadOnly(parseCommute(data as RawCommute)));
 }
 
 /** TV-fjärren (The Frame via SmartThings, Google TV och soundbar via Chromecast). Null utan TV i Homey. */
@@ -598,4 +599,12 @@ export async function loadRoadHistory(station: string, period: PeriodKey): Promi
   const { data, error } = await sb.functions.invoke('trafik', { body: { history: station, hours: p.hours, bucket } });
   if (error || !data || data.error) return [];
   return (data as { rows: RoadHistRow[] }).rows;
+}
+
+/** Hemtågen: "hemma hh:mm" = ankomst Eskilstuna C (med försening) + promenaden hem. */
+function withHomeAt(c: Commute | null): Commute | null {
+  const w = c?.trains ? homeWalkMin(PLACE) : null;
+  if (!c || !w) return c;
+  const add = (l: Train[]) => l.map((t) => (t.arr != null && !t.canceled ? { ...t, homeAt: t.arr + (t.delay + w) * 60_000 } : t));
+  return { ...c, home: add(c.home), recent: c.recent && { ...c.recent, home: add(c.recent.home) } };
 }
