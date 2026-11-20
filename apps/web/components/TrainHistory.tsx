@@ -127,9 +127,13 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
             {inRange.slice(0, 40).map((t) => {
               const b = delayBadge(t);
               return (
-                <li key={`${t.ident}-${t.dep}`} className="flex min-w-0 items-center gap-2">
+                <li key={`${t.ident}-${t.dep}`} className="flex min-w-0 items-center gap-2 py-0.5">
                   <span className="w-[4.25rem] shrink-0 text-[0.9375rem] font-bold">{date(t.dep)}</span>
-                  <span className="min-w-0 grow truncate text-[0.9375rem]">{route(t)} <span className="text-dim">· {t.ident} · {hhmm(t.dep)}</span></span>
+                  {/* Avgång och tågnummer överst (syns alltid), sträckan under. */}
+                  <span className="flex min-w-0 grow flex-col leading-tight">
+                    <span className="text-[0.9375rem] font-semibold tabular-nums">{hhmm(t.dep)} · {t.product ?? 'Tåg'} {t.ident}</span>
+                    <span className="truncate text-[0.875rem] text-dim">{route(t)}{t.source === 'guess' ? ' · gissad' : t.source === 'gps' ? ' · via GPS' : ''}</span>
+                  </span>
                   <span className="shrink-0 text-[0.9375rem] font-bold tabular-nums" style={b.color ? { color: b.color } : undefined}>{b.text}</span>
                   <DeleteTrip ident={t.ident} dep={t.dep} />
                 </li>
