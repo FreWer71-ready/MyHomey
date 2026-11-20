@@ -28,7 +28,7 @@ html[data-mode="stor"] { font-size: max(100%, min(calc(100% * var(--ui-scale, 1)
   /* Knappar ovanpå färgade kort: täta och mörka så att ikonerna syns skarpt. */
   --color-btn: rgb(10 13 24 / 0.72);
   /* Kortgrund utan färgton: samma täta grund som de färgade korten (tint i scale.ts). */
-  --color-card: #131A22;
+  --color-card: rgb(19 26 34 / 0.84); /* lätt genomskinlig: bakgrundens motiv och rörelse anas genom korten */
   --color-line: rgb(255 255 255 / 0.12);
 
   /* Accent och status: starka färger för små ytor, "soft" som ton på kort. */
@@ -79,22 +79,24 @@ body {
   height: 112%;
   max-width: none; /* Tailwinds grundstil begränsar annars bilden till 100 % */
   object-fit: cover;
-  animation: backdrop-pan 50s ease-in-out infinite alternate;
+  animation: backdrop-pan 30s ease-in-out infinite alternate;
   will-change: transform;
 }
 .backdrop-in {
-  animation: backdrop-pan 50s ease-in-out infinite alternate, backdrop-fade 2.5s ease-out both;
+  animation: backdrop-pan 30s ease-in-out infinite alternate, backdrop-fade 2.5s ease-out both;
 }
+@media (prefers-reduced-motion: reduce) { .backdrop-img, .backdrop-in { animation: none; } }
 .backdrop-fadein { animation: backdrop-fade 2.5s ease-out both; }
 .backdrop-veil {
   position: absolute;
   inset: 0;
-  /* Kontrast (WCAG AA) även mot en ljus himmelsbild: tätast överst där klocka, datum och närvaro står direkt på bilden. */
-  background: linear-gradient(180deg, rgb(4 6 14 / 0.85), rgb(4 6 14 / 0.85) 22%, rgb(4 6 14 / 0.72) 50%, rgb(4 6 14 / 0.85));
+  /* Kontrast (WCAG AA) där text står direkt på bilden: tätt överst (klocka, datum, närvaro, sidrubriker). Längre ned
+     ligger innehållet i kort med egen bakgrund, så där får bilden och dess rörelse synas. */
+  background: linear-gradient(180deg, rgb(4 6 14 / 0.8), rgb(4 6 14 / 0.72) 16%, rgb(4 6 14 / 0.42) 34%, rgb(4 6 14 / 0.34) 60%, rgb(4 6 14 / 0.5));
 }
 @keyframes backdrop-pan {
   from { transform: scale(1) translate3d(0, 0, 0); }
-  to { transform: scale(1.15) translate3d(-5%, -3%, 0); }
+  to { transform: scale(1.18) translate3d(-6%, -4%, 0); }
 }
 @keyframes backdrop-fade {
   from { opacity: 0; }
