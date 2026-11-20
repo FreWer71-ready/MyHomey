@@ -45,3 +45,22 @@ export async function routeEta(from: LatLon, to: LatLon, arriveBy: number | null
     return null;
   }
 }
+
+/** Adress för en punkt (TomTom omvänd geokodning), t.ex. "Kungsgatan 3, Eskilstuna". Null utan nyckel eller vid fel. */
+export async function reverseGeocode(at: LatLon): Promise<string | null> {
+  const key = process.env.TOMTOM_API_KEY;
+  if (!key) return null;
+  try {
+    const q = new URLSearchParams({ key, language: 'sv-SE' });
+    const res = await fetch(`https://api.tomtom.com/search/2/reverseGeocode/${at.lat.toFixed(5)},${at.lon.toFixed(5)}.json?${q}`, {
+      next: { revalidate: 86400 }, signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const a = (await res.json())?.addresses?.[0]?.address;
+    const street = [a?.streetName, a?.streetNumber].filter(Boolean).join(' ');
+    const town = a?.municipalitySubdivision || a?.municipality;
+    return [street, town].filter(Boolean).join(', ') || a?.freeformAddress || null;
+  } catch {
+    return null;
+  }
+}

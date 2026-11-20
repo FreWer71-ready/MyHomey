@@ -18,7 +18,7 @@ export function OnTrainButton({ ident, dep, arr, confirmed = false, label }: { i
   };
   return (
     <button type="button" onClick={run} disabled={busy} aria-label={confirmed ? `Inte på tåg ${ident}` : `Jag är på tåg ${ident}`}
-      className={`pill h-9 px-3 text-[0.875rem] ${confirmed ? '' : 'bg-sun font-bold text-ink'} ${busy ? 'animate-pulse' : ''}`}>
+      className={`btn-row ${confirmed ? '' : '!bg-sun font-bold !text-ink'} ${busy ? 'animate-pulse' : ''}`}>
       {fail ? 'Försök igen' : label ?? (confirmed ? 'Inte på tåget' : 'Jag är på tåget ✓')}
     </button>
   );
@@ -32,7 +32,7 @@ function ActionButton({ act, label, aria, className = '' }: { act: () => Promise
   return (
     <button type="button" disabled={busy} aria-label={aria}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); start(async () => { const r = await act(); setFail(!r.ok); if (r.ok) router.refresh(); }); }}
-      className={`pill h-9 px-3 text-[0.875rem] ${busy ? 'animate-pulse' : ''} ${className}`}>
+      className={`btn-row ${busy ? 'animate-pulse' : ''} ${className}`}>
       {fail ? 'Försök igen' : label}
     </button>
   );
@@ -40,7 +40,7 @@ function ActionButton({ act, label, aria, className = '' }: { act: () => Promise
 
 /** "Dölj": avgången visas inte längre (man tar inte det tåget). */
 export function SkipButton({ ident, dep, time, compact }: { ident: string; dep: number; time: string; compact?: boolean }) {
-  return <ActionButton act={() => skipTrain(ident, dep)} label={compact ? '✕' : 'Dölj'} aria={`Dölj avgången ${time}, tåg ${ident}`} className={compact ? 'w-9 justify-center !px-0' : ''} />;
+  return <ActionButton act={() => skipTrain(ident, dep)} label={compact ? '✕' : 'Dölj'} aria={`Dölj avgången ${time}, tåg ${ident}`} className={compact ? 'w-9 !px-0' : ''} />;
 }
 
 /** Visa dolda avgångar igen. */

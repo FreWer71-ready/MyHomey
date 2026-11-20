@@ -4,12 +4,15 @@ import { BASE_PATH } from '@/lib/paths';
 import { hhmm } from '@/lib/prices';
 import type { Train } from '@/lib/commute';
 import type { TransitTrip } from '@/lib/transit';
-import { TransitTripCard } from './TransitTrip';
+import { TransitTripCard, tripDelay } from './TransitTrip';
+import { RoadImpact } from './RoadImpact';
+import type { Tone } from '@/lib/commute';
 
 type To = 'home' | 'work' | 'place';
 type From = 'here' | To;
 type Mode = 'transit' | 'car';
-type Result = { from: From; to: To; fromName?: string; place?: string; mode: Mode; start: 'phone' | 'life360' | To; here?: boolean; trips?: TransitTrip[]; trains?: Train[]; eta?: { minutes: number; trafficMin: number; km: number; arrive: number } };
+type Hinder = { type: string; road: string; place: string | null; tone: Tone; count: number };
+type Result = { from: From; to: To; fromName?: string; place?: string; fromAddr?: string | null; toAddr?: string | null; hinder?: Hinder[]; mode: Mode; start: 'phone' | 'life360' | To; here?: boolean; trips?: TransitTrip[]; trains?: Train[]; eta?: { minutes: number; trafficMin: number; km: number; arrive: number } };
 
 /** Mobilens plats (första prio). Tom sträng om den nekas, saknas eller dröjer: servern tar då Life360. */
 const phonePos = () => new Promise<string>((done) => {
@@ -71,12 +74,11 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
     <button type="button" aria-pressed={v === cur} onClick={() => { set(v); reset(); }} className={`pill min-h-11 grow justify-center ${v === cur ? 'on' : ''}`}>{label}</button>
   );
   const name = (k: From, place?: string) => (k === 'home' ? 'hem' : k === 'work' ? workLabel.toLowerCase() : k === 'here' ? 'din plats' : place ?? 'platsen');
-  const dest = (r: Result) => name(r.to, r.place);
   return (
     <section aria-label="Reseplanering" className="flex flex-col gap-3 rounded-[1.5rem] glass p-3">
       <h2 className="text-xl font-extrabold">Reseplanering</h2>
       <div className="flex items-stretch gap-2">
-        <div className="flex min-w-0 grow flex-col gap-3">
+        <div className="grid min-w-0 grow grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-6">
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-[0.9375rem] font-bold text-dim">Från</legend>
             <div className="flex flex-wrap gap-2">{pick<From>('here', from, setFrom, 'Min plats')}{pick<From>('home', from, setFrom, 'Hem')}{pick<From>('work', from, setFrom, workLabel)}{pick<From>('place', from, setFrom, 'Annan')}</div>
@@ -88,7 +90,7 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
             {to === 'place' && <PlaceInput id="resa-till" label="Till adress eller plats" value={q} set={(v) => { setQ(v); reset(); }} onGo={go} />}
           </fieldset>
         </div>
-        <button type="button" onClick={swap} aria-label="Byt från och till" className="pill w-11 shrink-0 justify-center self-center !px-0 text-[1.25rem]">⇅</button>
+        <button type="button" onClick={swap} aria-label="Byt från och till" className="pill w-11 shrink-0 justify-center self-center !px-0 text-[1.25rem] lg:rotate-90">⇅</button>
       </div>
       {transit && car && <div className="flex gap-2" role="group" aria-label="Ressätt">{pick<Mode>('transit', mode, setMode, 'Kollektivt')}{pick<Mode>('car', mode, setMode, 'Bil')}</div>}
       <button type="button" onClick={go} disabled={busy} className={`pill min-h-12 justify-center !bg-sun font-bold !text-ink ${busy ? 'animate-pulse' : ''}`}>
@@ -96,19 +98,66 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
       </button>
       {err && <p role="alert" className="text-[0.9375rem] text-danger">{err}</p>}
       {res?.here && <p className="rounded-2xl bg-glass-2 p-3 font-bold">Du är redan {res.to === 'home' ? 'hemma' : 'framme'}.</p>}
-      {res && !res.here && <p className="text-[0.9375rem] text-dim">{name(res.from, res.fromName).replace(/^./, (c) => c.toUpperCase())} → {dest(res)}</p>}
-      {res?.eta && (
-        <div className="flex flex-col gap-0.5 rounded-2xl bg-glass-2 px-4 py-3">
-          <span className="text-[1rem] text-dim">Bil · {dest(res)} · om du åker nu</span>
-          <span className="flex items-baseline gap-2 leading-none">
-            <span className="text-[1.125rem] font-semibold">{res.to === 'home' ? 'Hemma' : 'Framme'}</span>
-            <span className="text-[2.5rem] font-extrabold tabular-nums">{hhmm(res.eta.arrive)}</span>
-          </span>
-          <span className="text-[1rem] text-dim">{res.eta.minutes} min · {Math.round(res.eta.km)} km{res.eta.trafficMin > 0 && <b> · +{res.eta.trafficMin} min trafik</b>}</span>
-        </div>
-      )}
+      {res && !res.here && <TripResult res={res} name={name} />}
       {res?.trips && <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{res.trips.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={res.trains ?? []} first={i === 0} home={res.to === 'home'} />)}</div>}
-      {res && !res.here && res.from === 'here' && (res.start === 'phone' || res.start === 'life360') && <p className="text-[0.875rem] text-dim">Räknat från {SRC[res.start]}</p>}
     </section>
+  );
+}
+
+const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
+
+/** Svaret: från/till med adress, ankomst stort, och läget – förseningar, trafik och hinder längs vägen. */
+function TripResult({ res, name }: { res: Result; name: (k: From, place?: string) => string }) {
+  const fromName = cap(name(res.from, res.fromName)), toName = cap(name(res.to, res.place));
+  const late = res.trips?.[0] ? tripDelay(res.trips[0], res.trains ?? []) : null;
+  const ok = (t: string) => <p className="flex items-center gap-2 font-semibold text-ok"><span aria-hidden="true">✓</span>{t}</p>;
+  const warn = (t: string, bad = false) => <p className={`flex items-center gap-2 font-semibold ${bad ? 'text-danger' : 'text-warn'}`}><span aria-hidden="true">{bad ? '▲' : '◆'}</span>{t}</p>;
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl bg-glass-2 p-4">
+      {/* Från → till med adresser (punkter på en tidslinje). */}
+      <ol className="flex flex-col gap-2" aria-label="Sträcka">
+        {[[fromName, res.from === 'here' && res.start in SRC ? `${res.fromAddr ?? 'Okänd adress'} · ${SRC[res.start as keyof typeof SRC]}` : res.fromAddr], [toName, res.toAddr]].map(([n, addr], i) => (
+          <li key={i} className="flex items-start gap-3">
+            <span aria-hidden="true" className={`mt-1.5 size-3 shrink-0 rounded-full ${i ? 'bg-sun' : 'border-2 border-fg'}`} />
+            <span className="flex min-w-0 flex-col leading-tight">
+              <span className="text-[0.875rem] font-bold text-dim">{i ? 'Till' : 'Från'}</span>
+              <span className="text-[1.0625rem] font-bold">{n}</span>
+              {addr && addr !== n && <span className="text-[0.9375rem] text-dim">{addr}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      {res.eta && (
+        <>
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-t border-line pt-3">
+            <span className="flex flex-col leading-none">
+              <span className="text-[1rem] font-semibold text-dim">{res.to === 'home' ? 'Hemma' : 'Framme'} med bil om du åker nu</span>
+              <span className="text-[3rem] font-extrabold tabular-nums">{hhmm(res.eta.arrive)}</span>
+            </span>
+            <span className="text-[1rem] font-semibold">{res.eta.minutes} min · {Math.round(res.eta.km)} km</span>
+          </div>
+          {res.eta.trafficMin > 0 ? warn(`+${res.eta.trafficMin} min på grund av trafik`) : ok('Ingen trafikförsening')}
+          {res.hinder && res.hinder.length > 0 ? (
+            <ul className="flex flex-col gap-1.5" aria-label="Hinder längs vägen">
+              {res.hinder.map((h, i) => (
+                <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="rounded-md bg-black/25 px-1.5 text-[0.875rem] font-extrabold">{h.road}</span>
+                  <span className="font-semibold">{h.type}{h.count > 1 ? ` ×${h.count}` : ''}</span>
+                  <RoadImpact tone={h.tone} className="text-[0.9375rem]" />
+                  {h.place && <span className="basis-full text-[0.9375rem] text-dim">{h.place}</span>}
+                </li>
+              ))}
+            </ul>
+          ) : ok('Inga hinder längs vägen')}
+        </>
+      )}
+
+      {res.trips && late && (
+        late.canceled ? warn('Inställd avgång på resan – se alternativ nedan', true)
+          : late.delay >= 3 ? warn(`Försening ${late.delay} min på resan`, late.delay >= 20)
+          : ok('Inga förseningar just nu')
+      )}
+    </div>
   );
 }

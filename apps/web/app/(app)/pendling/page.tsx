@@ -190,7 +190,7 @@ export default async function CommutePage() {
         </span>
       </h1>
       {!ridden && (transitConfigured() || etaConfigured()) && (
-        <TripFromHere defaultTo={dir === 'out' ? 'work' : 'home'} workLabel={tg?.label ?? goal?.label ?? 'Jobbet'} transit={transitConfigured()} car={etaConfigured()} />
+        <TripFromHere defaultTo={dir === 'out' ? 'work' : 'home'} workLabel={tg?.label ?? process.env.DEFAULT_DESTINATION_LABEL ?? 'Jobbet'} transit={transitConfigured()} car={etaConfigured()} />
       )}
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
