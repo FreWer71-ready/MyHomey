@@ -23,7 +23,7 @@ import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { OnTrainButton } from '@/components/OnTrainButton';
-import { loadTrips, ticket } from '@/lib/trips-source';
+import { loadTrips, saveTrip, ticket } from '@/lib/trips-source';
 import { claimAt, claimable, compensation } from '@/lib/trips';
 import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
 import { HomeTrains, RiddenTrain } from '@/components/TrainFocus';
@@ -324,6 +324,9 @@ export default async function HomePage() {
   const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
   const ridden = run && !atGoal && (!arrived || (onward.length > 0 && now <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
   const tripEnd = onward.at(-1)?.arr;
+  // Resan sparas för ersättningslistan när tågläget hittat tåget (GPS eller gissat); bekräftade sparas av knappen.
+  const homeRun = !!run && [...(commute?.home ?? []), ...(commute?.recent?.home ?? [])].some((t) => t.id === run.id);
+  if (ridden && !confirmed && (riddenToWork || homeRun)) await saveTrip(ridden, riddenToWork, guessed ? 'guess' : 'gps');
   // Säkert på tåget (bekräftat eller tågets GPS, inte gissat): fokus på måltiden och resplanen, inget brus.
   const sure = !!ridden && (!!confirmed || (!!onTrain && !guessed));
   const goalTime = tripEnd ?? (riddenToWork ? riddenArr : ridden?.homeAt ?? riddenArr);
