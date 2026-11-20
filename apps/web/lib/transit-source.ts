@@ -1,6 +1,7 @@
 import 'server-only';
 import { bestTrips, parseTrips, withWalk, withWalkEnd, type TransitLeg, type TransitTrip } from './transit.ts';
 import { km, type LatLon } from './trip.ts';
+import type { Start } from './startpoint.ts';
 
 // Hämtar kollektivresor från ResRobot (RESROBOT_API_KEY). Mål: TRANSIT_DESTINATION ("lat,lon"), rubrik TRANSIT_DESTINATION_LABEL.
 // Hemifrån: från hållplatsen TRANSIT_ORIGIN_STOP (t.ex. 740000170 = Eskilstuna C) med promenad dit. Trafikslag i
@@ -152,8 +153,9 @@ const STATION_ET: LatLon = { lat: 59.369482, lon: 16.505193 };
  * Resa dörr till dörr runt ett visst tåg (Pendling och Hem). Mot jobbet: promenad hemifrån till Eskilstuna C, tåget,
  * sedan via bytespunkten till jobbet. Hem: från jobbet via bytespunkten till Stockholm C i tid till tåget, tåget,
  * promenad hem. `leave` = när man behöver gå. Null om något saknas.
+ * `start`: var man är nu (mobilen, annars Life360); utan den räknas resan hemifrån (mot jobbet) och från jobbet (hem).
  */
-export async function journeyFor(t: JourneyTrain, toWork: boolean, home: LatLon): Promise<{ legs: TransitLeg[]; leave: number; arrive: number } | null> {
+export async function journeyFor(t: JourneyTrain, toWork: boolean, home: LatLon, start?: Start | null): Promise<{ legs: TransitLeg[]; leave: number; arrive: number; start: Start['src'] } | null> {
   const goal = transitGoal()?.at;
   const tr = transfer();
   const via = process.env.TRANSIT_VIA;
@@ -165,19 +167,22 @@ export async function journeyFor(t: JourneyTrain, toWork: boolean, home: LatLon)
   };
   try {
     if (toWork) {
-      const walk = walkMin(km(home, STATION_ET));
-      const before = walkLeg('Hemma', 'Eskilstuna C', dep - (walk + 2) * MIN, walk);
+      const from = start ?? { at: home, src: 'home' as const };
+      const walk = walkMin(km(from.at, STATION_ET));
+      const before = walkLeg(from.src === 'home' ? 'Hemma' : 'Din plats', 'Eskilstuna C', dep - (walk + 2) * MIN, walk);
       const after = (await query({ id: via }, { at: goal }, arr + 3 * MIN, { via: tr.id, products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2 }))
         .sort((a, b) => a.arr - b.arr)[0];
       const legs = [before, train, ...(after?.legs ?? [])];
-      return { legs, leave: before.dep, arrive: legs.at(-1)!.arr };
+      return { legs, leave: before.dep, arrive: legs.at(-1)!.arr, start: from.src };
     }
-    const before = (await query({ at: goal }, { id: via }, dep - 4 * MIN, { via: tr.id, products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2, arrival: true }))
+    // Är man någon annanstans än på jobbet räknas hemresan därifrån.
+    const origin: Point = start && start.src !== 'home' ? { at: start.at } : { at: goal };
+    const before = (await query(origin, { id: via }, dep - 4 * MIN, { via: tr.id, products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2, arrival: true }))
       .filter((x) => x.arr <= dep - 2 * MIN).sort((a, b) => b.dep - a.dep)[0];
     const walk = walkMin(km(STATION_ET, home));
     const after = walkLeg('Eskilstuna C', 'Hemma', arr, walk);
     const legs = [...(before?.legs ?? []), train, after];
-    return { legs, leave: legs[0].dep, arrive: after.arr };
+    return { legs, leave: legs[0].dep, arrive: after.arr, start: start?.src ?? 'home' };
   } catch (e) {
     console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);
     return null;
