@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { geocode, loadCommute, loadLocate, PLACE } from '@/lib/data';
+import { geocode, loadArea, loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { guessPlace } from '@/lib/place-guess';
 import { defaultGoal } from '@/lib/goal';
 import { freshestPosition } from '@/lib/onboard';
-import { etaConfigured, routeEta } from '@/lib/route';
+import { etaConfigured, reverseGeocode, routeEta } from '@/lib/route';
+import { groupRoad } from '@/lib/commute';
 import { parseLatLon, pickPosition } from '@/lib/startpoint';
 import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
-import { km, type LatLon } from '@/lib/trip';
+import { alongRoute, boxFor, km, type LatLon } from '@/lib/trip';
 
 // Resa från aktuell plats till jobbet eller hem, kollektivt (ResRobot) eller med bil (TomTom).
 // ?from=here|home|work|place&to=home|work|place&mode=transit|car (&lat&lon&acc för Min plats, &fq/&q = adress eller\n// platsnamn för valfri plats som start/mål). Position: mobilen först, sedan Life360 (eller Apple Watch).
@@ -67,9 +68,16 @@ export async function GET(req: Request) {
   if (km(pos.at, dest) <= 0.3) return NextResponse.json({ ...base, here: true });
 
   const noStore = { headers: { 'Cache-Control': 'private, no-store' } };
+  // Adresser för start och mål (visas i svaret).
+  const [fromAddr, toAddr] = await Promise.all([reverseGeocode(pos.at), reverseGeocode(dest)]);
+  const info = { ...base, fromAddr, toAddr };
   if (mode === 'car') {
-    const eta = await routeEta(pos.at, dest, null);
-    return eta ? NextResponse.json({ ...base, eta: { minutes: eta.minutes, trafficMin: eta.trafficMin, km: eta.km, arrive: eta.arrive } }, noStore) : err('Bilresan kunde inte räknas fram', 502);
+    const [eta, area] = await Promise.all([routeEta(pos.at, dest, null), loadArea(boxFor([pos.at, dest], 8)).catch(() => [])]);
+    if (!eta) return err('Bilresan kunde inte räknas fram', 502);
+    // Hinder längs vägen (Trafikverket): olyckor, vägarbeten, avstängningar – högst tre.
+    const hinder = groupRoad(alongRoute(area, pos.at, dest)).slice(0, 3)
+      .map((g) => ({ type: g.type, road: g.road, place: g.places[0] ?? null, tone: g.tone, count: g.count }));
+    return NextResponse.json({ ...info, eta: { minutes: eta.minutes, trafficMin: eta.trafficMin, km: eta.km, arrive: eta.arrive }, hinder }, noStore);
   }
   // Hemifrån (inom 150 m) räknas från hemmets hållplats med promenad, som på pendlingssidan.
   const atHome = from === 'home' || km(pos.at, PLACE) <= 0.15;
@@ -78,5 +86,5 @@ export async function GET(req: Request) {
   const c = await loadCommute().catch(() => null);
   const idents = new Set(trips.flatMap((t) => t.legs.map((l) => l.num).filter(Boolean)));
   const trains = c ? [...c.out, ...c.home, ...c.all].filter((t) => idents.has(t.ident)) : [];
-  return NextResponse.json({ ...base, trips, trains }, noStore);
+  return NextResponse.json({ ...info, trips, trains }, noStore);
 }
