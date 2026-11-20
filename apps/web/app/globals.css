@@ -229,3 +229,14 @@ svg.ico {
 
 /* Stort läge: förkortad text radbryts i stället (break-word påverkar inte minsta bredd, så smala rutor kollapsar inte till en bokstav per rad). */
 [data-mode="stor"] .truncate { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: break-word; }
+
+/* Små knappar i tågraderna (Sträckan, Dölj, Dörr till dörr): ljus, genomskinlig platta 32 px som smälter in i
+   radens färg; den genomskinliga kanten ger ändå 44 px tryckyta (WCAG 2.5.5/2.5.8). */
+.btn-row {
+  display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+  min-height: 2.75rem; margin-block: -.375rem; padding-inline: .75rem;
+  border-block: .375rem solid transparent; background-clip: padding-box; border-radius: 999px;
+  background-color: rgb(255 255 255 / .14); color: #fff; font-size: .875rem; font-weight: 600; white-space: nowrap;
+}
+.btn-row:hover { background-color: rgb(255 255 255 / .22); }
+.btn-row:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
