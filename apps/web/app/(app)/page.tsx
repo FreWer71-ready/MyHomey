@@ -621,6 +621,16 @@ export default async function HomePage() {
                     </div>
                   )}
                   {!arrived && <div className={onward.length > 0 ? "border-t border-line pt-3" : ""}><RiddenTrain t={ridden} guessed={!!guessed} confirmed={!!confirmed} /></div>}
+                  {/* Gissat tåg: rätta med ett tryck till ett annat tåg som just gått (senaste 30 min). */}
+                  {guessed && !arrived && (() => {
+                    const alts = (commute?.recent?.[dir] ?? []).filter((t) => !t.canceled && t.ident !== ridden.ident && (t.est ?? t.dep) > now - 30 * 60_000).sort((a, b) => b.dep - a.dep).slice(0, 3);
+                    return alts.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                        <span className="text-[0.9375rem] font-semibold text-dim">Annat tåg?</span>
+                        {alts.map((t) => <OnTrainButton key={t.id} ident={t.ident} dep={t.dep} arr={t.arr} label={`${hhmm(t.est ?? t.dep)} · ${t.ident}`} />)}
+                      </div>
+                    );
+                  })()}
                   {/* Om tågläget har fel: kommande avgångar inom en timme (minst nästa). */}
                   {!arrived && nextHour.length > 0 && (
                     <div className="flex flex-col gap-1.5 border-t border-line pt-3">

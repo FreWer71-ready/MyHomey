@@ -70,3 +70,20 @@ test('reseplan: från Liljeholmen 15:11 hinner man inte tåget 15:23 från Stock
   assert.ok(at > Date.parse('2026-11-19T15:23:00+01:00'));
   assert.equal(earliestAt(null, TERMINALS[1], now), null);
 });
+
+test('tågläge: väntade på perrongen – tåget som gick senast innan man sågs sist (10951, inte 951)', () => {
+  const at = (h: number, m: number) => Date.parse(`2026-11-20T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00+01:00`);
+  const cst = TERMINALS[1];
+  const pos = [
+    { at: cst, ts: at(15, 52), speed: 3, src: 'life360' as const },
+    { at: cst, ts: at(16, 8), speed: null, src: 'watch' as const },
+  ];
+  const list = [
+    { ident: '951', dep: at(15, 55), est: null, arr: at(16, 56), canceled: false },
+    { ident: '10951', dep: at(16, 5), est: null, arr: at(17, 0), canceled: false },
+    { ident: '10923', dep: at(16, 28), est: null, arr: at(17, 29), canceled: false },
+  ];
+  assert.equal(inferTrain(pos, cst, list, at(16, 12)), '10951');
+  // Positionerna slutade vid 15:52: första tåget därefter.
+  assert.equal(inferTrain([pos[0]], cst, list, at(16, 12)), '951');
+});
