@@ -83,6 +83,12 @@ if (Homey.insights && Homey.insights.getLogEntries) {
   }
 }
 
+// Logikvariabler (Ja/Nej, tal, text), t.ex. "Auto På" som visas på snabbvalsknappen Auto On/Off.
+const vars = Homey.logic && Homey.logic.getVariables ? await Homey.logic.getVariables().catch(() => null) : null;
+const variables = vars ? Object.values(vars)
+  .filter((v) => ['boolean', 'number', 'string'].includes(v.type))
+  .map((v) => ({ id: v.id, name: v.name, type: v.type, value: v.value })) : null;
+
 const payload = {
   events,
   v: 1,
@@ -93,6 +99,7 @@ const payload = {
     moods: Object.values(moods).map((m) => ({ id: m.id, name: m.name, zone: m.zone || null, favorite: favorites.has(m.id) })),
   }),
   ...(me && { flows }),
+  ...(variables && { variables }),
   devices: Object.values(devices).map((d) => ({
     id: d.id,
     name: d.name,

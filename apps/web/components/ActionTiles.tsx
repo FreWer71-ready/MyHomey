@@ -9,6 +9,8 @@ export type Action = {
   /** kind 'room': Ljust/Mys/Släck i de här rummen. */
   zones?: string[]; scene?: string;
   advanced?: boolean; dynamic?: boolean; active?: boolean; colors?: string[];
+  /** Av/på-knapp (t.ex. Auto On/Off): `active` = läget (Homey-variabel). Fylld när på, tom när av. */
+  toggle?: boolean;
 };
 
 const KIND: Record<Action['kind'], string> = { mood: 'Mood', flow: 'Flow', hue: 'Hue-scen', room: 'Rum' };
@@ -45,6 +47,9 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
   const router = useRouter();
   const [, start] = useTransition();
   const [state, setState] = useState<{ id: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null>(null);
+  // Av/på-knappar byter läge direkt vid tryck; Homey skickar det riktiga värdet inom någon minut.
+  const [flip, setFlip] = useState<Record<string, boolean>>({});
+  const on = (a: Action) => flip[a.id] ?? !!a.active;
 
   const run = (a: Action) => {
     setState({ id: a.id, status: 'busy' });
@@ -52,6 +57,10 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
       const r = a.kind === 'flow' ? await runFlow(a.id, !!a.advanced) : a.kind === 'hue' ? await runHueScene(a.id, !!a.dynamic)
         : a.kind === 'room' ? await runScenes(a.zones ?? [], a.scene ?? '') : await runMood(a.id);
       setState({ id: a.id, status: r.ok ? 'ok' : 'error', msg: r.error });
+      if (r.ok && a.toggle) {
+        setFlip((f) => ({ ...f, [a.id]: !on(a) }));
+        setTimeout(() => setFlip((f) => { const n = { ...f }; delete n[a.id]; return n; }), 90_000);
+      }
       if (r.ok) setTimeout(() => router.refresh(), 4000);
       setTimeout(() => setState(null), r.ok ? 2500 : 6000);
     });
@@ -65,21 +74,21 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
           return (
             <li key={`${a.kind}-${a.id}`} className={layout === 'list' ? `border-b border-line last:border-b-0 ${cols === 2 ? 'md:[&:nth-last-child(2):nth-child(odd)]:border-b-0' : ''}` : ''}>
               <button
-                type="button" onClick={() => run(a)} disabled={state?.status === 'busy'}
+                type="button" onClick={() => run(a)} disabled={state?.status === 'busy'} aria-pressed={a.toggle ? on(a) : undefined}
                 className={`relative flex w-full min-w-0 text-left ${layout === 'compact' ? 'gap-2' : 'gap-3'} transition-colors ${
  layout === 'grid'
  ? 'h-[6.75rem] flex-col items-start justify-center overflow-hidden rounded-[1rem] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[4.75rem] sm:flex-row sm:items-center sm:px-4'
  : layout === 'compact'
  ? 'h-full min-h-12 items-center rounded-[0.875rem] border border-line bg-white/[0.04] px-2.5 py-2 hover:bg-white/[0.08]'
  : 'h-14 items-center'
- } ${st === 'busy' ? 'animate-pulse' : ''}`}
+ } ${a.toggle ? (on(a) ? '!border-[#E6EDF3] !bg-[#E6EDF3] !text-[#0B0F14]' : '!bg-transparent') : ''} ${st === 'busy' ? 'animate-pulse' : ''}`}
               >
-                <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' ? 'h-5 min-w-5 text-dim' : 'size-10 rounded-[0.75rem] bg-white/[0.06]'}`}>
+                <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' ? `h-5 min-w-5 ${a.toggle && on(a) ? '' : 'text-dim'}` : 'size-10 rounded-[0.75rem] bg-white/[0.06]'}`}>
                   {a.kind === 'hue' && a.colors?.length ? (
                     <span className="flex -space-x-1.5">
                       {a.colors.slice(0, 3).map((c, i) => <span key={i} className="size-3.5 rounded-full ring-2 ring-[#131A22]" style={{ background: c }} />)}
                     </span>
-                  ) : <Icon name={iconFor(a.name)} size={layout === 'compact' ? 20 : 24} />}
+                  ) : <Icon name={a.toggle ? (on(a) ? 'toggle' : 'toggleOff') : iconFor(a.name)} size={layout === 'compact' ? 20 : 24} />}
                 </span>
                 <span className="flex min-w-0 grow flex-col leading-tight">
                   <span className={`font-semibold ${layout === 'grid' ? 'text-[1.0625rem] line-clamp-1 sm:line-clamp-2' : layout === 'compact' ? 'text-[0.9375rem] break-words hyphens-auto' : 'text-[1.0625rem] truncate'}`}>{a.name}</span>
