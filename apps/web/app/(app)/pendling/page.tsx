@@ -98,9 +98,10 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
           return (
             <li key={g.id} className="flex flex-col gap-1 rounded-2xl px-3 py-2" style={{ background: tint(TONE_COLOR[g.tone], 0.4) }} title={g.severityText ?? undefined}>
               {/* Rad 1: väg, typ, antal – period till höger. */}
-              <span className="flex items-center gap-2">
+              {/* Radbryts när det är trångt (mobil, stort läge) i stället för att typen trycks ihop till en bokstav per rad. */}
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="shrink-0 rounded-md bg-black/25 px-1.5 text-[0.875rem] font-extrabold">{g.road}</span>
-                <span className="min-w-0 grow truncate text-[1.0625rem] font-extrabold">
+                <span className="min-w-[7rem] grow truncate text-[1.0625rem] font-extrabold">
                   {g.type}{g.count > 1 && <span className="opacity-80"> ×{g.count}</span>}
                 </span>
                 <RoadImpact tone={g.tone} plain className="rounded-md bg-black/35 px-1.5 text-[0.875rem]" />

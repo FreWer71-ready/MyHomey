@@ -50,7 +50,7 @@ export function SceneButtons({ zoneId, room, size }: { zoneId: string; room: str
             disabled={state?.status === 'busy'}
             aria-label={`${s.label} i ${room}`}
             className={`flex items-center justify-center rounded-[0.875rem] transition-shadow ${s.className} ${ring(s.key)} ${
- size === 'large' ? 'h-[4.75rem] gap-2 rounded-[1rem] text-[1.125rem] font-semibold md:gap-3 md:text-[1.25rem]' : size === 'card' ? 'min-h-12 gap-2 text-[1rem] font-semibold' : 'min-h-10'
+ size === 'large' ? 'h-[4.75rem] gap-2 rounded-[1rem] text-[1.125rem] font-semibold md:gap-3 md:text-[1.25rem]' : size === 'card' ? 'min-h-12 min-w-0 flex-wrap gap-x-2 px-1 text-[1rem] font-semibold big:flex-col big:gap-0.5 big:py-1.5' : 'min-h-10'
  }`}
           >
             <Icon name={s.icon} size={size === 'large' ? 32 : 24} />

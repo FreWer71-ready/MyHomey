@@ -227,5 +227,5 @@ svg.ico {
 @media (prefers-reduced-motion: reduce) { .trend-up, .trend-down { animation: none; } }
 
 
-/* Läge Stor: ingen text kapas med … – den radbryts i stället (WCAG 1.4.10 Reflow). */
-[data-mode="stor"] .truncate { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+/* Stort läge: förkortad text radbryts i stället (break-word påverkar inte minsta bredd, så smala rutor kollapsar inte till en bokstav per rad). */
+[data-mode="stor"] .truncate { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: break-word; }
