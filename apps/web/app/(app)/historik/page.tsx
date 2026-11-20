@@ -3,6 +3,8 @@ import { HistoryChart } from '@/components/HistoryChart';
 import { Icon, type IconName } from '@/components/Icon';
 import { LightTimeline } from '@/components/LightTimeline';
 import { ScrollActive } from '@/components/ScrollActive';
+import { TrainHistory, isRange } from '@/components/TrainHistory';
+import { loadTrips } from '@/lib/trips-source';
 import { loadHistory, loadLightTimeline, loadPresenceTimeline, loadRoadHistory, loadWine, loadWineHistory, type RoadHistRow } from '@/lib/data';
 import {
   METRICS, PERIODS, fmtValue, isMetric, isPeriod, sumSeries, type MetricKey, type PeriodKey,
@@ -10,7 +12,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-type View = MetricKey | 'lights' | 'presence' | 'wine' | 'road';
+type View = MetricKey | 'lights' | 'presence' | 'wine' | 'road' | 'train';
 const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'temp', label: METRICS.temp.label, icon: 'thermo' },
   { key: 'hum', label: 'Fukt', icon: 'drop' },
@@ -19,6 +21,7 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'lights', label: 'Lampor', icon: 'bulb' },
   { key: 'presence', label: 'Närvaro', icon: 'home' },
   { key: 'road', label: 'Vägväder', icon: 'road' },
+  { key: 'train', label: 'Tåg', icon: 'train' },
   { key: 'wine', label: 'Vinkällare', icon: 'wine' },
 ];
 // Trafikverkets vägväderstationer längs pendlingen (samma som på Pendling).
@@ -66,16 +69,17 @@ const scrollRow = 'scroll-x flex gap-1.5 max-md:-mx-3 max-md:overflow-x-auto max
 
 export default async function HistoryPage({
   searchParams,
-}: { searchParams: Promise<{ m?: string; p?: string; s?: string }> }) {
-  const { m, p, s: sel } = await searchParams;
-  const view: View = m === 'lights' || m === 'presence' || m === 'wine' || m === 'road' ? m : isMetric(m) ? m : 'temp';
-  const metric: MetricKey = view === 'lights' || view === 'presence' || view === 'wine' || view === 'road' ? 'temp' : view;
+}: { searchParams: Promise<{ m?: string; p?: string; s?: string; r?: string }> }) {
+  const { m, p, s: sel, r } = await searchParams;
+  const view: View = m === 'lights' || m === 'presence' || m === 'wine' || m === 'road' || m === 'train' ? m : isMetric(m) ? m : 'temp';
+  const metric: MetricKey = view === 'lights' || view === 'presence' || view === 'wine' || view === 'road' || view === 'train' ? 'temp' : view;
   const period: PeriodKey = isPeriod(p) ? p : '24h';
   const cfg = METRICS[metric];
   const [wine, winePts] = await Promise.all([loadWine(), view === 'wine' ? loadWineHistory() : Promise.resolve([] as [number, number][])]);
   const roadStation = ROAD_STATIONS.some(([id]) => id === sel) ? sel! : '429';
   const roadRows = view === 'road' ? await loadRoadHistory(roadStation, period) : [];
-  const [series, timeline] = view === 'wine' || view === 'road'
+  const trips = view === 'train' ? await loadTrips() : [];
+  const [series, timeline] = view === 'wine' || view === 'road' || view === 'train'
     ? [[], null]
     : view === 'lights' || view === 'presence'
       ? [[], await (view === 'presence' ? loadPresenceTimeline(period) : loadLightTimeline(period))]
@@ -96,7 +100,7 @@ export default async function HistoryPage({
       <ScrollActive />
       <header className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3">
         <h1 className="text-[2rem] leading-tight font-extrabold tracking-tight">Historik</h1>
-        {view !== 'wine' && <nav aria-label="Period" className={scrollRow}>
+        {view !== 'wine' && view !== 'train' && <nav aria-label="Period" className={scrollRow}>
           {(Object.keys(PERIODS) as PeriodKey[]).map((k) => (
             <Link key={k} href={href(view, k, sel)} aria-current={k === period ? 'page' : undefined} className={chip(k === period)}>
               {PERIODS[k].label}
@@ -105,7 +109,7 @@ export default async function HistoryPage({
         </nav>}
       </header>
 
-      <nav aria-label="Mått" className={`scroll-x flex gap-2 max-lg:-mx-3 max-lg:overflow-x-auto max-lg:px-3 lg:grid lg:gap-2.5 ${views.length > 7 ? 'lg:grid-cols-8' : views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
+      <nav aria-label="Mått" className={`scroll-x flex gap-2 max-lg:-mx-3 max-lg:overflow-x-auto max-lg:px-3 lg:grid lg:gap-2.5 ${views.length > 8 ? 'lg:grid-cols-9' : views.length > 7 ? 'lg:grid-cols-8' : views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
         {views.map((v) => (
           <Link
             key={v.key}
@@ -169,6 +173,8 @@ export default async function HistoryPage({
         </section>
       )}
 
+      {view === 'train' && <TrainHistory trips={trips} range={isRange(r) ? r : '30d'} />}
+
       {view === 'road' && (
         <>
           <nav aria-label="Station" className={scrollRow}>
@@ -180,7 +186,7 @@ export default async function HistoryPage({
         </>
       )}
 
-      {!timeline && view !== 'wine' && view !== 'road' && (
+      {!timeline && view !== 'wine' && view !== 'road' && view !== 'train' && (
         <section className="rounded-[1.5rem] glass p-3">
           {chartSeries.length ? (
             <HistoryChart
