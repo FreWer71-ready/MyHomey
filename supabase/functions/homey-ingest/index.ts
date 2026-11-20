@@ -44,6 +44,12 @@ Deno.serve(async (req) => {
     if (flows.error) error = flows.error;
     else data = { ...data, flows: flows.data };
   }
+  // Logikvariabler (t.ex. "Auto På") skickas bara om skriptet tar med dem.
+  if (!error && Array.isArray(p.variables)) {
+    const vars = await db.rpc("ingest_variables", { p });
+    if (vars.error) error = vars.error;
+    else data = { ...data, variables: vars.data };
+  }
   // Insights-händelser (varje ändring, även korta dörröppningar mellan snapshotarna).
   if (!error && Array.isArray(p.events)) {
     const ev = await db.rpc("ingest_events", { p });

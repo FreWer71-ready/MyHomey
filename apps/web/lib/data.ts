@@ -267,10 +267,19 @@ export type Flow = { id: string; name: string; advanced: boolean };
 
 /** Favoritflows från Homey (tabellen innehåller bara favoriter). */
 async function loadFlowsFresh(): Promise<Flow[]> {
-  if (DEMO) return [{ id: 'f1', name: 'Godnatt', advanced: false }, { id: 'f2', name: 'Morgonrutin', advanced: true }, { id: 'f3', name: 'Lämnar huset', advanced: false }];
+  if (DEMO) return [{ id: 'f1', name: 'Godnatt', advanced: false }, { id: 'f2', name: 'Morgonrutin', advanced: true }, { id: 'f3', name: 'Lämnar huset', advanced: false }, { id: 'f4', name: 'Auto On/Off', advanced: false }];
   const sb = await createClient();
   const { data, error } = await sb.from('flows').select('id,name,advanced').order('name');
   return error ? [] : (data as Flow[]);
+}
+
+/** Homeys logikvariabler (namn → värde), t.ex. "Auto På" → true. Tom vid fel. */
+async function loadVariablesFresh(): Promise<Record<string, boolean | number | string | null>> {
+  if (DEMO) return { 'Auto På': true };
+  const sb = await createClient();
+  const { data, error } = await sb.from('homey_variables').select('name,type,value_bool,value_num,value_text');
+  if (error || !data) return {};
+  return Object.fromEntries(data.map((v) => [v.name, v.type === 'boolean' ? v.value_bool : v.type === 'number' ? v.value_num : v.value_text]));
 }
 
 /** Närvarohistorik (Smart Presence) som tidslinje per person. */
@@ -625,6 +634,7 @@ export const loadCommute = cache(loadCommuteFresh);
 export const loadLocate = cache(loadLocateFresh);
 export const loadPrices = cache(loadPricesFresh);
 export const loadFlows = cache(loadFlowsFresh);
+export const loadVariables = cache(loadVariablesFresh);
 export const loadNowPlaying = cache(loadNowPlayingFresh);
 export const loadTv = cache(loadTvFresh);
 export const loadTvStatuses = cache(loadTvStatusesFresh);

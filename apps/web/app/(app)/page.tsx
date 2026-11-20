@@ -33,7 +33,7 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
-import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, PLACE, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
+import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, loadVariables, PLACE, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
 import { type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, slip, trainTone } from '@/lib/commute';
@@ -127,11 +127,20 @@ export default async function HomePage() {
     loadHistory('power', '12h').catch(() => []), loadHistory('energy', '24h').catch(() => []),
   ]);
   // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), i bokstavsordning.
-  const flows = await loadFlows().catch(() => []);
+  const [flows, vars] = await Promise.all([loadFlows().catch(() => []), loadVariables().catch(() => ({} as Record<string, unknown>))]);
+  // Av/på-flöden visar läget från en Homey-variabel: QUICK_TOGGLES="Flöde=Variabel;…" (standard Auto On/Off=Auto På).
+  const toggles = new Map((process.env.QUICK_TOGGLES ?? 'Auto On/Off=Auto På').split(';').flatMap((e) => {
+    const [f, v] = e.split('=').map((x) => x.trim());
+    return f && v ? [[f.toLowerCase(), v] as const] : [];
+  }));
+  const toggleOf = (name: string) => {
+    const v = toggles.get(name.toLowerCase());
+    return v && v in vars ? { toggle: true, active: vars[v] === true || vars[v] === 'Ja' } : {};
+  };
   const pingable = await pingableNames();
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
   const quick: Action[] = [
-    ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced })),
+    ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced, ...toggleOf(f.name.trim()) })),
     ...h.favoriteMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const })),
   ].sort(byName);
   // Förval först (QUICK_SCENES), t.ex. "Släck alla lampor=*:slack;Mys vardagsrum=Vardagsrum:mys".
