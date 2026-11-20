@@ -40,7 +40,7 @@ export function NowPlayingStrip({ items }: { items: PlayingItem[] }) {
   if (!items.length) return null;
   const p = items[i % items.length];
   return (
-    <div aria-live="polite" className={`np-card ${p.kind === 'tv' ? 'np-tv' : 'np-music'} relative flex h-16 min-w-0 items-center gap-3.5 overflow-hidden rounded-[1.125rem] border border-line pl-3 pr-4`}>
+    <div aria-live="polite" className={`np-card ${p.kind === 'tv' ? 'np-tv' : 'np-music'} relative flex h-[4.5rem] min-w-0 items-center gap-3.5 overflow-hidden rounded-[1.125rem] border border-line pl-3 pr-4`}>
       <div className={`flex min-w-0 grow items-center gap-3.5 transition-opacity duration-[400ms] ${shown ? 'opacity-100' : 'opacity-0'}`}>
         <span className="flex size-11 shrink-0 items-center justify-center rounded-[0.75rem] bg-black/30">
           <Icon name={p.kind === 'tv' ? 'tv' : 'music'} size={24} />

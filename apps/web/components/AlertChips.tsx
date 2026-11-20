@@ -32,14 +32,14 @@ export function AlertChips({ alerts, max = 2 }: { alerts: Alert[]; max?: number 
         const st = STYLE[a.level];
         return (
           <Link key={a.id} href={a.href} role="alert" aria-label={`${st.name}: ${a.text}${a.detail ? `, ${a.detail}` : ''}. Visa detaljer.`}
-            className={`flex min-h-16 min-w-0 items-center gap-3 rounded-[0.875rem] border border-l-[6px] py-2.5 pr-4 pl-3 text-white ${st.box}`}>
+            className={`flex h-[4.5rem] min-w-0 items-center gap-3 rounded-[0.875rem] border border-l-[6px] py-2 pr-4 pl-3 text-white ${st.box}`}>
             <span aria-hidden="true" className="relative flex size-12 shrink-0 items-center justify-center rounded-[0.75rem]" style={{ background: st.tile }}>
               {a.icon === '!' ? <span className="text-[1.75rem] leading-none font-black">!</span> : <Icon name={a.icon} size={32} />}
               <span className="absolute -top-1.5 -left-1.5 flex size-6 items-center justify-center rounded-full bg-[#0B0F14] text-[0.875rem] leading-none" style={{ color: st.markColor }}>{st.mark}</span>
             </span>
             <span className="flex min-w-0 grow flex-col leading-tight">
-              <span className="text-[1.1875rem] font-bold">{a.text}</span>
-              {a.detail && <span className="text-[0.9375rem] text-white/85">{a.detail}</span>}
+              <span className="overflow-hidden text-[1.1875rem] font-bold text-ellipsis whitespace-nowrap">{a.text}</span>
+              {a.detail && <span className="overflow-hidden text-[0.9375rem] text-ellipsis whitespace-nowrap text-white/85">{a.detail}</span>}
             </span>
             <span aria-hidden="true" className="shrink-0 text-[1.375rem] leading-none">›</span>
           </Link>

@@ -418,13 +418,14 @@ export default async function HomePage() {
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
         <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-2 lg:self-start cols2:lg:col-span-1 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
           <h1 className="sr-only">Hemma</h1>
-          <Clock show="time" className="text-[4.75rem] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:text-[5.5rem] lg:leading-[0.75]" />
+          {/* Stor skärm: klockraden och Spelar nu lika höga som varningsplattorna (4,5 rem + 0,5 rem mellanrum), så de linjerar. */}
+          <Clock show="time" className="text-[4.75rem] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:flex lg:h-[4.5rem] lg:items-end lg:text-[5.5rem] lg:leading-[0.75]" />
           <span className="flex flex-col pb-1 leading-tight">
             <Clock show="date" className="text-[1.125rem] font-semibold first-letter:uppercase" />
             {names && <span className="text-[1rem] text-dim">Namnsdag <span className="text-sun">{names}</span></span>}
           </span>
           {/* Spelar nu under klockan: fyller ytan och låter varningarna ligga högst upp i mitten. */}
-          <div className="min-w-0 basis-full overflow-hidden lg:mt-1">
+          <div className="min-w-0 basis-full overflow-hidden">
             <NowPlayingStrip items={playing} />
           </div>
         </header>
