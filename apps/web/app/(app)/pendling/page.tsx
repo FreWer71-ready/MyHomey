@@ -13,6 +13,7 @@ import { etaConfigured } from '@/lib/route';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
 import { PageTrainList, RiddenTrain } from '@/components/TrainFocus';
 import { UnskipButton } from '@/components/OnTrainButton';
+import { TripFromHere } from '@/components/TripFromHere';
 import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
 
@@ -182,6 +183,9 @@ export default async function CommutePage() {
           {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
         </span>
       </h1>
+      {!ridden && (transitConfigured() || etaConfigured()) && (
+        <TripFromHere defaultTo={dir === 'out' ? 'work' : 'home'} workLabel={tg?.label ?? goal?.label ?? 'Jobbet'} transit={transitConfigured()} car={etaConfigured()} />
+      )}
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
           {onward.length > 0 && (

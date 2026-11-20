@@ -31,3 +31,9 @@ export function pickStart(cands: Candidate[], home: LatLon, near: LatLon, toWork
   }
   return null;
 }
+
+/** Första kandidaten med position (mobil före Life360), utan avståndsgränser. Null om ingen har någon. */
+export function pickPosition(cands: Candidate[]): { at: LatLon; src: 'phone' | 'life360' } | null {
+  const c = cands.find((x) => x.at);
+  return c ? { at: c.at!, src: c.src } : null;
+}
