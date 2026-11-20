@@ -13,6 +13,8 @@ import { etaConfigured } from '@/lib/route';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
 import { PageTrainList, RiddenTrain } from '@/components/TrainFocus';
 import { UnskipButton } from '@/components/OnTrainButton';
+import { TripFromHere } from '@/components/TripFromHere';
+import { settleTrips } from '@/lib/trips-source';
 import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
 
@@ -145,6 +147,8 @@ export default async function CommutePage() {
   // Tågläge: på ett tåg i pendlingen visas bara det tåget och resten av resan.
   const me = process.env.HOUSEHOLD ?? '', nowMs = Date.now(), d0 = direction();
   const dirTrains = c ? [...c[d0], ...(c.recent?.[d0] ?? [])] : [];
+  // Avslutade resor får sin faktiska ankomst (sparas för statistiken under Historik → Tåg).
+  if (c?.trains) await settleTrips(nowMs);
   const confirmed = c?.trains ? await loadConfirmed(nowMs) : null;
   let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me), nowMs, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
@@ -182,6 +186,9 @@ export default async function CommutePage() {
           {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
         </span>
       </h1>
+      {!ridden && (transitConfigured() || etaConfigured()) && (
+        <TripFromHere defaultTo={dir === 'out' ? 'work' : 'home'} workLabel={tg?.label ?? goal?.label ?? 'Jobbet'} transit={transitConfigured()} car={etaConfigured()} />
+      )}
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
           {onward.length > 0 && (

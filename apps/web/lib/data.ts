@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { createClient } from './supabase/server';
 import { TEMP_MAX_DAYS, buildHome, CAPS, type Cap, type Device, type Home, type Mood, type Zone } from './home';
 import { PRICE_AREA, type Price } from './prices';
@@ -19,7 +20,7 @@ import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type Peri
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
 export const DEMO = process.env.NODE_ENV === 'development' ? process.env.DEMO_DATA : undefined;
 
-export async function loadHome(): Promise<Home> {
+async function loadHomeFresh(): Promise<Home> {
   if (DEMO) {
     const { readFile } = await import('node:fs/promises');
     const d = JSON.parse(await readFile(DEMO, 'utf8'));
@@ -129,7 +130,7 @@ export async function loadLightTimeline(period: PeriodKey): Promise<{ rooms: Roo
 }
 
 /** Spotpriser från i går kväll till och med i morgon (öre/kWh). */
-export async function loadPrices(): Promise<Price[]> {
+async function loadPricesFresh(): Promise<Price[]> {
   const now = Date.now();
   if (DEMO) {
     const first = Math.floor((now - 14 * 3600_000) / 900_000) * 900_000;
@@ -171,7 +172,7 @@ export async function loadPriceHistory(days = 360): Promise<Price[]> {
 export const PLACE = { lat: Number(process.env.WEATHER_LAT ?? 59.3712), lon: Number(process.env.WEATHER_LON ?? 16.5098) };
 
 /** Väderprognos från SMHI (Yr som reserv), cachas 30 min. Plats via WEATHER_LAT/WEATHER_LON. */
-export async function loadWeather(): Promise<WeatherSummary | null> {
+async function loadWeatherFresh(): Promise<WeatherSummary | null> {
   const now = Date.now();
   if (DEMO) {
     const sym = ['partlycloudy_night', 'partlycloudy_night', 'lightrain', 'rain', 'cloudy', 'partlycloudy_day', 'clearsky_day', 'fair_day'];
@@ -200,7 +201,7 @@ export async function loadWeather(): Promise<WeatherSummary | null> {
 }
 
 /** Antal öppningar per dörr/fönster (alarm_contact → öppen) sedan midnatt. */
-export async function loadOpeningsToday(): Promise<Record<string, number>> {
+async function loadOpeningsTodayFresh(): Promise<Record<string, number>> {
   if (DEMO) return { hd: 7 };
   const sb = await createClient();
   const { data, error } = await sb
@@ -216,7 +217,7 @@ export async function loadOpeningsToday(): Promise<Record<string, number>> {
 }
 
 /** Dagens namnsdag ur tabellen name_days (fylls månadsvis av edge-funktionen name-days). */
-export async function loadNameDay(): Promise<string[]> {
+async function loadNameDayFresh(): Promise<string[]> {
   const day = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit' }).format(Date.now());
   if (DEMO) return ['Mårten'];
   const sb = await createClient();
@@ -225,7 +226,7 @@ export async function loadNameDay(): Promise<string[]> {
 }
 
 /** Vad som spelas på Chromecast-enheter (Google TV, Nest hub; Spotify syns när den castar). */
-export async function loadNowPlaying(): Promise<NowPlaying[]> {
+async function loadNowPlayingFresh(): Promise<NowPlaying[]> {
   if (DEMO) return [
     { id: 'tv', device: 'Google TV vardagsrum', kind: 'tv', playing: true, title: 'Netflix', subtitle: 'Stranger Things' },
     { id: 'hub', device: 'Nest hub', kind: 'music', playing: true, title: 'Feels Like I’m Falling in Love', subtitle: 'Coldplay · Spotify' },
@@ -240,7 +241,7 @@ export async function loadNowPlaying(): Promise<NowPlaying[]> {
 }
 
 /** Internet- och nätverkshälsa (UniFi, senaste 24 h). Null om UniFi-data saknas. */
-export async function loadNet(): Promise<Net | null> {
+async function loadNetFresh(): Promise<Net | null> {
   if (DEMO) {
     const t = Math.floor(Date.now() / 300_000) * 300_000;
     const isp = Array.from({ length: 288 }, (_, i) => ({
@@ -265,7 +266,7 @@ export async function loadNet(): Promise<Net | null> {
 export type Flow = { id: string; name: string; advanced: boolean };
 
 /** Favoritflows från Homey (tabellen innehåller bara favoriter). */
-export async function loadFlows(): Promise<Flow[]> {
+async function loadFlowsFresh(): Promise<Flow[]> {
   if (DEMO) return [{ id: 'f1', name: 'Godnatt', advanced: false }, { id: 'f2', name: 'Morgonrutin', advanced: true }, { id: 'f3', name: 'Lämnar huset', advanced: false }];
   const sb = await createClient();
   const { data, error } = await sb.from('flows').select('id,name,advanced').order('name');
@@ -297,7 +298,7 @@ export async function loadPresenceTimeline(period: PeriodKey): Promise<{ rooms: 
 export type HueScene = { id: string; name: string; room: string | null; colors: string[]; dynamic: boolean; active: boolean };
 
 /** Hue-scener via edge-funktionen hue. connected=false om Hue inte är kopplat än. */
-export async function loadHueScenes(): Promise<{ connected: boolean; scenes: HueScene[] }> {
+async function loadHueScenesFresh(): Promise<{ connected: boolean; scenes: HueScene[] }> {
   if (DEMO) {
     return { connected: true, scenes: [
       { id: 'h1', name: 'Solnedgång Savannah', room: 'Vardagsrum', colors: ['#ff8a3d', '#ff5a5a', '#ffc21a'], dynamic: true, active: false },
@@ -314,7 +315,7 @@ export async function loadHueScenes(): Promise<{ connected: boolean; scenes: Hue
 export type WineCellar = { total: number; by_color: Record<string, number>; latest: { name?: string; producer?: string; year?: number } | null; updated_at: string };
 
 /** Vinkällaren (från Trandvine via wine-ingest). Null om hushållet inte har någon källare kopplad. */
-export async function loadWine(): Promise<WineCellar | null> {
+async function loadWineFresh(): Promise<WineCellar | null> {
   if (DEMO) return { total: 27, by_color: { red: 21, white: 4, sparkling: 2 }, latest: { name: 'Amarone della Valpolicella Classico', producer: 'Zenato', year: 2020 }, updated_at: new Date().toISOString() };
   const sb = await createClient();
   const { data } = await sb.from('wine_cellar').select('total,by_color,latest,updated_at').maybeSingle();
@@ -348,7 +349,7 @@ export type Warnings = { smhi: SmhiWarning[]; vma: Vma[]; storms: Storm[] };
  * SMHI:s vädervarningar och VMA (Krisinformation) för området (WARNING_AREA, standard Södermanland/Eskilstuna)
  * samt kommande oväder ur prognosen. Cachas 5 min; en källa som inte svarar ger bara tom lista.
  */
-export async function loadWarnings(weather: WeatherSummary | null): Promise<Warnings> {
+async function loadWarningsFresh(weather: WeatherSummary | null): Promise<Warnings> {
   const area = new RegExp(process.env.WARNING_AREA ?? 'Södermanland|Eskilstuna', 'i');
   const stormList = storms(weather?.hours ?? []);
   if (DEMO) {
@@ -378,7 +379,7 @@ export async function loadWarnings(weather: WeatherSummary | null): Promise<Warn
  * Null om avstängt
  * eller om källan inte svarar.
  */
-export async function loadCommute(): Promise<Commute | null> {
+async function loadCommuteFresh(): Promise<Commute | null> {
   if (process.env.COMMUTE === 'off') return null;
   const roadOnly = (c: Commute): Commute => (process.env.COMMUTE === 'road' ? { ...c, out: [], home: [], trains: false } : c);
   if (DEMO) {
@@ -408,7 +409,7 @@ export async function loadCommute(): Promise<Commute | null> {
 }
 
 /** TV-fjärren (The Frame via SmartThings, Google TV och soundbar via Chromecast). Null utan TV i Homey. */
-export async function loadTv(): Promise<TvRemote | null> {
+async function loadTvFresh(): Promise<TvRemote | null> {
   if (DEMO) return { zone: 'vardagsrum', tv: { id: 'tv', name: 'Samsung The Frame 75', on: true }, cast: { id: 'tv', playing: true, muted: false }, bar: null };
   if (process.env.CONTROL === 'hue') return null;
   const sb = await createClient();
@@ -425,7 +426,7 @@ export type TvStatus = { device_id: string; is_on: boolean; app_name: string | n
  * TV-status från den lokala TV-agenten (agents/tv-adb): en rad per enhet (Google TV, The Frame).
  * Bara färsk data (agenten skickar minst varje minut); äldre rader räknas inte.
  */
-export async function loadTvStatuses(): Promise<TvStatus[]> {
+async function loadTvStatusesFresh(): Promise<TvStatus[]> {
   if (DEMO) return [
     { device_id: 'google-tv', is_on: true, app_name: 'Netflix', media_title: 'Stranger Things', media_artist: 'S4:E1 Chapter One', media_status: 'playing', updated_at: new Date().toISOString() },
     { device_id: 'the-frame', is_on: false, app_name: 'Konstläge', media_title: null, media_artist: null, media_status: 'none', updated_at: new Date().toISOString() },
@@ -509,7 +510,7 @@ export async function geocode(q: string): Promise<{ lat: number; lon: number } |
 export const POLICE_AREAS = (process.env.POLICE_AREAS ?? 'Eskilstuna').split(',').map((s) => s.trim()).filter(Boolean);
 
 /** Polisens händelser i närheten senaste dygnet (öppet API, cachas 10 min). Tom lista vid fel. */
-export async function loadPolice(): Promise<PoliceEvent[]> {
+async function loadPoliceFresh(): Promise<PoliceEvent[]> {
   if (DEMO) {
     const t = (min: number) => { const d = new Date(Date.now() - min * 60_000); return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 19)} +00:00`; };
     return parsePolice([
@@ -528,7 +529,7 @@ export async function loadPolice(): Promise<PoliceEvent[]> {
 }
 
 /** Personer (Life360) och prylar (Apple Hitta) via Homey-apparna. */
-export async function loadLocate(): Promise<{ members: Member[]; items: Item[] }> {
+async function loadLocateFresh(): Promise<{ members: Member[]; items: Item[] }> {
   if (DEMO) {
     const t = new Date().toISOString();
     const c = (device_id: string, capability_id: string, v: number | boolean | string) => ({ device_id, capability_id, last_updated: t,
@@ -565,7 +566,7 @@ export async function loadLocate(): Promise<{ members: Member[]; items: Item[] }
  * Kommunens driftinformation (Eskilstuna). KOMMUN_AREA = områdestagg (t.ex. munktellstaden-norr),
  * KOMMUN_WORDS = ord i titeln som räknas som "ditt område" (t.ex. Slagsta,Cellovägen). Cachas 30 min.
  */
-export async function loadMunicipal(): Promise<MuniItem[]> {
+async function loadMunicipalFresh(): Promise<MuniItem[]> {
   const area = process.env.KOMMUN_AREA?.trim() || null;
   const words = (process.env.KOMMUN_WORDS ?? '').split(',').map((w) => w.trim()).filter(Boolean);
   if (DEMO) {
@@ -615,3 +616,22 @@ function withHomeAt(c: Commute | null): Commute | null {
   const add = (l: Train[]) => l.map((t) => (t.arr != null && !t.canceled ? { ...t, homeAt: t.arr + (t.delay + w) * 60_000 } : t));
   return { ...c, home: add(c.home), recent: c.recent && { ...c.recent, home: add(c.recent.home) } };
 }
+
+// Per förfrågan (React cache): layout och sida som läser samma data hämtar den bara en gång.
+export const loadHome = cache(loadHomeFresh);
+export const loadWeather = cache(loadWeatherFresh);
+export const loadNet = cache(loadNetFresh);
+export const loadCommute = cache(loadCommuteFresh);
+export const loadLocate = cache(loadLocateFresh);
+export const loadPrices = cache(loadPricesFresh);
+export const loadFlows = cache(loadFlowsFresh);
+export const loadNowPlaying = cache(loadNowPlayingFresh);
+export const loadTv = cache(loadTvFresh);
+export const loadTvStatuses = cache(loadTvStatusesFresh);
+export const loadWine = cache(loadWineFresh);
+export const loadPolice = cache(loadPoliceFresh);
+export const loadMunicipal = cache(loadMunicipalFresh);
+export const loadHueScenes = cache(loadHueScenesFresh);
+export const loadNameDay = cache(loadNameDayFresh);
+export const loadOpeningsToday = cache(loadOpeningsTodayFresh);
+export const loadWarnings = cache(loadWarningsFresh);

@@ -1,5 +1,6 @@
 'use server';
 import { createClient } from '@/lib/supabase/server';
+import { dropUpcomingTrip, logTrip } from '@/lib/trips-source';
 
 // "Jag är på tåget": användarens bekräftelse går före gissningen (position/GPS) och gäller på alla skärmar i hushållet
 // tills ankomsten + resten av resan (75 min). "Inte på tåget" tar bort den.
@@ -16,11 +17,16 @@ export async function confirmTrain(ident: string, dep: number, arr: number | nul
     { ident, dep: new Date(dep).toISOString(), until: new Date(until).toISOString(), created_by: user.id, created_at: new Date().toISOString() },
     { onConflict: 'household_id' },
   );
+  // Resan sparas för statistiken (misslyckas det är bekräftelsen ändå giltig).
+  if (!error) await logTrip(ident, dep).catch(() => {});
   return { ok: !error };
 }
 
 export async function clearTrain(): Promise<Result> {
   const sb = await createClient();
+  // Hann man ångra före avgång tas den sparade resan bort.
+  const { data: cur } = await sb.from('onboard_confirm').select('ident,dep').maybeSingle();
+  if (cur) await dropUpcomingTrip(cur.ident as string, Date.parse(cur.dep as string)).catch(() => {});
   const { error } = await sb.from('onboard_confirm').delete().neq('ident', '');
   return { ok: !error };
 }
