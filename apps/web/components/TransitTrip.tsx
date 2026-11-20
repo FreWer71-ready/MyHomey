@@ -4,6 +4,22 @@ import { hhmm } from '@/lib/prices';
 import type { TransitLeg, TransitTrip } from '@/lib/transit';
 
 const KIND: Record<TransitLeg['kind'], string> = { walk: 'Gå', train: 'Tåg', bus: 'Buss', metro: 'T-bana', tram: 'Spårv', other: 'Resa' };
+/** Linjesymboler för färdsätt (följer textfärgen). */
+const LEG_ICON: Record<TransitLeg['kind'], React.ReactNode> = {
+  walk: <><circle cx="13" cy="4.5" r="1.7" /><path d="M13 8.5v5l-3 7M13 13.5l3 3 1 4.5M13 9l-3.5 2-1 3M13 9l3 2.5 2.5.5" /></>,
+  train: <><rect x="5" y="3" width="14" height="14" rx="3" /><path d="M5 11h14M9 21l2-4M15 21l-2-4" /><circle cx="9" cy="14" r=".7" /><circle cx="15" cy="14" r=".7" /></>,
+  metro: <><circle cx="12" cy="12" r="9" /><path d="M7.5 8.5h9M12 8.5V16" /></>,
+  tram: <><path d="M8 2.5l8 2M12 3.5V6" /><rect x="5" y="6" width="14" height="11" rx="2.5" /><path d="M5 12h14M8 21l1.5-4M16 21l-1.5-4" /></>,
+  bus: <><rect x="4" y="3" width="16" height="14" rx="2.5" /><path d="M4 11h16M7 21v-4M17 21v-4" /><circle cx="8" cy="14" r=".7" /><circle cx="16" cy="14" r=".7" /></>,
+  other: <path d="M5 12h14M13 6l6 6-6 6" />,
+};
+function LegIcon({ kind, size = 20 }: { kind: TransitLeg['kind']; size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={`${size / 16}rem`} height={`${size / 16}rem`} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {LEG_ICON[kind]}
+    </svg>
+  );
+}
 const dur = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`);
 
 /** Trafikverkets realtid för ett tågben (samma tågnummer, avgång inom 30 min). */
@@ -57,21 +73,23 @@ export function TransitLegs({ trip, trains, compact = false, now = Date.now() }:
           const done = l.arr <= now;
           return (
             <li key={i} aria-current={live ? 'step' : undefined}
-              className={`flex min-w-0 items-baseline gap-3 ${live ? '-mx-1.5 rounded-lg bg-white/[0.14] px-1.5 py-0.5 ring-1 ring-sun/60' : ''} ${done && !live ? 'text-dim' : ''}`}>
+              className={`flex min-w-0 items-center gap-2 ${live ? '-mx-1.5 rounded-lg bg-white/[0.14] px-1.5 py-0.5 ring-1 ring-sun/60' : ''} ${done && !live ? 'text-dim' : ''}`}>
               <span className={`w-12 shrink-0 ${compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
-              <span className={`w-[4.75rem] shrink-0 whitespace-nowrap rounded-md px-1.5 text-center text-[0.875rem] font-bold ${live ? 'bg-sun text-ink' : 'bg-white/[0.08]'}`}>{KIND[l.kind]}</span>
+              {/* Färdsätt som symbol (skärmläsare får ordet); starttid före, sluttid efter. */}
+              <span role="img" aria-label={KIND[l.kind]} className={`flex shrink-0 items-center justify-center rounded-lg ${compact ? 'size-7' : 'size-8'} ${live ? 'bg-sun text-ink' : 'bg-white/[0.08]'}`}>
+                <LegIcon kind={l.kind} size={compact ? 18 : 20} />
+              </span>
               <span className={`min-w-0 grow truncate ${compact ? 'text-[0.875rem]' : 'text-[0.9375rem]'}`}>
                 {l.kind === 'walk'
                   ? <>{l.minutes} min → {l.to}</>
                   : <><span className="font-semibold">{l.label}</span> → {l.to}{l.track && !done ? <span className="text-dim"> · spår {l.track}</span> : null}</>}
               </span>
-              {live
-                ? <span className="shrink-0 text-[0.875rem] font-bold text-sun">Nu · framme {hhmm(l.arr)}</span>
-                : rt && (rt.canceled || rt.delay > 0) && (
-                  <span className="shrink-0 text-[0.875rem] font-bold" style={{ color: rt.canceled ? TONE_COLOR.bad : TONE_COLOR.warn }}>
-                    {rt.canceled ? 'Inställt' : `+${rt.delay} min`}
-                  </span>
-                )}
+              {!live && rt && (rt.canceled || rt.delay > 0) && (
+                <span className="shrink-0 text-[0.875rem] font-bold" style={{ color: rt.canceled ? TONE_COLOR.bad : TONE_COLOR.warn }}>
+                  {rt.canceled ? 'Inställt' : `+${rt.delay} min`}
+                </span>
+              )}
+              <span className={`w-12 shrink-0 text-right ${compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums ${live ? 'text-sun' : ''}`}>{hhmm(l.arr)}</span>
             </li>
           );
         })}
