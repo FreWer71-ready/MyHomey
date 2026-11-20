@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLatLon, pickStart } from './startpoint.ts';
+import { parseLatLon, pickPosition, pickStart } from './startpoint.ts';
 
 const home = { lat: 59.376, lon: 16.5097 };
 const station = { lat: 59.369482, lon: 16.505193 };
@@ -44,4 +44,11 @@ test('pickStart: hemvägen räknas från jobbet, inte stationen', () => {
   const s = pickStart([{ at: { lat: 59.34, lon: 18.07 }, src: 'phone' }], home, job, false);
   assert.equal(s?.src, 'phone');
   assert.equal(pickStart([{ at: { lat: 59.34, lon: 18.07 }, src: 'phone' }], home, station, true), null);
+});
+
+test('pickPosition: mobilen före Life360, utan avståndsgräns', () => {
+  const far = { lat: 59.9, lon: 17.6 };
+  assert.deepEqual(pickPosition([{ at: far, src: 'phone' }, { at: nearStation, src: 'life360' }]), { at: far, src: 'phone' });
+  assert.deepEqual(pickPosition([{ at: null, src: 'phone' }, { at: nearStation, src: 'life360' }]), { at: nearStation, src: 'life360' });
+  assert.equal(pickPosition([{ at: undefined, src: 'phone' }]), null);
 });
