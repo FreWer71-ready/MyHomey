@@ -23,6 +23,8 @@ import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { OnTrainButton } from '@/components/OnTrainButton';
+import { loadTrips, ticket } from '@/lib/trips-source';
+import { claimAt, claimable, compensation } from '@/lib/trips';
 import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
 import { HomeTrains, RiddenTrain } from '@/components/TrainFocus';
 import { tvAppLabel } from '@/lib/media';
@@ -360,6 +362,9 @@ export default async function HomePage() {
   const rain = rainWarning(weather, h.openings);
   const damp = humidityWarnings(h.rooms);
   // Alla varningar i samma format; nivån (gul/orange/röd) styr bara färgen.
+  // Tågresor med försening att begära ersättning för (senaste 60 dagarna, Mälartåg).
+  const openClaims = commute?.trains ? (await loadTrips().catch(() => [])).filter((t) => claimable(t) && t.claim === 'none' && claimAt(t) === 'mt' && t.dep > now - 60 * 86400_000) : [];
+  const claimKr = openClaims.reduce((a, t) => a + (compensation(t, ticket()).kr ?? 0), 0);
   const alerts: Alert[] = [
     ...weatherAlerts(wx),
     // Halka hemma, om pendlingens halkvarning inte redan visas.
@@ -382,6 +387,10 @@ export default async function HomePage() {
     ...muni.filter((m) => m.mine && m.start != null && m.start <= now && now - m.start < 3 * 86400_000).slice(0, 1).map((m): Alert => ({
       id: `kommun-${m.id}`, level: 'yellow', icon: 'roadwork', text: 'Kommunen informerar', detail: m.title, href: '/larm#kommunen',
     })),
+    ...(openClaims.length ? [{
+      id: `ersattning-${openClaims.length}`, level: 'yellow', icon: 'money', href: '/historik?m=train',
+      text: 'Ersättning att söka', detail: `${openClaims.length === 1 ? '1 försenad resa' : `${openClaims.length} försenade resor`}${claimKr ? ` · ca ${claimKr} kr` : ''}`,
+    } as Alert] : []),
     ...(damp.length ? [{ id: 'damp', level: 'yellow', icon: 'drop', text: 'Hög fukt', detail: damp.map((r) => `${r.name} ${Math.round(r.humidity!)} %`).join(', '), href: '/larm#fukt' } as Alert] : []),
   ];
   const issues = alerts.length;

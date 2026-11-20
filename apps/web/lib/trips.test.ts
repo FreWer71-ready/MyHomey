@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { claimable, claimText, delayOf, fromRow, outcome, stats, type Ann, type Trip } from './trips.ts';
+import { claimAt, claimable, claimText, compensation, delayOf, fromRow, outcome, stats, type Ann, type Trip } from './trips.ts';
 
 const iso = (h: number, m: number) => `2026-11-20T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00+01:00`;
 const t = (o: Partial<Trip> = {}): Trip => ({ ident: '8421', dep: Date.parse(iso(7, 12)), arr: Date.parse(iso(8, 5)), from: 'Et', to: 'Cst', product: 'Mälartåg', km: 109,
@@ -62,4 +62,16 @@ test('fromRow: tolkar rad och okänd ersättningsstatus', () => {
   assert.equal(r.claim, 'none');
   assert.equal(r.km, 109);
   assert.equal(r.actualArr, null);
+});
+
+test('ersättning Movingo: 50/75/100 % av snittpriset, SJ ansöks hos SJ', () => {
+  const t = (delayMin: number, product = 'Mälartåg') => ({ ident: '10914', dep: 0, arr: 0, from: 'Et', to: 'Cst', product, km: 109, actualArr: null, delayMin, canceled: false, settled: true, claim: 'none' as const });
+  const ticket = { type: '30' as const, price: 3000 };
+  assert.deepEqual(compensation(t(19), ticket), { pct: 0, kr: null });
+  assert.deepEqual(compensation(t(25), ticket), { pct: 50, kr: 50 });
+  assert.deepEqual(compensation(t(45), ticket), { pct: 75, kr: 75 });
+  assert.deepEqual(compensation(t(60), ticket), { pct: 100, kr: 100 });
+  assert.deepEqual(compensation(t(60), { type: '30', price: null }), { pct: 100, kr: null });
+  assert.equal(claimAt(t(30, 'SJ Regional')), 'sj');
+  assert.equal(claimAt(t(30)), 'mt');
 });

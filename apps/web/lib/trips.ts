@@ -63,7 +63,7 @@ const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/
 const ymd = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
 
 /** Underlag att klistra in i ersättningsformuläret. */
-export function claimText(t: Trip): string {
+export function claimText(t: Trip, ticket?: Ticket): string {
   const rows = [
     `Ersättning för försenat tåg`,
     `Tåg: ${t.product ?? 'Tåg'} ${t.ident}, ${station(t.from)} – ${station(t.to)}`,
@@ -71,5 +71,39 @@ export function claimText(t: Trip): string {
     `Planerad avgång: ${hm(t.dep)}, planerad ankomst: ${hm(t.arr)}`,
   ];
   if (t.actualArr != null) rows.push(`Faktisk ankomst: ${hm(t.actualArr)} (${t.delayMin ?? delayOf(t.arr, t.actualArr)} min försenad)`);
+  if (ticket) {
+    const c = compensation(t, ticket);
+    rows.push(`Biljett: ${MOVINGO_LABEL[ticket.type]}`);
+    if (c.pct) rows.push(`Ersättning: ${c.pct} % av snittpriset per resa${c.kr != null ? ` (ca ${c.kr} kr)` : ''}`);
+  }
   return rows.join('\n');
+}
+
+// ---- Ersättning enligt Mälardalstrafik (malardalstrafik.se, "Ersättning vid försening", uppdaterad 27 okt 2026) ----
+
+/** Ansökan för resa med Mälartåg. */
+export const CLAIM_URL = 'https://www.malardalstrafik.se/kundservice/ansoek-om-ersaettning-vid-foersening/';
+/** Reglerna i sin helhet. */
+export const RULES_URL = 'https://www.malardalstrafik.se/kundservice/ersaettning-vid-foersening/';
+
+/** Movingo (förstärkta rättigheter, oavsett tågets sträcka): andel av snittpriset per resa efter ankomstförsening. */
+export const compPct = (delayMin: number) => (delayMin >= 60 ? 100 : delayMin >= 40 ? 75 : delayMin >= CLAIM_MIN ? 50 : 0);
+
+/** Resdagar som Movingo-priset delas med (biljett köpt från och med 8 januari). */
+export const MOVINGO_DAYS = { '5/30': 10, '30': 30, '90': 90, 'år': 365 } as const;
+export type MovingoType = keyof typeof MOVINGO_DAYS;
+export const MOVINGO_LABEL: Record<MovingoType, string> = { '5/30': 'Movingo 5/30', '30': 'Movingo 30 dagar', '90': 'Movingo 90 dagar', 'år': 'Movingo år' };
+export const isMovingo = (v: string | undefined): v is MovingoType => !!v && v in MOVINGO_DAYS;
+
+/** Biljetten (MOVINGO_TYPE, MOVINGO_PRICE i kr); pris saknas → bara procent. */
+export type Ticket = { type: MovingoType; price: number | null };
+
+/** Var man ansöker: Mälartåg hos Mälardalstrafik, SJ:s avgångar (med Movingo) hos SJ. */
+export const claimAt = (t: Trip): 'mt' | 'sj' => (/\bSJ\b/i.test(t.product ?? '') ? 'sj' : 'mt');
+
+/** Ersättningen för en resa: andel av snittpriset och belopp (kr, avrundat) om priset är känt. */
+export function compensation(t: Trip, ticket: Ticket): { pct: number; kr: number | null } {
+  const pct = compPct(t.delayMin ?? 0);
+  const kr = ticket.price != null && pct > 0 ? Math.round((ticket.price / MOVINGO_DAYS[ticket.type]) * (pct / 100)) : null;
+  return { pct, kr };
 }

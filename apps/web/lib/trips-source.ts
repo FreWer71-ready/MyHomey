@@ -1,7 +1,7 @@
 import 'server-only';
 import { createClient } from './supabase/server';
 import { loadCommute } from './data';
-import { ROUTE_KM, delayOf, fromRow, outcome, type Ann, type Trip } from './trips.ts';
+import { ROUTE_KM, delayOf, fromRow, outcome, type Ann, type Trip, isMovingo, type Ticket } from './trips.ts';
 
 // Sparar tåg man varit på (vid "Jag är på tåget") och fyller i faktisk ankomst efteråt. Allt går via användarens
 // inloggning och hushållets RLS. Trafikverket ger ankomsttider bara ett par timmar bakåt, så resor fylls i
@@ -61,3 +61,9 @@ export async function loadTrips(): Promise<Trip[]> {
     return [];
   }
 }
+
+/** Pendlarbiljetten: MOVINGO_TYPE (5/30, 30, 90, år; standard 30) och MOVINGO_PRICE (kr, valfritt). */
+export const ticket = (): Ticket => ({
+  type: isMovingo(process.env.MOVINGO_TYPE) ? process.env.MOVINGO_TYPE : '30',
+  price: Number(process.env.MOVINGO_PRICE) > 0 ? Number(process.env.MOVINGO_PRICE) : null,
+});

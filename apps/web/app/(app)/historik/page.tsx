@@ -4,7 +4,8 @@ import { Icon, type IconName } from '@/components/Icon';
 import { LightTimeline } from '@/components/LightTimeline';
 import { ScrollActive } from '@/components/ScrollActive';
 import { TrainHistory, isRange } from '@/components/TrainHistory';
-import { loadTrips } from '@/lib/trips-source';
+import { loadTrips, ticket } from '@/lib/trips-source';
+
 import { loadHistory, loadLightTimeline, loadPresenceTimeline, loadRoadHistory, loadWine, loadWineHistory, type RoadHistRow } from '@/lib/data';
 import {
   METRICS, PERIODS, fmtValue, isMetric, isPeriod, sumSeries, type MetricKey, type PeriodKey,
@@ -173,7 +174,7 @@ export default async function HistoryPage({
         </section>
       )}
 
-      {view === 'train' && <TrainHistory trips={trips} range={isRange(r) ? r : '30d'} />}
+      {view === 'train' && <TrainHistory trips={trips} range={isRange(r) ? r : '30d'} ticket={ticket()} />}
 
       {view === 'road' && (
         <>
