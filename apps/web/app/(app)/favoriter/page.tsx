@@ -89,9 +89,9 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
         <section aria-label="Rum" className="grid items-start gap-4 md:grid-cols-2 lg:gap-6 xl:grid-cols-3">
           {cards.map(({ room: r, favs, more, tv: rtv }) => (
             <section key={r.id} aria-labelledby={`rum-${r.id}`} className="flex flex-col gap-3 rounded-[1.25rem] bg-card p-4 lg:p-5">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name={r.icon} size={22} /></span>
-                <h2 id={`rum-${r.id}`} className="min-w-0 grow truncate text-[1.1875rem] font-bold">{r.name}</h2>
+                <h2 id={`rum-${r.id}`} className="min-w-[7rem] grow truncate text-[1.1875rem] font-bold">{r.name}</h2>
                 {r.temp != null && <span className="shrink-0 text-[1.125rem] font-semibold tabular-nums">{fmtTemp(r.temp)}<TrendArrow trend={r.tempTrend} /></span>}
                 {r.lights.length > 0 && (
                   <span className={`flex shrink-0 items-center gap-1 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.9375rem] font-semibold ${r.lightsOn ? 'text-sun' : 'text-dim'}`}>
