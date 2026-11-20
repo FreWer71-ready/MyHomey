@@ -92,7 +92,7 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
             <li key={`${t.ident}-${t.dep}`} className="flex flex-col gap-2 rounded-2xl bg-glass-2 p-3">
               <div className="flex items-baseline gap-2">
                 <span className="text-[1.0625rem] font-extrabold">{date(t.dep)}</span>
-                <span className="min-w-0 grow truncate text-[0.9375rem] text-dim">{t.product ?? 'Tåg'} {t.ident} · {route(t)}</span>
+                <span className="min-w-0 grow truncate text-[0.9375rem] text-dim">{t.product ?? 'Tåg'} {t.ident} · {route(t)}{t.source === 'guess' ? ' · gissad' : t.source === 'gps' ? ' · via GPS' : ''}</span>
                 <span className="shrink-0 text-[1.0625rem] font-extrabold" style={{ color: TONE_COLOR.bad }}>+{t.delayMin} min</span>
               </div>
               <p className="text-[0.9375rem] tabular-nums">
@@ -108,11 +108,12 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
                 );
               })()}
               <ClaimChips ident={t.ident} dep={t.dep} claim={t.claim} />
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <CopyClaim text={claimText(t, ticket)} />
                 {claimAt(t) === 'mt' && t.claim === 'none' && (
                   <a href={CLAIM_URL} target="_blank" rel="noopener noreferrer" className="pill h-9 w-fit bg-sun px-3 text-[0.875rem] font-bold text-ink">Ansök hos Mälardalstrafik ↗</a>
                 )}
+                <span className="ml-auto flex items-center gap-1.5 text-[0.875rem] text-dim">Fel tåg? <DeleteTrip ident={t.ident} dep={t.dep} /></span>
               </div>
             </li>
           ))}

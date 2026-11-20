@@ -14,7 +14,7 @@ import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadE
 import { PageTrainList, RiddenTrain } from '@/components/TrainFocus';
 import { UnskipButton } from '@/components/OnTrainButton';
 import { TripFromHere } from '@/components/TripFromHere';
-import { settleTrips } from '@/lib/trips-source';
+import { saveTrip, settleTrips } from '@/lib/trips-source';
 import { tint } from '@/lib/scale';
 import { hhmm } from '@/lib/prices';
 
@@ -166,11 +166,13 @@ export default async function CommutePage() {
     label: `${run.product ?? 'Tåg'} ${run.ident}`, num: run.ident, dir: run.dest, track: null,
   }, ...onward] : [];
   const arrived = rArr != null && nowMs > rArr;
+  const homeRun = !!run && [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === run.id);
   // Framme (positionen vid jobbet eller hemma): tillbaka till normalläget.
   const here = freshestPosition(locate.members, locate.items, me, nowMs);
   const goalAt = toWork ? transitGoal()?.at : PLACE;
   const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
   const ridden = run && !atGoal && (!arrived || (onward.length > 0 && nowMs <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
+  if (ridden && !confirmed && (toWork || homeRun)) await saveTrip(ridden, toWork, guessed ? 'guess' : 'gps');
   const dir = direction();
   // Alla avgångar de kommande 5 timmarna (räknat på förväntad tid).
   const soon = (list: Train[]) => list.filter((t) => (t.est ?? t.dep) <= Date.now() + 5 * 3600_000);

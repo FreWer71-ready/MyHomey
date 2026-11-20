@@ -16,15 +16,18 @@ export const CLAIM_LABEL: Record<Claim, string> = { none: 'Ej begärd', sent: 'B
 export type Trip = {
   ident: string; dep: number; arr: number; from: string; to: string; product: string | null; km: number;
   actualArr: number | null; delayMin: number | null; canceled: boolean; settled: boolean; claim: Claim;
+  /** Hur resan hittades: bekräftad av användaren, tågets GPS eller gissad ur positionen. */ source?: TripSource;
 };
+export type TripSource = 'user' | 'gps' | 'guess';
 type Row = {
   ident: string; dep: string; arr: string; from_sig: string; to_sig: string; product: string | null; km: number | string;
-  actual_arr: string | null; delay_min: number | null; canceled: boolean; settled: boolean; claim: string;
+  actual_arr: string | null; delay_min: number | null; canceled: boolean; settled: boolean; claim: string; source?: string;
 };
 export const fromRow = (r: Row): Trip => ({
   ident: r.ident, dep: Date.parse(r.dep), arr: Date.parse(r.arr), from: r.from_sig, to: r.to_sig, product: r.product, km: Number(r.km),
   actualArr: r.actual_arr ? Date.parse(r.actual_arr) : null, delayMin: r.delay_min, canceled: r.canceled, settled: r.settled,
   claim: (CLAIMS as string[]).includes(r.claim) ? (r.claim as Claim) : 'none',
+  source: r.source === 'gps' || r.source === 'guess' ? r.source : 'user',
 });
 
 export type Ann = { LocationSignature: string; ActivityType?: string; Canceled?: boolean; AdvertisedTimeAtLocation?: string; TimeAtLocation?: string };

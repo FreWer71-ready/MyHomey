@@ -15,6 +15,7 @@ export async function setClaim(ident: string, dep: number, claim: Claim): Promis
 export async function deleteTrip(ident: string, dep: number): Promise<Result> {
   if (!/^\d{1,6}$/.test(ident) || !Number.isFinite(dep)) return { ok: false };
   const sb = await createClient();
-  const { error } = await sb.from('train_trips').delete().eq('ident', ident).eq('dep', new Date(dep).toISOString());
+  // Döljs i stället för att raderas, så att tågläget inte sparar samma (felaktiga) resa igen.
+  const { error } = await sb.from('train_trips').update({ hidden: true }).eq('ident', ident).eq('dep', new Date(dep).toISOString());
   return { ok: !error };
 }

@@ -1,7 +1,7 @@
 import 'server-only';
 import { createClient } from './supabase/server';
 import { loadCommute } from './data';
-import { ROUTE_KM, delayOf, fromRow, outcome, type Ann, type Trip, isMovingo, type Ticket } from './trips.ts';
+import { ROUTE_KM, delayOf, fromRow, outcome, type Ann, type Trip, isMovingo, type Ticket, type TripSource } from './trips.ts';
 
 // Sparar tåg man varit på (vid "Jag är på tåget") och fyller i faktisk ankomst efteråt. Allt går via användarens
 // inloggning och hushållets RLS. Trafikverket ger ankomsttider bara ett par timmar bakåt, så resor fylls i
@@ -21,8 +21,9 @@ export async function logTrip(ident: string, dep: number): Promise<void> {
   if (!t) return;
   const sb = await createClient();
   await sb.from('train_trips').upsert(
-    { ident, dep: iso(dep), arr: iso(t.arr!), from_sig: out ? 'Et' : 'Cst', to_sig: out ? 'Cst' : 'Et', product: t.product, km: ROUTE_KM },
-    { onConflict: 'household_id,ident,dep', ignoreDuplicates: true },
+    // Bekräftat av användaren: blir "user" och visas igen även om den tagits bort tidigare.
+    { ident, dep: iso(dep), arr: iso(t.arr!), from_sig: out ? 'Et' : 'Cst', to_sig: out ? 'Cst' : 'Et', product: t.product, km: ROUTE_KM, source: 'user', hidden: false },
+    { onConflict: 'household_id,ident,dep' },
   );
 }
 
@@ -55,7 +56,7 @@ export async function loadTrips(): Promise<Trip[]> {
   await settleTrips();
   try {
     const sb = await createClient();
-    const { data } = await sb.from('train_trips').select('*').order('dep', { ascending: false }).limit(2000);
+    const { data } = await sb.from('train_trips').select('*').eq('hidden', false).order('dep', { ascending: false }).limit(2000);
     return (data ?? []).map((r) => fromRow(r as never));
   } catch {
     return [];
@@ -67,3 +68,18 @@ export const ticket = (): Ticket => ({
   type: isMovingo(process.env.MOVINGO_TYPE) ? process.env.MOVINGO_TYPE : '30',
   price: Number(process.env.MOVINGO_PRICE) > 0 ? Number(process.env.MOVINGO_PRICE) : null,
 });
+
+/**
+ * Sparar resan när tågläget hittat tåget (tågets GPS eller gissat ur positionen). Finns resan redan – även bortagen
+ * ("fel tåg") – ändras inget, så en borttagen gissning kommer inte tillbaka.
+ */
+export async function saveTrip(t: { ident: string; dep: number; arr: number | null; product: string | null }, toWork: boolean, source: TripSource): Promise<void> {
+  if (t.arr == null) return;
+  try {
+    const sb = await createClient();
+    await sb.from('train_trips').upsert(
+      { ident: t.ident, dep: iso(t.dep), arr: iso(t.arr), from_sig: toWork ? 'Et' : 'Cst', to_sig: toWork ? 'Cst' : 'Et', product: t.product, km: ROUTE_KM, source },
+      { onConflict: 'household_id,ident,dep', ignoreDuplicates: true },
+    );
+  } catch { /* nästa sidvisning försöker igen */ }
+}
