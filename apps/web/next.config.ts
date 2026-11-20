@@ -18,6 +18,9 @@ const config: NextConfig = {
   },
   basePath: BASE_PATH,
   experimental: {
+    // Klientens sidcache: hopp mellan sidor visas direkt från minnet i 30 s (förut ingen cache för dynamiska sidor).
+    // LiveRefresh och serveråtgärder hämtar om sidan när värden ändras, och det rensar cachen.
+    staleTimes: { dynamic: 30, static: 180 },
     // Server actions anropas via trand.se, inte appens egen domän.
     serverActions: { allowedOrigins: ['trand.se', 'www.trand.se'] },
   },

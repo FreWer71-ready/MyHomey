@@ -1,10 +1,12 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { publicUrl } from './lib/paths';
+import { BASE_PATH, publicUrl } from './lib/paths';
 import { COOKIE_OPTIONS } from './lib/supabase/cookie';
 
 // /api/calendar/share skyddas av sin egen nyckel (server till server, utan inloggning).
 const PUBLIC = ['/login', '/auth', '/api/calendar/share'];
+// Hushållskontrollen sparas 10 min i en kaka (per användare och hushåll) i stället för ett databasanrop vid varje sidhopp.
+const HH_COOKIE = `hh-ok-${BASE_PATH.replace(/\W/g, '')}`;
 
 export async function middleware(request: NextRequest) {
   if (process.env.NODE_ENV === 'development' && process.env.DEMO_DATA) return NextResponse.next();
@@ -25,18 +27,26 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getClaims kontrollerar JWT:ns signatur lokalt (inget nätanrop per sidhopp; faller tillbaka på Auth-servern om projektet har symmetrisk nyckel).
+  const { data: auth } = await supabase.auth.getClaims();
+  const sub = auth?.claims?.sub;
+  const user = sub ? { id: sub } : null;
   const path = request.nextUrl.pathname;
 
   // Spärr per adress: HOUSEHOLD anger vilket hushåll den här dashboarden visar.
   // Ett konto från ett annat hushåll loggas ut och får ett meddelande på inloggningssidan.
   if (user && process.env.HOUSEHOLD) {
-    const { data: hh } = await supabase.rpc('my_household');
-    if (hh !== process.env.HOUSEHOLD) {
-      await supabase.auth.signOut({ scope: 'local' });
-      const redirect = NextResponse.redirect(publicUrl('/login?status=konto', request.nextUrl.origin));
-      response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
-      return redirect;
+    const ok = `${user.id}:${process.env.HOUSEHOLD}`;
+    if (request.cookies.get(HH_COOKIE)?.value !== ok) {
+      const { data: hh } = await supabase.rpc('my_household');
+      if (hh !== process.env.HOUSEHOLD) {
+        await supabase.auth.signOut({ scope: 'local' });
+        const redirect = NextResponse.redirect(publicUrl('/login?status=konto', request.nextUrl.origin));
+        response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
+        redirect.cookies.delete(HH_COOKIE);
+        return redirect;
+      }
+      response.cookies.set(HH_COOKIE, ok, { httpOnly: true, sameSite: 'lax', secure: true, path: COOKIE_OPTIONS?.path ?? '/', maxAge: 600 });
     }
   }
 
