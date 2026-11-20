@@ -18,7 +18,8 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 ## Resor och pendling
 - Reseben visas som **starttid · symbol för färdsätt · text · sluttid**.
 - Ressätt: kollektivt (ResRobot) och bil (TomTom). Gång och cykel är inte infört.
-- Tåg sparas i `train_trips` **bara när användaren bekräftar** "Jag är på tåget", aldrig vid gissning.
+- Tåg sparas i `train_trips` när användaren bekräftar "Jag är på tåget" (`source = user`) och när tågläget hittat tåget via tågets GPS (`gps`) eller gissat ur positionen (`guess`). "Fel tåg ✕" döljer resan (`hidden`), så samma gissning sparas inte igen; bekräftas den visas den igen.
+- Ersättning enligt Mälardalstrafik (Movingo): 20–39 min 50 %, 40–59 min 75 %, 60+ min 100 % av snittpriset per resa (`MOVINGO_TYPE`, `MOVINGO_PRICE` i Vercel). Ingen automatisk ansökan – appen ger belopp, underlag och länk.
 - Konstanter i `lib/trips.ts`: `CLAIM_MIN = 20` (ersättning från 20 min eller mer), `DELAYED_MIN = 5`, `ROUTE_KM = 109`. Ändra där.
 - Resor med 20 min försening eller mer visas i "Begär ersättning" med status och kopierbart underlag.
 
