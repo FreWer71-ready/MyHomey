@@ -23,6 +23,7 @@ import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { OnTrainButton } from '@/components/OnTrainButton';
+import { NearDepartures, nearDepartures } from '@/components/NearDepartures';
 import { loadTrips, saveTrip, ticket } from '@/lib/trips-source';
 import { claimAt, claimable, compensation } from '@/lib/trips';
 import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
@@ -622,7 +623,9 @@ export default async function HomePage() {
                   )}
                   {!arrived && <div className={onward.length > 0 ? "border-t border-line pt-3" : ""}><RiddenTrain t={ridden} guessed={!!guessed} confirmed={!!confirmed} /></div>}
                   {/* Om tågläget har fel: kommande avgångar inom en timme (minst nästa). */}
-                  {!arrived && nextHour.length > 0 && (
+                  {/* Inte bekräftat (gissat): alla avgångar ±20 min i aktuell riktning, bekräfta rätt tåg med ett tryck. */}
+                  {guessed && !arrived && <NearDepartures trains={nearDepartures([commute?.recent?.[dir] ?? [], commute?.[dir] ?? []], now)} now={now} guessed={ridden.ident} className="border-t border-line pt-3" />}
+                  {!guessed && !arrived && nextHour.length > 0 && (
                     <div className="flex flex-col gap-1.5 border-t border-line pt-3">
                       <span className="text-[0.9375rem] font-semibold text-dim">Inte på det tåget? Nästa avgångar</span>
                       <HomeTrains trains={nextHour} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} />

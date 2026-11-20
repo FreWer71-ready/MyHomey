@@ -13,6 +13,7 @@ import { etaConfigured } from '@/lib/route';
 import { TONE_COLOR, direction, groupRoad, phrases, shortPlace, slip, type RoadEvent, type RoadStation, type Train } from '@/lib/commute';
 import { PageTrainList, RiddenTrain } from '@/components/TrainFocus';
 import { UnskipButton } from '@/components/OnTrainButton';
+import { NearDepartures, nearDepartures } from '@/components/NearDepartures';
 import { TripFromHere } from '@/components/TripFromHere';
 import { saveTrip, settleTrips } from '@/lib/trips-source';
 import { tint } from '@/lib/scale';
@@ -202,7 +203,9 @@ export default async function CommutePage() {
             <RiddenTrain t={ridden} guessed={!!guessed} confirmed={!!confirmed} />
           </section>}
           {/* Om tågläget har fel: avgångarna i aktuell riktning inom en timme (minst nästa). */}
-          {c && !arrived && (() => {
+          {/* Gissat tåg: alla avgångar ±20 min att bekräfta; annars kommande avgångar inom en timme. */}
+          {c && guessed && !arrived && <NearDepartures trains={nearDepartures([c.recent?.[d0] ?? [], d0 === 'out' ? c.out : c.home], nowMs)} now={nowMs} guessed={ridden.ident} className="rounded-[1.5rem] glass p-3" />}
+          {c && !guessed && !arrived && (() => {
             const list = (d0 === 'out' ? c.out : c.home).filter((t) => t.ident !== ridden.ident && (t.est ?? t.dep) > nowMs);
             const hour = list.filter((t) => (t.est ?? t.dep) <= nowMs + 3600_000);
             const show = hour.length ? hour : list.slice(0, 1);

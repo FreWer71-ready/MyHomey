@@ -68,14 +68,19 @@ export function inferTrain(positions: Pos[], station: LatLon, trains: TrainLike[
   if (!latest || (km(latest.at, station) > 0.6 && km(latest.at, station) < 30)) return null;
   // Står positionen kvar vid stationen vet vi inget efter ankomsten; har man åkt följs resan vidare.
   const after = km(latest.at, station) <= 0.6 ? 10 * 60_000 : ONWARD_MAX;
-  // Tidigaste observationen vid stationen (av alla källor): klockan kan rapportera några minuter efter avgång.
-  const first = Math.min(...recent.filter((p) => km(p.at, station) <= 0.6).map((p) => p.ts));
-  const hit = trains
+  // Första och sista observationen vid stationen (alla källor). Man tar tåget som gick senast innan man sågs sist
+  // där (klockan/AirPods kan rapportera ett par minuter efter avgång). Väntade man länge på perrongen blir det alltså
+  // inte det första tåget efter ankomsten. Slutar positionerna uppdateras vid stationen: första tåget efter sista
+  // observationen (högst 20 min).
+  const seen = recent.filter((p) => km(p.at, station) <= 0.6).map((p) => p.ts);
+  const first = Math.min(...seen), last = Math.max(...seen);
+  const cands = trains
     .filter((t) => !t.canceled)
     .map((t) => ({ t, d: t.est ?? t.dep }))
-    .filter(({ t, d }) => d >= first - 3 * 60_000 && d <= first + 20 * 60_000 && d <= now && (t.arr == null || now <= t.arr + after))
-    .sort((a, b) => a.d - b.d)[0];
-  return hit?.t.ident ?? null;
+    .filter(({ t, d }) => d >= first - 3 * 60_000 && d <= now && (t.arr == null || now <= t.arr + after));
+  const before = cands.filter(({ d }) => d <= last + 3 * 60_000).sort((a, b) => b.d - a.d)[0];
+  const next = cands.filter(({ d }) => d > last + 3 * 60_000 && d <= last + 20 * 60_000).sort((a, b) => a.d - b.d)[0];
+  return (before ?? next)?.t.ident ?? null;
 }
 
 /**
