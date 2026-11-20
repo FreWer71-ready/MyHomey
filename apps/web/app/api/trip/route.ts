@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { loadCommute, loadLocate, PLACE } from '@/lib/data';
+import { geocode, loadCommute, loadLocate, PLACE } from '@/lib/data';
+import { guessPlace } from '@/lib/place-guess';
 import { defaultGoal } from '@/lib/goal';
 import { freshestPosition } from '@/lib/onboard';
 import { etaConfigured, routeEta } from '@/lib/route';
@@ -9,7 +10,7 @@ import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-sourc
 import { km } from '@/lib/trip';
 
 // Resa från aktuell plats till jobbet eller hem, kollektivt (ResRobot) eller med bil (TomTom).
-// ?to=home|work&mode=transit|car&lat&lon&acc. Position: mobilen först, sedan Life360 (eller Apple Watch).
+// ?to=home|work|place&mode=transit|car&lat&lon&acc (&q=adress eller platsnamn för valfri plats). Position: mobilen först, sedan Life360 (eller Apple Watch).
 export const dynamic = 'force-dynamic';
 
 const err = (error: string, status: number) => NextResponse.json({ error }, { status });
@@ -23,7 +24,14 @@ export async function GET(req: Request) {
   }
   const q = new URL(req.url).searchParams;
   const to = q.get('to'), mode = q.get('mode');
-  if ((to !== 'home' && to !== 'work') || (mode !== 'transit' && mode !== 'car')) return err('Ogiltig förfrågan', 400);
+  if ((to !== 'home' && to !== 'work' && to !== 'place') || (mode !== 'transit' && mode !== 'car')) return err('Ogiltig förfrågan', 400);
+  // Valfri plats: adress (geokodning) eller platsnamn (TomTom-sökning nära hemmet).
+  const query = (q.get('q') ?? '').trim().slice(0, 120);
+  if (to === 'place' && query.length < 2) return err('Skriv en adress eller plats', 400);
+  const place = to === 'place'
+    ? await geocode(query).then((at) => (at ? { name: query, at } : guessPlace(query, PLACE))).catch(() => null)
+    : null;
+  if (to === 'place' && !place) return err(`Hittade inte "${query}". Prova en adress med ort.`, 404);
 
   const phone = parseLatLon(q.get('lat'), q.get('lon'), q.get('acc'));
   let pos = pickPosition([{ at: phone, src: 'phone' }]);
@@ -35,10 +43,10 @@ export async function GET(req: Request) {
   if (!pos) return err('Ingen position. Tillåt platsåtkomst i webbläsaren eller starta Life360.', 404);
 
   const goalAt = mode === 'transit' ? transitGoal()?.at : (await defaultGoal())?.at ?? transitGoal()?.at;
-  const dest = to === 'home' ? PLACE : goalAt;
+  const dest = to === 'home' ? PLACE : to === 'place' ? place!.at : goalAt;
   if (mode === 'transit' ? !transitConfigured() : !etaConfigured()) return err(mode === 'transit' ? 'Kollektivtrafik är inte inställd' : 'Bilresa är inte inställd', 404);
   if (!dest) return err('Jobbet är inte inställt', 404);
-  const base = { to, mode, start: pos.src };
+  const base = { to, mode, start: pos.src, ...(place ? { place: place.name } : {}) };
   // Redan framme (inom 300 m)?
   if (km(pos.at, dest) <= 0.3) return NextResponse.json({ ...base, here: true });
 
