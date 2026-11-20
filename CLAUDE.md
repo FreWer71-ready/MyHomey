@@ -6,7 +6,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - **Korta, kärnfulla svar.** Håll tokenförbrukningen nere: läs bara det som behövs, undvik onödiga agenter och föreslå billigare alternativ när de finns.
 - **Mobile first.** Designa för mobil (390 px) först: knappar minst 44 px, inget sidledes sidscroll, kontrollera UI-ändringar på mobilbredd.
 - **Fråga före** PR, merge, databasändringar och allt annat som påverkar produktion. Ett "ja", "kör", "merga" eller "publicera" gäller bara det steget.
-- **"Publicera"** = commit → push → PR → merge → kontrollera att Vercel-bygget blir `READY`.
+- **"Publicera"** = commit → push → PR → merge → kontrollera att Vercel-bygget blir `READY` – alltid för **båda** dashboards (`myhomey` = Fredrik, `ulrikasdashboard` = Ulrika). Fråga först, varje gång.
 - Allt ska vara committat och pushat (stopp-hook). Utvecklingsgren: `claude/charming-dirac-60g8ft`. Har fjärrgrenen avvikande historik: cherry-picka, aldrig force-push.
 - Före commit: `npm test`, `npx tsc --noEmit` och eslint på ändrade filer (i `apps/web`). Databas: `scripts/test-db.sh`. Större UI-ändringar: `next build`.
 
