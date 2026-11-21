@@ -41,7 +41,7 @@ import { compass } from '@/lib/home';
 import { type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, slip, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
-import { addDays, dayInfo, dayOf } from '@/lib/calendar-view';
+import { addDays, dayInfo, dayOf, shortTitle } from '@/lib/calendar-view';
 import { zoned } from '@/lib/calendar';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -234,6 +234,9 @@ export default async function HomePage() {
   const roads = commute ? groupRoad(commute.road) : [];
   const trafficAlerts = commute ? commuteAlerts(commute, now, hhmm) : [];
   const hasCal = calendarConfigured();
+  // Härnäst i kalendern (inom 36 h) – visas under klockan när inget spelas.
+  const nextUp = hasCal && !playing.length ? (await loadCalendarServer().catch(() => null))?.days
+    .flatMap((d) => d.timed).find((e) => e.start != null && e.start > now && e.start < now + 36 * 3600_000) ?? null : null;
   const hasMirror = mirrorConfigured();
   // Helg: ingen tågpendling. Visa i stället vägläget mot nästa kalenderhändelse med plats (t.ex. Mariefred),
   // annars trafikläget i närområdet. Samma kortstorlek som pendlingen.
@@ -444,7 +447,16 @@ export default async function HomePage() {
           </span>
           {/* Spelar nu under klockan: fyller ytan och låter varningarna ligga högst upp i mitten. */}
           <div className="min-w-0 basis-full overflow-hidden">
-            <NowPlayingStrip items={playing} />
+            {/* Inget spelas: härnäst i kalendern på samma plats (annars blir ytan tom). */}
+            {playing.length ? <NowPlayingStrip items={playing} /> : nextUp && (
+              <div className="flex h-[4.5rem] min-w-0 items-center gap-3.5 rounded-[1.125rem] border border-line bg-card pl-3 pr-4">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name="calendar" size={24} /></span>
+                <span className="flex min-w-0 grow flex-col leading-tight">
+                  <span className="truncate text-[0.875rem] text-dim">Härnäst · {dayOf(nextUp.start!) === dayOf(now) ? 'idag' : dayOf(nextUp.start!) === addDays(dayOf(now), 1) ? 'imorgon' : dayInfo(dayOf(nextUp.start!), now).main.toLowerCase()} {hhmm(nextUp.start!)}</span>
+                  <span className="truncate text-[1.3125rem] font-bold">{shortTitle(nextUp.title)}{nextUp.location && <span className="text-[1rem] font-semibold text-dim"> · {placeLabel(nextUp.location)}</span>}</span>
+                </span>
+              </div>
+            )}
           </div>
         </header>
 
