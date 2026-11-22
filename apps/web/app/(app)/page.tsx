@@ -234,6 +234,8 @@ export default async function HomePage() {
   const roads = commute ? groupRoad(commute.road) : [];
   const trafficAlerts = commute ? commuteAlerts(commute, now, hhmm) : [];
   const hasCal = calendarConfigured();
+  // Ulrika: kalendern i fokus under klockan, utetemperaturen stort uppe till höger.
+  const calFocus = process.env.HOME_FOCUS === 'calendar';
   // Härnäst i kalendern (inom 36 h) – visas under klockan när inget spelas.
   const nextUp = hasCal && !playing.length ? (await loadCalendarServer().catch(() => null))?.days
     .flatMap((d) => d.timed).find((e) => e.start != null && e.start > now && e.start < now + 36 * 3600_000) ?? null : null;
@@ -442,8 +444,13 @@ export default async function HomePage() {
         <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-2 lg:self-start cols2:lg:col-span-1 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
           <h1 className="sr-only">Hemma</h1>
           {/* Stor skärm: klockraden och Spelar nu lika höga som varningsplattorna (4,5 rem + 0,5 rem mellanrum), så de linjerar. */}
-          <Clock show="time" className="text-[4.75rem] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:flex lg:h-[4.5rem] lg:items-end lg:text-[5.5rem] lg:leading-[0.75]" />
-          <span className="flex flex-col pb-1 leading-tight">
+          <Clock show="time" className={`${calFocus ? 'max-lg:!text-[4.125rem] ' : ''}text-[4.75rem] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:flex lg:h-[4.5rem] lg:items-end lg:text-[5.5rem] lg:leading-[0.75]`} />
+          {/* Kalenderfokus på mobil: utetemperaturen uppe till höger bredvid klockan (på stor skärm i högerkolumnen). */}
+          {calFocus && outTemp != null && (
+            <Link href="/vader" aria-label={`Ute ${fmtTemp(outTemp)}. Visa väderprognosen.`}
+              className="ml-auto text-[4.125rem] leading-[0.9] font-bold tracking-tight text-white tabular-nums lg:hidden">{fmtTemp(outTemp)}</Link>
+          )}
+          <span className={`flex flex-col pb-1 leading-tight ${calFocus ? 'max-lg:w-full' : ''}`}>
             <Clock show="date" className="text-[1.125rem] font-semibold first-letter:uppercase" />
             {names && <span className="text-[1rem] text-dim">Namnsdag <span className="text-sun">{names}</span></span>}
           </span>
@@ -477,8 +484,17 @@ export default async function HomePage() {
         </section>
 
         {/* NÄRVARO (höger, egen yta): vem är hemma, var de andra är. Källa (Life360/Smart Presence) visas på Hitta. */}
-        {people.length > 0 && (
-          <Link href="/hitta" aria-label="Närvaro – visa var alla är" className="order-2 min-w-0 md:col-span-2 lg:order-none lg:col-span-4 lg:self-start 2xl:col-span-3 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-1">
+        {(people.length > 0 || (calFocus && outTemp != null)) && (
+          <div className="order-2 min-w-0 md:col-span-2 lg:order-none lg:col-span-4 lg:self-start 2xl:col-span-3 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-1 flex flex-col gap-3">
+          {/* Kalenderfokus (Ulrika): utetemperaturen stort överst till höger, i klockans storlek men vit. */}
+          {calFocus && outTemp != null && (
+            <Link href="/vader" aria-label={`Ute ${fmtTemp(outTemp)}. Visa väderprognosen.`}
+              className="hidden text-[4.75rem] leading-[0.9] font-bold tracking-tight text-white tabular-nums lg:block lg:text-right lg:text-[5.5rem] lg:leading-[0.75]">
+              {fmtTemp(outTemp)}
+            </Link>
+          )}
+          {people.length > 0 && (
+          <Link href="/hitta" aria-label="Närvaro – visa var alla är">
             <ul aria-label="Närvaro" className="flex flex-wrap gap-x-5 gap-y-1.5 lg:flex-col lg:gap-1.5">
               {people.map((p) => {
                 const m = !p.present ? where(p.name) : undefined;
@@ -495,10 +511,15 @@ export default async function HomePage() {
               })}
             </ul>
           </Link>
+          )}
+          </div>
         )}
 
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
+          {/* Kalenderfokus (HOME_FOCUS=calendar): kalendrarna direkt under klockan, på alla skärmstorlekar. */}
+          {calFocus && hasCal && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget /></div>}
+          {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
           <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
             label={`Ute ${outTemp != null ? fmtTemp(outTemp) : ''}${sky ? `, ${sky.label.toLowerCase()}` : ''}${hint ? `. ${hint.text}` : ''}. Visa väderprognosen.`} className="order-4 lg:order-none lg:shrink-0">
             <div className="flex items-center gap-3">
@@ -731,9 +752,9 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget /></div>}
+          {!calFocus && hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget /></div>}
           {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
-          {hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
+          {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
