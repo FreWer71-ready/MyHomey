@@ -24,81 +24,97 @@ const phonePos = () => new Promise<string>((done) => {
 });
 const SRC = { phone: 'telefonens plats', life360: 'Life360-positionen' } as const;
 
-/** Fält för valfri plats (adress eller platsnamn). */
-function PlaceInput({ id, label, value, set, onGo }: { id: string; label: string; value: string; set: (v: string) => void; onGo: () => void }) {
-  return (
-    <form onSubmit={(e) => { e.preventDefault(); onGo(); }} className="flex">
-      <label htmlFor={id} className="sr-only">{label}</label>
-      <input id={id} type="text" inputMode="search" enterKeyHint="go" autoComplete="street-address" value={value} maxLength={120}
-        onChange={(e) => set(e.target.value)} placeholder="Adress eller plats, t.ex. Kungsgatan 3 Eskilstuna"
-        className="min-h-12 w-full min-w-0 rounded-2xl border border-line bg-glass-2 px-4 text-[1rem] text-fg placeholder:text-dim" />
-    </form>
-  );
-}
+/** Ändpunkt: snabbval (Min plats, Hem, jobbet) eller valfri plats (fritext). */
+type End = { kind: From; q: string };
 
 /**
- * Reseplanering, klassisk från–till: snabbval Min plats (bara från), Hem och jobbet, eller valfri plats.
- * ⇅ byter håll. Min plats hämtas först vid tryck: mobilens plats, annars Life360. Förvalt mål följer tid på dygnet.
+ * Reseplanering i SL:s stil: en kompakt ruta med Från och Till (fritext) och ⇅ på avdelaren. Snabbvalen (Min plats,
+ * Hem, jobbet) visas bara när ett fält är aktivt. Ressätt och Sök på en rad under. Min plats hämtas först vid Sök:
+ * mobilens plats, annars Life360.
  */
 export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo: 'home' | 'work'; workLabel: string; transit: boolean; car: boolean }) {
-  const [from, setFrom] = useState<From>('here');
-  const [to, setTo] = useState<To>(defaultTo);
-  const [fq, setFq] = useState('');
-  const [q, setQ] = useState('');
+  const [from, setFrom] = useState<End>({ kind: 'here', q: '' });
+  const [to, setTo] = useState<End>({ kind: defaultTo, q: '' });
+  const [active, setActive] = useState<'from' | 'to' | null>(null);
   const [mode, setMode] = useState<Mode>(transit ? 'transit' : 'car');
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<Result | null>(null);
   const [err, setErr] = useState<string | null>(null);
   if (!transit && !car) return null;
   const reset = () => { setRes(null); setErr(null); };
+  const label = (e: End) => (e.kind === 'here' ? 'Min plats' : e.kind === 'home' ? 'Hem' : e.kind === 'work' ? workLabel : e.q);
 
   const go = async () => {
-    if ((from === 'place' && fq.trim().length < 2) || (to === 'place' && q.trim().length < 2)) { setErr('Skriv en adress eller plats'); return; }
-    if (from === to && from !== 'place') { setErr('Välj olika från och till'); return; }
+    setActive(null);
+    if ((from.kind === 'place' && from.q.trim().length < 2) || (to.kind === 'place' && to.q.trim().length < 2)) { setErr('Skriv en adress eller plats'); return; }
+    if (to.kind === 'here') { setErr('Min plats kan bara vara start'); return; }
+    if (from.kind === to.kind && from.kind !== 'place') { setErr('Välj olika från och till'); return; }
     setBusy(true); reset();
     try {
       const enc = (v: string) => encodeURIComponent(v.trim());
-      const r = await fetch(`${BASE_PATH}/api/trip?from=${from}&to=${to}&mode=${mode}${from === 'place' ? `&fq=${enc(fq)}` : ''}${to === 'place' ? `&q=${enc(q)}` : ''}${from === 'here' ? await phonePos() : ''}`);
+      const r = await fetch(`${BASE_PATH}/api/trip?from=${from.kind}&to=${to.kind}&mode=${mode}${from.kind === 'place' ? `&fq=${enc(from.q)}` : ''}${to.kind === 'place' ? `&q=${enc(to.q)}` : ''}${from.kind === 'here' ? await phonePos() : ''}`);
       const d = await r.json().catch(() => null);
       if (r.ok && d) setRes(d); else setErr(d?.error ?? 'Resan kunde inte räknas fram');
     } catch { setErr('Resan kunde inte räknas fram'); }
     setBusy(false);
   };
   // Byt håll: Min plats kan bara vara start, så då blir målet hem.
-  const swap = () => {
-    reset();
-    if (from === 'here') { setFrom(to); setFq(q); setTo('home'); setQ(''); return; }
-    setFrom(to); setTo(from); setFq(q); setQ(fq);
-  };
-  const pick = <T extends string>(v: T, cur: T, set: (v: T) => void, label: string) => (
-    <button type="button" aria-pressed={v === cur} onClick={() => { set(v); reset(); }} className={`pill min-h-11 grow justify-center ${v === cur ? 'on' : ''}`}>{label}</button>
+  const swap = () => { reset(); setFrom(to); setTo(from.kind === 'here' ? { kind: 'home', q: '' } : from); };
+  const set = (which: 'from' | 'to', e: End) => { reset(); (which === 'from' ? setFrom : setTo)(e); };
+  const quick: { kind: From; text: string }[] = [
+    ...(active === 'from' ? [{ kind: 'here' as const, text: 'Min plats' }] : []),
+    { kind: 'home', text: 'Hem' }, { kind: 'work', text: workLabel },
+  ];
+  const field = (which: 'from' | 'to', e: End) => (
+    <label className="flex min-h-14 items-center gap-3 px-4">
+      <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${which === 'from' ? 'border-2 border-fg' : 'bg-sun'}`} />
+      <span className="w-9 shrink-0 text-[0.9375rem] font-semibold text-dim">{which === 'from' ? 'Från' : 'Till'}</span>
+      <input type="text" inputMode="search" enterKeyHint="search" autoComplete="street-address" maxLength={120}
+        value={label(e)} placeholder="Adress eller plats" aria-label={which === 'from' ? 'Från' : 'Till'}
+        onFocus={(ev) => { setActive(which); if (e.kind !== 'place') ev.currentTarget.select(); }}
+        onBlur={() => setTimeout(() => setActive((x) => (x === which ? null : x)), 150)}
+        onChange={(ev) => set(which, { kind: 'place', q: ev.target.value })}
+        onKeyDown={(ev) => { if (ev.key === 'Enter') go(); }}
+        className={`min-w-0 grow bg-transparent py-3 text-[1.0625rem] outline-none placeholder:text-dim ${e.kind === 'place' ? 'font-normal' : 'font-semibold'}`} />
+    </label>
   );
-  const name = (k: From, place?: string) => (k === 'home' ? 'hem' : k === 'work' ? workLabel.toLowerCase() : k === 'here' ? 'din plats' : place ?? 'platsen');
   return (
-    <section aria-label="Reseplanering" className="flex flex-col gap-3 rounded-[1.5rem] glass p-3">
-      <h2 className="text-xl font-extrabold">Reseplanering</h2>
-      <div className="flex items-stretch gap-2">
-        <div className="grid min-w-0 grow grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-6">
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-[0.9375rem] font-bold text-dim">Från</legend>
-            <div className="flex flex-wrap gap-2">{pick<From>('here', from, setFrom, 'Min plats')}{pick<From>('home', from, setFrom, 'Hem')}{pick<From>('work', from, setFrom, workLabel)}{pick<From>('place', from, setFrom, 'Annan')}</div>
-            {from === 'place' && <PlaceInput id="resa-fran" label="Från adress eller plats" value={fq} set={(v) => { setFq(v); reset(); }} onGo={go} />}
-          </fieldset>
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-[0.9375rem] font-bold text-dim">Till</legend>
-            <div className="flex flex-wrap gap-2">{pick<To>('home', to, setTo, 'Hem')}{pick<To>('work', to, setTo, workLabel)}{pick<To>('place', to, setTo, 'Annan')}</div>
-            {to === 'place' && <PlaceInput id="resa-till" label="Till adress eller plats" value={q} set={(v) => { setQ(v); reset(); }} onGo={go} />}
-          </fieldset>
-        </div>
-        <button type="button" onClick={swap} aria-label="Byt från och till" className="pill w-11 shrink-0 justify-center self-center !px-0 text-[1.25rem] lg:rotate-90">⇅</button>
+    <section aria-label="Sök resa" className="flex flex-col gap-2.5 rounded-[1.5rem] glass p-3">
+      <h2 className="px-1 text-[1.125rem] font-bold">Sök resa</h2>
+      {/* Från/Till i en ruta, ⇅ på avdelaren. */}
+      <div className="relative rounded-[1.125rem] bg-white/[0.07]">
+        {field('from', from)}
+        <div className="mr-16 ml-4 h-px bg-line" />
+        {field('to', to)}
+        <button type="button" onClick={swap} aria-label="Byt från och till"
+          className="absolute top-1/2 right-2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-card text-[1.125rem]">⇅</button>
       </div>
-      {transit && car && <div className="flex gap-2" role="group" aria-label="Ressätt">{pick<Mode>('transit', mode, setMode, 'Kollektivt')}{pick<Mode>('car', mode, setMode, 'Bil')}</div>}
-      <button type="button" onClick={go} disabled={busy} className={`pill min-h-12 justify-center !bg-sun font-bold !text-ink ${busy ? 'animate-pulse' : ''}`}>
-        {busy ? 'Räknar …' : 'Visa resan'}
-      </button>
-      {err && <p role="alert" className="text-[0.9375rem] text-danger">{err}</p>}
+      {/* Snabbval för fältet du står i. */}
+      {active && (
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Snabbval ${active === 'from' ? 'från' : 'till'}`}>
+          {quick.map((o) => (
+            <button key={o.kind} type="button" onMouseDown={(ev) => ev.preventDefault()}
+              onClick={() => { set(active, { kind: o.kind, q: '' }); setActive(null); }}
+              className={`pill min-h-11 px-4 text-[0.9375rem] ${(active === 'from' ? from : to).kind === o.kind ? 'on' : ''}`}>{o.text}</button>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        {transit && car && (
+          <div className="flex rounded-full bg-white/[0.07] p-1" role="group" aria-label="Ressätt">
+            {([['transit', 'Kollektivt'], ['car', 'Bil']] as const).map(([v, t]) => (
+              <button key={v} type="button" aria-pressed={mode === v} onClick={() => { setMode(v); reset(); }}
+                className={`min-h-10 rounded-full px-3.5 text-[0.9375rem] font-semibold ${mode === v ? 'bg-[#E6EDF3] text-[#0B0F14]' : 'text-dim'}`}>{t}</button>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={go} disabled={busy} className={`pill min-h-11 grow justify-center !bg-sun font-bold !text-ink ${busy ? 'animate-pulse' : ''}`}>
+          {busy ? 'Söker …' : 'Sök'}
+        </button>
+      </div>
+      {err && <p role="alert" className="px-1 text-[0.9375rem] text-danger">{err}</p>}
       {res?.here && <p className="rounded-2xl bg-glass-2 p-3 font-bold">Du är redan {res.to === 'home' ? 'hemma' : 'framme'}.</p>}
-      {res && !res.here && <TripResult res={res} name={name} />}
+      {res && !res.here && <TripResult res={res} name={(k, place) => (k === 'home' ? 'hem' : k === 'work' ? workLabel.toLowerCase() : k === 'here' ? 'din plats' : place ?? 'platsen')} />}
       {res?.trips && <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{res.trips.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={res.trains ?? []} first={i === 0} home={res.to === 'home'} />)}</div>}
     </section>
   );
