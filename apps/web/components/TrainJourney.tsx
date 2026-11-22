@@ -41,7 +41,7 @@ export function TrainJourney({ ident, toWork, before }: { ident: string; toWork:
     <div className="flex flex-col gap-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
       <div className="flex flex-wrap gap-2">
         {before}
-        <button type="button" onClick={toggle} aria-expanded={open} className="btn-row w-fit">
+        <button type="button" onClick={toggle} aria-expanded={open} className="btn-row btn-row-light w-fit">
           Dörr till dörr {open ? '▾' : '›'}
         </button>
       </div>

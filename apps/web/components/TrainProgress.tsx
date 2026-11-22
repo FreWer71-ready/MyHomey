@@ -56,7 +56,7 @@ export function TrainRoute({ ident, children, className = '' }: { ident: string;
     <>
       {children
         ? <button type="button" onClick={open} aria-label={`Tåg ${ident}: visa hela sträckan`} className={`w-full text-left ${className}`}>{children}</button>
-        : <button type="button" onClick={open} className="btn-row">Sträckan ›</button>}
+        : <button type="button" onClick={open} className="btn-row btn-row-light">Sträckan ›</button>}
       {shown > 0 && <TrainTimeline id={id} ident={ident} p={p} box={box} />}
     </>
   );
