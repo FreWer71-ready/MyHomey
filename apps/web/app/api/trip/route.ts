@@ -7,7 +7,7 @@ import { freshestPosition } from '@/lib/onboard';
 import { etaConfigured, reverseGeocode, routeEta } from '@/lib/route';
 import { groupRoad } from '@/lib/commute';
 import { parseLatLon, pickPosition } from '@/lib/startpoint';
-import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { loadTransit, transitGoal, transitSearchable } from '@/lib/transit-source';
 import { boxFor, km, onRoute, type LatLon } from '@/lib/trip';
 
 // Resa från aktuell plats till jobbet eller hem, kollektivt (ResRobot) eller med bil (TomTom).
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
   const nowMs = Date.now();
   if (when !== 'now' && (!Number.isFinite(t) || t < nowMs - 3600_000 || t > nowMs + 14 * 86400_000)) return err('Ogiltig tid', 400);
   const at = when === 'now' ? nowMs : t;
-  if (mode === 'transit' ? !transitConfigured() : !etaConfigured()) return err(mode === 'transit' ? 'Kollektivtrafik är inte inställd' : 'Bilresa är inte inställd', 404);
+  if (mode === 'transit' ? !transitSearchable() : !etaConfigured()) return err(mode === 'transit' ? 'Kollektivtrafik är inte inställd' : 'Bilresa är inte inställd', 404);
 
   // Valfri plats: adress (geokodning) eller platsnamn (TomTom-sökning nära hemmet).
   const findPlace = async (raw: string | null) => {
@@ -42,7 +42,8 @@ export async function GET(req: Request) {
     const hit = await geocode(query).then((at) => (at ? { name: query, at } : guessPlace(query, PLACE))).catch(() => null);
     return hit ?? { error: `Hittade inte "${query}". Prova en adress med ort.` };
   };
-  const goalAt = mode === 'transit' ? transitGoal()?.at : (await defaultGoal())?.at ?? transitGoal()?.at;
+  // Jobbet: kollektivmålet (TRANSIT_DESTINATION) för kollektivt, annars standardmålet (DEFAULT_DESTINATION, t.ex. Ulrikas jobb).
+  const goalAt = mode === 'transit' ? transitGoal()?.at ?? (await defaultGoal())?.at : (await defaultGoal())?.at ?? transitGoal()?.at;
   // Hem, jobbet eller valfri plats som ändpunkt.
   const point = async (kind: string, raw: string | null): Promise<{ at: LatLon; name?: string } | { error: string }> => {
     if (kind === 'home') return { at: PLACE };

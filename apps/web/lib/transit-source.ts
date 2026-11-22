@@ -12,6 +12,8 @@ import type { Start } from './startpoint.ts';
 // Nyckeln får aldrig hamna i loggar eller svar.
 
 export const transitConfigured = () => !!process.env.RESROBOT_API_KEY && !!transitGoal();
+/** Sök resa (kollektivt) behöver bara ResRobot-nyckeln; målet kan vara hem, jobbets adress eller valfri plats. */
+export const transitSearchable = () => !!process.env.RESROBOT_API_KEY;
 
 export function transitGoal(): { label: string; at: LatLon } | null {
   const c = process.env.TRANSIT_DESTINATION?.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);

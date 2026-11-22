@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
-import { loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { loadOnward, loadTransit, transitConfigured, transitGoal, transitSearchable } from '@/lib/transit-source';
 import { allPositions, earliestAt, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
 import { detectTrain, loadConfirmed, positionHistory } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
@@ -190,8 +190,8 @@ export default async function CommutePage() {
           {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
         </span>
       </h1>
-      {!ridden && (transitConfigured() || etaConfigured()) && (
-        <TripFromHere defaultTo={dir === 'out' ? 'work' : 'home'} workLabel={tg?.label ?? process.env.DEFAULT_DESTINATION_LABEL ?? 'Jobbet'} transit={transitConfigured()} car={etaConfigured()} />
+      {!ridden && (transitSearchable() || etaConfigured()) && (
+        <TripFromHere defaultTo={dir === 'out' ? 'work' : 'home'} workLabel={tg?.label ?? process.env.DEFAULT_DESTINATION_LABEL ?? 'Jobbet'} transit={transitSearchable()} car={etaConfigured()} />
       )}
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
