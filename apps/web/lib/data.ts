@@ -409,11 +409,12 @@ async function loadCommuteFresh(): Promise<Commute | null> {
   if (error || !data || data.error) return null;
   const c = withHomeAt(roadOnly(parseCommute(data as RawCommute)));
   // Avgångar som hushållet valt att dölja ("Dölj").
-  const { data: skip } = c?.trains ? await sb.from('commute_skip').select('ident,dep').gt('dep', new Date(Date.now() - 3 * 3600_000).toISOString()) : { data: null };
+  // Gäller även utan tågpendling (COMMUTE=road): listan "Alla tåg från Eskilstuna C" har också Dölj/✕.
+  const { data: skip } = c ? await sb.from('commute_skip').select('ident,dep').gt('dep', new Date(Date.now() - 3 * 3600_000).toISOString()) : { data: null };
   if (!c || !skip?.length) return c;
   const hidden = new Set(skip.map((s) => `${s.ident}|${Date.parse(s.dep as string)}`));
   const keep = (l: Train[]) => l.filter((t) => !hidden.has(`${t.ident}|${t.dep}`));
-  const skipped = [...c.out, ...c.home].filter((t) => hidden.has(`${t.ident}|${t.dep}`)).length;
+  const skipped = new Set([...c.out, ...c.home, ...c.all].filter((t) => hidden.has(`${t.ident}|${t.dep}`)).map((t) => `${t.ident}|${t.dep}`)).size;
   return { ...c, out: keep(c.out), home: keep(c.home), all: keep(c.all), skipped };
 }
 
