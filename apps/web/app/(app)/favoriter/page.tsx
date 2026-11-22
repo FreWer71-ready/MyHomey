@@ -8,8 +8,7 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { loadFlows, loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
 import { fmtTemp } from '@/lib/scale';
 import { sameRoom } from '@/lib/home';
-import { ArrivalSettings, LightExtras, RoomDimmer, SensorRow, type Arrival } from '@/components/HueControls';
-import { createClient } from '@/lib/supabase/server';
+import { LightExtras, RoomDimmer, SensorRow } from '@/components/HueControls';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,14 +21,6 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
   const { hue: hueResult } = await searchParams;
   const [h, flows, hue, tv, np] = await Promise.all([loadHome(), loadFlows(), loadHueScenes(), loadTv(), loadNowPlaying()]);
   const hueMode = process.env.CONTROL === 'hue';
-  // Tänd när man kommer hem (Hue-hushåll): sparad inställning, annars avstängd.
-  const hh = process.env.HOUSEHOLD ?? '';
-  const person = hh.charAt(0).toUpperCase() + hh.slice(1);
-  let arrival: Arrival | null = null;
-  if (hueMode) {
-    const { data } = await (await createClient()).from('arrival_lights').select('enabled,zones,scene,only_dark').maybeSingle();
-    arrival = { enabled: !!data?.enabled, zones: data?.zones ?? [], scene: data?.scene === 'mys' ? 'mys' : 'ljust', onlyDark: data?.only_dark ?? true };
-  }
 
   // Hue-hushåll: alla scener (synkade som moods) räknas som favoriter. Homey: de markerade favoriterna.
   const favMoods = hueMode
@@ -165,9 +156,6 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
           {hueMode ? 'Inga scener än. Anslut Philips Hue nedan.' : 'Inga favoriter än. Markera moods och flows som favoriter i Homey-appen så dyker de upp här.'}
         </p>
       )}
-
-      {/* Hue: tänd valda rum när man kommer hem efter att ha varit borta. */}
-      {hueMode && arrival && <ArrivalSettings initial={arrival} rooms={h.rooms.filter((r) => r.lights.length > 0).map((r) => ({ id: r.id, name: r.name }))} person={person} />}
 
       {!hue.connected && (
         <a href={`${BASE_PATH}/api/hue/login`} className="flex min-h-14 items-center justify-between gap-3 rounded-[1.25rem] bg-card px-5 text-[1.0625rem] font-semibold">

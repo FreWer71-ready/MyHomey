@@ -23,6 +23,10 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - Konstanter i `lib/trips.ts`: `CLAIM_MIN = 20` (ersättning från 20 min eller mer), `DELAYED_MIN = 5`, `ROUTE_KM = 109`. Ändra där.
 - Resor med 20 min försening eller mer visas i "Begär ersättning" med status och kopierbart underlag.
 
+## Hue (Ulrika)
+- Hallsensorns automation ligger i Hue-bryggan (behavior_instance "Sensor hall"): rörelse 08–22 tänder zonen "Alla rum" (scen "Ljust", allt utom "Använts ej"), 22–08 gör ingenting, ingen automatisk släckning. Ändras i Hue-appen eller via CLIP v2.
+- Hemkomst sköts av Hues egen automation "Komma hem" (geofence i Hue-appen). Dashboardens egen variant är borttagen; tabellen `arrival_lights` och koden i edge-funktionen `hue` är vilande.
+
 ## Prestanda
 - Klientcache 30 s (`staleTimes`), `loading.tsx` vid sidhopp. Ändra inte utan skäl.
 - Hämta data via de cachade `load*`-funktionerna i `lib/data.ts` (React `cache()`). Sekundär data strömmas i `Suspense`.

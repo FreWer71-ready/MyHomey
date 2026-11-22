@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { hueEffect, hueIdentify, hueRoom, hueSensor, saveArrival } from '@/app/actions/hue';
+import { hueEffect, hueIdentify, hueRoom, hueSensor } from '@/app/actions/hue';
 import type { Sensor } from '@/lib/home';
 
 type Res = { ok: boolean; error?: string };
@@ -106,45 +106,5 @@ export function SensorRow({ s }: { s: Sensor }) {
       )}
       {err && <span role="alert" className="text-[0.875rem] text-danger">{err}</span>}
     </div>
-  );
-}
-
-export type Arrival = { enabled: boolean; zones: string[]; scene: 'ljust' | 'mys'; onlyDark: boolean };
-
-/** Tänd när du kommer hem: av/på, vilka rum, Ljust eller Mys, och bara när det är mörkt. */
-export function ArrivalSettings({ initial, rooms, person }: { initial: Arrival; rooms: { id: string; name: string }[]; person: string }) {
-  const { busy, err, run } = useRun();
-  const [c, setC] = useState(initial);
-  const save = (n: Arrival) => { setC(n); run(() => saveArrival(n), false); };
-  return (
-    <section aria-label="Tänd när du kommer hem" className="flex flex-col gap-3 rounded-[1.25rem] bg-card p-4 lg:p-5">
-      <div className="flex items-center gap-3">
-        <h2 className="min-w-0 grow text-[1.1875rem] font-bold">Tänd när {person} kommer hem</h2>
-        <button type="button" role="switch" aria-checked={c.enabled} aria-label="Tänd när du kommer hem" disabled={busy}
-          onClick={() => save({ ...c, enabled: !c.enabled })}
-          className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${c.enabled ? 'bg-sun' : 'bg-white/15'}`}>
-          <span className={`absolute top-1 size-6 rounded-full bg-white shadow transition-[left] ${c.enabled ? 'left-7' : 'left-1'}`} />
-        </button>
-      </div>
-      <p className="text-[0.9375rem] text-dim">Efter minst 20 min borta (Life360) tänds valda rum när {person} är tillbaka hemma.</p>
-      {c.enabled && (
-        <>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Rum">
-            {rooms.map((r) => {
-              const on = c.zones.includes(r.id);
-              return <button key={r.id} type="button" aria-pressed={on} onClick={() => save({ ...c, zones: on ? c.zones.filter((z) => z !== r.id) : [...c.zones, r.id] })} className={chip(on)}>{r.name}</button>;
-            })}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {(['ljust', 'mys'] as const).map((sc) => (
-              <button key={sc} type="button" aria-pressed={c.scene === sc} onClick={() => save({ ...c, scene: sc })} className={chip(c.scene === sc)}>{sc === 'ljust' ? 'Ljust' : 'Mys'}</button>
-            ))}
-            <button type="button" aria-pressed={c.onlyDark} onClick={() => save({ ...c, onlyDark: !c.onlyDark })} className={chip(c.onlyDark)}>Bara när det är mörkt</button>
-          </div>
-          {c.zones.length === 0 && <p className="text-[0.875rem] text-warn">Välj minst ett rum.</p>}
-        </>
-      )}
-      {err && <p role="alert" className="text-[0.875rem] text-danger">{err}</p>}
-    </section>
   );
 }
