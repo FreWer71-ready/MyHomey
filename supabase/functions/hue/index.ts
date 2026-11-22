@@ -1,6 +1,8 @@
 // Philips Hue Remote API (moln) per hushåll: OAuth, scener, styrning och synk till dashboardens tabeller.
 // Användaranrop (JWT): authorize {state} · exchange {code} · status · scenes · activate {id, dynamic?}
 //                      light {id, on?, dim?, temp?, hue?, sat?} · room {zone, scene: ljust|mys|slack}
+//                      group {zone, on?, dim?, fade?} (hela rummet, fade = släck mjukt på N min) · effect {id, effect}
+//                      identify {id} (lampan blinkar) · sensor {id, enabled} (rörelsesensor på/av)
 // Cron (x-cron-secret): sync – fyller zones/devices/capability_state/readings/moods för Hue-hushåll.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -130,6 +132,9 @@ async function sync(hh: string) {
         l.color_temperature?.mirek ? cap(l.id, "light_temperature", +fromMirek(l.color_temperature.mirek).toFixed(3)) : null,
         hs ? cap(l.id, "light_hue", +hs[0].toFixed(3)) : null,
         hs ? cap(l.id, "light_saturation", colorMode ? +hs[1].toFixed(3) : 0) : null,
+        // Ljuseffekter (levande ljus, eld, glitter) – bara lampor som stöder dem.
+        (l.effects?.effect_values ?? []).some((e: string) => ["candle", "fire", "sparkle"].includes(e)) ? cap(l.id, "hue_effects", true) : null,
+        l.effects?.status ? cap(l.id, "hue_effect_on", l.effects.status !== "no_effect") : null,
       ].filter(Boolean),
     });
   }
@@ -140,7 +145,10 @@ async function sync(hh: string) {
     if (!sensors.has(owner)) sensors.set(owner, []);
     sensors.get(owner)!.push(c);
   };
-  for (const m of motion) add(m.owner?.rid, cap(m.owner?.rid, "alarm_motion", !!(m.motion?.motion_report?.motion ?? m.motion?.motion), m.motion?.motion_report?.changed));
+  for (const m of motion) {
+    add(m.owner?.rid, cap(m.owner?.rid, "alarm_motion", !!(m.motion?.motion_report?.motion ?? m.motion?.motion), m.motion?.motion_report?.changed));
+    if (typeof m.enabled === "boolean") add(m.owner?.rid, cap(m.owner?.rid, "sensor_enabled", m.enabled));
+  }
   for (const t of temps) {
     const v = t.temperature?.temperature_report?.temperature ?? t.temperature?.temperature;
     if (typeof v === "number") add(t.owner?.rid, cap(t.owner?.rid, "measure_temperature", +v.toFixed(2), t.temperature?.temperature_report?.changed));
@@ -171,7 +179,8 @@ async function sync(hh: string) {
     error: error?.message ?? moods?.error?.message ?? null,
   });
   if (error) throw new Error(`ingest: ${error.message}`);
-  return { household: hh, ...data, lights: lights.length };
+  const arrived = await arrival(hh, a).catch((e) => `fel: ${String(e).slice(0, 80)}`);
+  return { household: hh, ...data, lights: lights.length, arrived };
 }
 
 // ---- Styrning ----------------------------------------------------------------------------
@@ -199,6 +208,67 @@ async function roomScene(a: Auth, zone: string, scene: string) {
     if (l.color) { const [h, s, d] = sunset[n++ % sunset.length]; return setLight(a, l.id, { on: true, hue: h, sat: s, dim: d }); }
     return setLight(a, l.id, { on: true, dim: 0.35, temp: 1 });
   }));
+}
+
+/** Rummets samlade ljus (grouped_light) – en order för alla lampor, med mjuk övergång (dynamics). */
+async function groupLight(a: Auth, zone: string, c: { on?: boolean; dim?: number; fade?: number }) {
+  const rooms = await clip(a, "/resource/room");
+  const room = rooms.data.find((r) => r.id === zone);
+  const gid = room?.services?.find((x: Res) => x.rtype === "grouped_light")?.rid;
+  if (!gid) throw new Error("okänt rum");
+  const body: Res = {};
+  if (c.fade) body.on = { on: false }, body.dynamics = { duration: Math.round(c.fade * 60_000) };
+  else {
+    if (c.on !== undefined) body.on = { on: c.on };
+    if (c.dim !== undefined) body.on = { on: true }, body.dimming = { brightness: Math.max(1, Math.round(c.dim * 100)) };
+  }
+  await clip(a, `/resource/grouped_light/${gid}`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+// ---- Tänd när man kommer hem -------------------------------------------------------------
+const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
+  const r = (x: number) => (x * Math.PI) / 180;
+  const h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lon - a.lon) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+function sunElevation(ms: number, lat: number, lon: number): number {
+  const rad = Math.PI / 180, d = ms / 86400_000 - 10957.5;
+  const g = (357.529 + 0.98560028 * d) * rad, q = 280.459 + 0.98564736 * d;
+  const L = (q + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * rad, e = (23.439 - 0.00000036 * d) * rad;
+  const dec = Math.asin(Math.sin(e) * Math.sin(L)), ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)) / rad;
+  const ha = ((((18.697374558 + 24.06570982441908 * d) % 24) * 15 + lon - ra) % 360) * rad;
+  return Math.asin(Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos(ha)) / rad;
+}
+/**
+ * Körs vid varje synk (varannan minut). Personens Life360-position (delad mellan hushållen): bort = mer än 500 m från
+ * hemmet; kommer hon tillbaka (inom 250 m) efter minst 20 min borta tänds de valda rummen – bara när det är mörkt om
+ * så valts. Högst en gång per 30 min. Positioner äldre än 30 min räknas inte.
+ */
+async function arrival(hh: string, a: Auth): Promise<string> {
+  const { data: cfg } = await db.from("arrival_lights").select("*").eq("household_id", hh).maybeSingle();
+  if (!cfg?.enabled || cfg.home_lat == null || !cfg.person) return "av";
+  const { data: devs } = await db.from("devices").select("id,name").ilike("name", `${cfg.person}%`).ilike("driver_id", "%life360%");
+  if (!devs?.length) return "ingen person";
+  const { data: caps } = await db.from("capability_state").select("device_id,capability_id,value_num,last_updated")
+    .in("device_id", devs.map((d) => d.id)).in("capability_id", ["life360_latitude", "life360_longitude"]);
+  const lat = caps?.find((c) => c.capability_id === "life360_latitude"), lon = caps?.find((c) => c.capability_id === "life360_longitude");
+  if (lat?.value_num == null || lon?.value_num == null) return "ingen position";
+  const now = Date.now();
+  if (now - Date.parse(lat.last_updated ?? "") > 30 * 60_000) return "gammal position";
+  const d = km({ lat: lat.value_num, lon: lon.value_num }, { lat: cfg.home_lat, lon: cfg.home_lon });
+  if (d > 0.5) {
+    if (!cfg.away) await db.from("arrival_lights").update({ away: true, away_since: new Date(now).toISOString() }).eq("household_id", hh);
+    return "borta";
+  }
+  if (d > 0.25 || !cfg.away) return "hemma";
+  await db.from("arrival_lights").update({ away: false }).eq("household_id", hh);
+  const awayLong = now - Date.parse(cfg.away_since ?? "") >= 20 * 60_000;
+  const recent = cfg.last_fired && now - Date.parse(cfg.last_fired) < 30 * 60_000;
+  const dark = sunElevation(now, cfg.home_lat, cfg.home_lon) < 3;
+  if (!awayLong || recent || (cfg.only_dark && !dark)) return "hemkommen, ingen tändning";
+  await Promise.all((cfg.zones ?? []).map((z: string) => roomScene(a, z, cfg.scene === "mys" ? "mys" : "ljust").catch(() => null)));
+  await db.from("arrival_lights").update({ last_fired: new Date(now).toISOString() }).eq("household_id", hh);
+  return "tände";
 }
 
 Deno.serve(async (req) => {
@@ -274,6 +344,22 @@ Deno.serve(async (req) => {
       if (p.on === false && p.dim === undefined && p.temp === undefined && p.hue === undefined) {
         await clip(a, `/resource/light/${p.id}`, { method: "PUT", body: JSON.stringify({ on: { on: false } }) });
       } else await setLight(a, p.id, p);
+    } else if (p.action === "group") {
+      const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+      const dim = n(p.dim), fade = n(p.fade);
+      if (!valid(p.zone) || (dim !== undefined && (dim < 0 || dim > 1)) || (fade !== undefined && (fade <= 0 || fade > 60))) return json({ error: "ogiltigt" }, 400);
+      await groupLight(a, p.zone, { on: typeof p.on === "boolean" ? p.on : undefined, dim, fade });
+    } else if (p.action === "effect") {
+      if (!valid(p.id) || !["candle", "fire", "sparkle", "no_effect"].includes(p.effect)) return json({ error: "ogiltig effekt" }, 400);
+      await clip(a, `/resource/light/${p.id}`, { method: "PUT", body: JSON.stringify(p.effect === "no_effect" ? { effects: { effect: "no_effect" } } : { on: { on: true }, effects: { effect: p.effect } }) });
+    } else if (p.action === "identify") {
+      if (!valid(p.id)) return json({ error: "ogiltig lampa" }, 400);
+      await clip(a, `/resource/light/${p.id}`, { method: "PUT", body: JSON.stringify({ identify: { action: "identify" } }) });
+    } else if (p.action === "sensor") {
+      if (!valid(p.id) || typeof p.enabled !== "boolean") return json({ error: "ogiltig sensor" }, 400);
+      const ms = (await clip(a, "/resource/motion")).data.filter((m) => m.owner?.rid === p.id);
+      if (!ms.length) return json({ error: "okänd sensor" }, 400);
+      await Promise.all(ms.map((m) => clip(a, `/resource/motion/${m.id}`, { method: "PUT", body: JSON.stringify({ enabled: p.enabled }) })));
     } else if (p.action === "room") {
       if (!valid(p.zone) || !["ljust", "mys", "slack"].includes(p.scene)) return json({ error: "ogiltigt rum eller scen" }, 400);
       await roomScene(a, p.zone, p.scene);

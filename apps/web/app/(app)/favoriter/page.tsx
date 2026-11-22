@@ -8,6 +8,8 @@ import { TrendArrow } from '@/components/TrendArrow';
 import { loadFlows, loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
 import { fmtTemp } from '@/lib/scale';
 import { sameRoom } from '@/lib/home';
+import { ArrivalSettings, LightExtras, RoomDimmer, SensorRow, type Arrival } from '@/components/HueControls';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +22,14 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
   const { hue: hueResult } = await searchParams;
   const [h, flows, hue, tv, np] = await Promise.all([loadHome(), loadFlows(), loadHueScenes(), loadTv(), loadNowPlaying()]);
   const hueMode = process.env.CONTROL === 'hue';
+  // Tänd när man kommer hem (Hue-hushåll): sparad inställning, annars avstängd.
+  const hh = process.env.HOUSEHOLD ?? '';
+  const person = hh.charAt(0).toUpperCase() + hh.slice(1);
+  let arrival: Arrival | null = null;
+  if (hueMode) {
+    const { data } = await (await createClient()).from('arrival_lights').select('enabled,zones,scene,only_dark').maybeSingle();
+    arrival = { enabled: !!data?.enabled, zones: data?.zones ?? [], scene: data?.scene === 'mys' ? 'mys' : 'ljust', onlyDark: data?.only_dark ?? true };
+  }
 
   // Hue-hushåll: alla scener (synkade som moods) räknas som favoriter. Homey: de markerade favoriterna.
   const favMoods = hueMode
@@ -100,8 +110,10 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
                 )}
               </div>
               {r.lights.length > 0 && <SceneButtons zoneId={r.id} room={r.name} size="card" />}
+              {/* Hue: hela rummet på/av och ljusstyrka, släck mjukt. */}
+              {hueMode && r.lights.length > 0 && <RoomDimmer zone={r.id} room={r.name} on={r.lightsOn > 0} level={Math.round(r.lights.filter((l) => l.on && l.dim != null).reduce((a, l, _, all) => a + l.dim! / all.length, 0)) || 100} />}
               {/* Minimerat som standard: fakta och Ljust/Mys/Släck. Favoriter, scener, TV och lampor under Detaljer. */}
-              {(favs.length > 0 || more.length > 0 || r.lights.length > 0 || rtv) && (
+              {(favs.length > 0 || more.length > 0 || r.lights.length > 0 || rtv || (hueMode && r.sensors.length > 0)) && (
                 <details className="group border-t border-line pt-1">
                   <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[1rem] font-semibold text-dim [&::-webkit-details-marker]:hidden">
                     Detaljer
@@ -112,8 +124,19 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
                     {rtv && <TvRemote r={rtv} title={(() => { const p = rtv.cast ? np.find((x) => x.id === rtv.cast!.id) : undefined; return p ? [p.title, p.subtitle].filter(Boolean).join(' · ') : null; })()} />}
                     {r.lights.length > 0 && (
                       <ul className="flex flex-col gap-3">
-                        {r.lights.map((l) => <LightControl key={l.id} light={l} />)}
+                        {r.lights.map((l) => (
+                          <li key={l.id} className="flex flex-col gap-2">
+                            <ul><LightControl light={l} /></ul>
+                            {hueMode && <LightExtras id={l.id} name={l.name} effects={l.effects} effectOn={l.effectOn} />}
+                          </li>
+                        ))}
                       </ul>
+                    )}
+                    {/* Hue-sensorer: rörelse, temperatur, ljus och av/på. */}
+                    {hueMode && r.sensors.length > 0 && (
+                      <div className="flex flex-col gap-1 border-t border-line pt-2">
+                        {r.sensors.map((x) => <SensorRow key={x.id} s={x} />)}
+                      </div>
                     )}
                   </div>
                 </details>
@@ -142,6 +165,9 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
           {hueMode ? 'Inga scener än. Anslut Philips Hue nedan.' : 'Inga favoriter än. Markera moods och flows som favoriter i Homey-appen så dyker de upp här.'}
         </p>
       )}
+
+      {/* Hue: tänd valda rum när man kommer hem efter att ha varit borta. */}
+      {hueMode && arrival && <ArrivalSettings initial={arrival} rooms={h.rooms.filter((r) => r.lights.length > 0).map((r) => ({ id: r.id, name: r.name }))} person={person} />}
 
       {!hue.connected && (
         <a href={`${BASE_PATH}/api/hue/login`} className="flex min-h-14 items-center justify-between gap-3 rounded-[1.25rem] bg-card px-5 text-[1.0625rem] font-semibold">
