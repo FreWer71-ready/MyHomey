@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
 import { hhmm } from '@/lib/prices';
 import type { Train } from '@/lib/commute';
@@ -40,8 +40,15 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<Result | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Minimerad visar bara rubriken; valet sparas på enheten.
+  const [open, setOpen] = useState(true);
+  useEffect(() => { try { if (localStorage.getItem('trip-closed') === '1') setOpen(false); } catch { /* privat läge */ } }, []);
   if (!transit && !car) return null;
+  const toggle = () => setOpen((o) => { try { localStorage.setItem('trip-closed', o ? '1' : '0'); } catch { /* privat läge */ } return !o; });
   const reset = () => { setRes(null); setErr(null); };
+  // Rensa: tillbaka till Min plats → förvalt mål, utan svar.
+  const clear = () => { reset(); setFrom({ kind: 'here', q: '' }); setTo({ kind: defaultTo, q: '' }); setActive(null); };
+  const dirty = !!res || !!err || from.kind !== 'here' || to.kind !== defaultTo;
   const label = (e: End) => (e.kind === 'here' ? 'Min plats' : e.kind === 'home' ? 'Hem' : e.kind === 'work' ? workLabel : e.q);
 
   const go = async () => {
@@ -80,7 +87,16 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
   );
   return (
     <section aria-label="Sök resa" className="flex flex-col gap-2.5 rounded-[1.5rem] glass p-3">
-      <h2 className="px-1 text-[1.125rem] font-bold">Sök resa</h2>
+      <h2 className="flex items-center gap-2">
+        <button type="button" onClick={toggle} aria-expanded={open} aria-controls="sok-resa"
+          className="flex min-h-11 grow items-center gap-2 px-1 text-left text-[1.125rem] font-bold">
+          Sök resa
+          <span aria-hidden="true" className={`text-[1rem] text-dim transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
+          {!open && <span className="truncate text-[0.9375rem] font-normal text-dim">{label(from) || 'Från'} → {label(to) || 'Till'}</span>}
+        </button>
+        {open && dirty && <button type="button" onClick={clear} className="btn-row !bg-white/[0.08]">Rensa</button>}
+      </h2>
+      <div id="sok-resa" hidden={!open} className="contents">
       {/* Från/Till i en ruta, ⇅ på avdelaren. */}
       <div className="relative rounded-[1.125rem] bg-white/[0.07]">
         {field('from', from)}
@@ -116,6 +132,7 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
       {res?.here && <p className="rounded-2xl bg-glass-2 p-3 font-bold">Du är redan {res.to === 'home' ? 'hemma' : 'framme'}.</p>}
       {res && !res.here && <TripResult res={res} name={(k, place) => (k === 'home' ? 'hem' : k === 'work' ? workLabel.toLowerCase() : k === 'here' ? 'din plats' : place ?? 'platsen')} />}
       {res?.trips && <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{res.trips.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={res.trains ?? []} first={i === 0} home={res.to === 'home'} />)}</div>}
+      </div>
     </section>
   );
 }
