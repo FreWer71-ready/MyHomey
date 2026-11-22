@@ -12,7 +12,8 @@ type To = 'home' | 'work' | 'place';
 type From = 'here' | To;
 type Mode = 'transit' | 'car';
 type Hinder = { type: string; road: string; place: string | null; tone: Tone; count: number };
-type Result = { from: From; to: To; fromName?: string; place?: string; fromAddr?: string | null; toAddr?: string | null; hinder?: Hinder[]; mode: Mode; start: 'phone' | 'life360' | To; here?: boolean; trips?: TransitTrip[]; trains?: Train[]; eta?: { minutes: number; trafficMin: number; km: number; arrive: number } };
+type When = 'now' | 'dep' | 'arr';
+type Result = { from: From; to: To; when?: When; at?: number; fromName?: string; place?: string; fromAddr?: string | null; toAddr?: string | null; hinder?: Hinder[]; mode: Mode; start: 'phone' | 'life360' | To; here?: boolean; trips?: TransitTrip[]; trains?: Train[]; eta?: { minutes: number; trafficMin: number; km: number; arrive: number; depart?: number; live?: boolean } };
 
 /** Mobilens plats (första prio). Tom sträng om den nekas, saknas eller dröjer: servern tar då Life360. */
 const phonePos = () => new Promise<string>((done) => {
@@ -37,6 +38,10 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
   const [to, setTo] = useState<End>({ kind: defaultTo, q: '' });
   const [active, setActive] = useState<'from' | 'to' | null>(null);
   const [mode, setMode] = useState<Mode>(transit ? 'transit' : 'car');
+  // Tid: nu, avgång vid eller framme senast. Fältet tar lokal tid (datetime-local).
+  const [when, setWhen] = useState<When>('now');
+  const [time, setTime] = useState('');
+  const localNow = (ms: number) => { const d = new Date(ms - new Date().getTimezoneOffset() * 60_000); return d.toISOString().slice(0, 16); };
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<Result | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -47,8 +52,8 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
   const toggle = () => setOpen((o) => { try { localStorage.setItem('trip-closed', o ? '1' : '0'); } catch { /* privat läge */ } return !o; });
   const reset = () => { setRes(null); setErr(null); };
   // Rensa: tillbaka till Min plats → förvalt mål, utan svar.
-  const clear = () => { reset(); setFrom({ kind: 'here', q: '' }); setTo({ kind: defaultTo, q: '' }); setActive(null); };
-  const dirty = !!res || !!err || from.kind !== 'here' || to.kind !== defaultTo;
+  const clear = () => { reset(); setFrom({ kind: 'here', q: '' }); setTo({ kind: defaultTo, q: '' }); setActive(null); setWhen('now'); };
+  const dirty = !!res || !!err || from.kind !== 'here' || to.kind !== defaultTo || when !== 'now';
   const label = (e: End) => (e.kind === 'here' ? 'Min plats' : e.kind === 'home' ? 'Hem' : e.kind === 'work' ? workLabel : e.q);
 
   const go = async () => {
@@ -56,10 +61,12 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
     if ((from.kind === 'place' && from.q.trim().length < 2) || (to.kind === 'place' && to.q.trim().length < 2)) { setErr('Skriv en adress eller plats'); return; }
     if (to.kind === 'here') { setErr('Min plats kan bara vara start'); return; }
     if (from.kind === to.kind && from.kind !== 'place') { setErr('Välj olika från och till'); return; }
+    const t = when === 'now' ? null : new Date(time).getTime();
+    if (when !== 'now' && !Number.isFinite(t)) { setErr('Välj en tid'); return; }
     setBusy(true); reset();
     try {
       const enc = (v: string) => encodeURIComponent(v.trim());
-      const r = await fetch(`${BASE_PATH}/api/trip?from=${from.kind}&to=${to.kind}&mode=${mode}${from.kind === 'place' ? `&fq=${enc(from.q)}` : ''}${to.kind === 'place' ? `&q=${enc(to.q)}` : ''}${from.kind === 'here' ? await phonePos() : ''}`);
+      const r = await fetch(`${BASE_PATH}/api/trip?from=${from.kind}&to=${to.kind}&mode=${mode}${from.kind === 'place' ? `&fq=${enc(from.q)}` : ''}${to.kind === 'place' ? `&q=${enc(to.q)}` : ''}${when !== 'now' ? `&when=${when}&t=${t}` : ''}${from.kind === 'here' ? await phonePos() : ''}`);
       const d = await r.json().catch(() => null);
       if (r.ok && d) setRes(d); else setErr(d?.error ?? 'Resan kunde inte räknas fram');
     } catch { setErr('Resan kunde inte räknas fram'); }
@@ -115,12 +122,27 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
           ))}
         </div>
       )}
+      {/* När: nu, avgång vid eller framme senast (som SL:s "När vill du resa?"). */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex rounded-full bg-white/[0.07] p-1" role="group" aria-label="När">
+          {([['now', 'Nu'], ['dep', 'Avgång'], ['arr', 'Ankomst']] as const).map(([v, txt]) => (
+            <button key={v} type="button" aria-pressed={when === v}
+              onClick={() => { setWhen(v); reset(); if (v !== 'now' && !time) setTime(localNow(Date.now() + 30 * 60_000)); }}
+              className={`min-h-10 rounded-full px-3.5 text-[0.9375rem] font-semibold ${when === v ? 'sel' : 'text-dim'}`}>{txt}</button>
+          ))}
+        </div>
+        {when !== 'now' && (
+          <input type="datetime-local" value={time} min={localNow(Date.now() - 3600_000)} onChange={(e) => { setTime(e.target.value); reset(); }}
+            aria-label={when === 'dep' ? 'Avgångstid' : 'Ankomsttid'}
+            className="min-h-11 min-w-0 grow rounded-full border border-line bg-white/[0.07] px-4 text-[1rem] text-fg [color-scheme:dark]" />
+        )}
+      </div>
       <div className="flex items-center gap-2">
         {transit && car && (
           <div className="flex rounded-full bg-white/[0.07] p-1" role="group" aria-label="Ressätt">
             {([['transit', 'Kollektivt'], ['car', 'Bil']] as const).map(([v, t]) => (
               <button key={v} type="button" aria-pressed={mode === v} onClick={() => { setMode(v); reset(); }}
-                className={`min-h-10 rounded-full px-3.5 text-[0.9375rem] font-semibold ${mode === v ? 'bg-[#E6EDF3] text-[#0B0F14]' : 'text-dim'}`}>{t}</button>
+                className={`min-h-10 rounded-full px-3.5 text-[0.9375rem] font-semibold ${mode === v ? 'sel' : 'text-dim'}`}>{t}</button>
             ))}
           </div>
         )}
@@ -165,8 +187,17 @@ function TripResult({ res, name }: { res: Result; name: (k: From, place?: string
         <>
           <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-t border-line pt-3">
             <span className="flex flex-col leading-none">
-              <span className="text-[1rem] font-semibold text-dim">{res.to === 'home' ? 'Hemma' : 'Framme'} med bil om du åker nu</span>
-              <span className="text-[3rem] font-extrabold tabular-nums">{hhmm(res.eta.arrive)}</span>
+              {res.when === 'arr' && res.eta.depart != null ? (
+                <>
+                  <span className="text-[1rem] font-semibold text-dim">Åk senast med bil för att vara {res.to === 'home' ? 'hemma' : 'framme'} {hhmm(res.at!)}</span>
+                  <span className="text-[3rem] font-extrabold tabular-nums">{hhmm(res.eta.depart)}</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[1rem] font-semibold text-dim">{res.to === 'home' ? 'Hemma' : 'Framme'} med bil om du åker {res.when === 'dep' ? hhmm(res.at!) : 'nu'}</span>
+                  <span className="text-[3rem] font-extrabold tabular-nums">{hhmm(res.eta.arrive)}</span>
+                </>
+              )}
             </span>
             <span className="text-[1rem] font-semibold">{res.eta.minutes} min · {Math.round(res.eta.km)} km</span>
           </div>

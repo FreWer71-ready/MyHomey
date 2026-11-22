@@ -23,13 +23,16 @@ const pt = (p: LatLon) => `${p.lat.toFixed(2)},${p.lon.toFixed(2)}`;
  * Restid från `from` till `to`. Med `arriveBy` (ms) och mer än 45 min dit räknas bakåt från ankomsten
  * (TomTom arriveAt); annars "åk nu" med aktuell trafik. Null utan nyckel eller om tjänsten inte svarar.
  */
-export async function routeEta(from: LatLon, to: LatLon, arriveBy: number | null, now = Date.now()): Promise<Eta | null> {
+export async function routeEta(from: LatLon, to: LatLon, arriveBy: number | null, now = Date.now(), departAt: number | null = null): Promise<Eta | null> {
   const key = process.env.TOMTOM_API_KEY;
   if (!key) return null;
-  const live = arriveBy == null || arriveBy - now < 45 * 60_000;
+  // Vald avgångstid (Sök resa): trafik för den tiden, inte "åk nu".
+  const later = departAt != null && departAt - now > 10 * 60_000;
+  const live = !later && (arriveBy == null || arriveBy - now < 45 * 60_000);
   const q = new URLSearchParams({ key, traffic: 'true', travelMode: 'car', routeType: 'fastest', computeTravelTimeFor: 'all' });
   // Ankomst avrundad till 5 min (stabil cache-nyckel).
-  if (!live) q.set('arriveAt', new Date(Math.floor(arriveBy! / 300_000) * 300_000).toISOString().replace(/\.\d{3}Z$/, 'Z'));
+  if (later) q.set('departAt', new Date(Math.floor(departAt! / 300_000) * 300_000).toISOString().replace(/\.\d{3}Z$/, 'Z'));
+  else if (!live) q.set('arriveAt', new Date(Math.floor(arriveBy! / 300_000) * 300_000).toISOString().replace(/\.\d{3}Z$/, 'Z'));
   try {
     const res = await fetch(`https://api.tomtom.com/routing/1/calculateRoute/${pt(from)}:${pt(to)}/json?${q}`, {
       next: { revalidate: live ? 300 : 900 }, signal: AbortSignal.timeout(6000),

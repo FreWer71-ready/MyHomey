@@ -214,7 +214,9 @@ svg.ico {
 /* Enhetliga knappar på alla sidor. Flikar/filter: .pill (44 px). Åtgärder: .tile (76 px, i mobil 108 px när ikonen står ovanför). */
 .pill { display: inline-flex; flex-shrink: 0; align-items: center; gap: 0.5rem; height: 2.75rem; padding: 0 1rem; border-radius: 9999px;
   font-size: 1rem; font-weight: 600; white-space: nowrap; background: var(--color-card); color: var(--color-dim); }
-.pill[aria-current="page"], .pill.on { background: var(--color-fg); color: #0B0F14; }
+/* Valt läge: dov ljus ton med tunn ljus kant och vit fet text – syns tydligt men lyser inte som vitt; gult är
+   förbehållet huvudknappar (Sök, Jag är på tåget). */
+.pill[aria-current="page"], .pill.on, .sel { background: rgb(230 237 243 / 0.16); color: var(--color-fg); box-shadow: inset 0 0 0 1.5px rgb(230 237 243 / 0.5); font-weight: 700; }
 
 /* Röd varning: helfylld och lyser (pulserande glöd runt plattan, inte i texten). */
 .alert-pulse { animation: alert-pulse 2.4s ease-in-out infinite; }
@@ -243,7 +245,10 @@ svg.ico {
 .btn-row:hover { background-color: rgb(255 255 255 / .22); }
 .btn-row:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 /* Tydliga varianter i appens färger: ljus (som valda knappar) för Sträckan/Dörr till dörr, diskret med kant för Dölj. */
-.btn-row-light { background-color: #E6EDF3; color: #0B0F14; }
-.btn-row-light:hover { background-color: #FFFFFF; }
+.btn-row-light { background-color: rgb(230 237 243 / .22); color: #fff; box-shadow: inset 0 0 0 1px rgb(230 237 243 / .45); }
+.btn-row-light:hover { background-color: rgb(230 237 243 / .32); }
+/* ✕ (dölj avgång): röd. */
+.btn-row-danger { background-color: #DA3633; color: #fff; }
+.btn-row-danger:hover { background-color: #F85149; }
 .btn-row-quiet { background-color: rgb(0 0 0 / .28); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .28); }
 .btn-row-quiet:hover { background-color: rgb(0 0 0 / .4); }
