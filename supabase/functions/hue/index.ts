@@ -179,8 +179,7 @@ async function sync(hh: string) {
     error: error?.message ?? moods?.error?.message ?? null,
   });
   if (error) throw new Error(`ingest: ${error.message}`);
-  const arrived = await arrival(hh, a).catch((e) => `fel: ${String(e).slice(0, 80)}`);
-  return { household: hh, ...data, lights: lights.length, arrived };
+  return { household: hh, ...data, lights: lights.length };
 }
 
 // ---- Styrning ----------------------------------------------------------------------------
@@ -223,52 +222,6 @@ async function groupLight(a: Auth, zone: string, c: { on?: boolean; dim?: number
     if (c.dim !== undefined) body.on = { on: true }, body.dimming = { brightness: Math.max(1, Math.round(c.dim * 100)) };
   }
   await clip(a, `/resource/grouped_light/${gid}`, { method: "PUT", body: JSON.stringify(body) });
-}
-
-// ---- Tänd när man kommer hem -------------------------------------------------------------
-const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
-  const r = (x: number) => (x * Math.PI) / 180;
-  const h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lon - a.lon) / 2) ** 2;
-  return 12742 * Math.asin(Math.sqrt(h));
-};
-function sunElevation(ms: number, lat: number, lon: number): number {
-  const rad = Math.PI / 180, d = ms / 86400_000 - 10957.5;
-  const g = (357.529 + 0.98560028 * d) * rad, q = 280.459 + 0.98564736 * d;
-  const L = (q + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * rad, e = (23.439 - 0.00000036 * d) * rad;
-  const dec = Math.asin(Math.sin(e) * Math.sin(L)), ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)) / rad;
-  const ha = ((((18.697374558 + 24.06570982441908 * d) % 24) * 15 + lon - ra) % 360) * rad;
-  return Math.asin(Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos(ha)) / rad;
-}
-/**
- * Körs vid varje synk (varannan minut). Personens Life360-position (delad mellan hushållen): bort = mer än 500 m från
- * hemmet; kommer hon tillbaka (inom 250 m) efter minst 20 min borta tänds de valda rummen – bara när det är mörkt om
- * så valts. Högst en gång per 30 min. Positioner äldre än 30 min räknas inte.
- */
-async function arrival(hh: string, a: Auth): Promise<string> {
-  const { data: cfg } = await db.from("arrival_lights").select("*").eq("household_id", hh).maybeSingle();
-  if (!cfg?.enabled || cfg.home_lat == null || !cfg.person) return "av";
-  const { data: devs } = await db.from("devices").select("id,name").ilike("name", `${cfg.person}%`).ilike("driver_id", "%life360%");
-  if (!devs?.length) return "ingen person";
-  const { data: caps } = await db.from("capability_state").select("device_id,capability_id,value_num,last_updated")
-    .in("device_id", devs.map((d) => d.id)).in("capability_id", ["life360_latitude", "life360_longitude"]);
-  const lat = caps?.find((c) => c.capability_id === "life360_latitude"), lon = caps?.find((c) => c.capability_id === "life360_longitude");
-  if (lat?.value_num == null || lon?.value_num == null) return "ingen position";
-  const now = Date.now();
-  if (now - Date.parse(lat.last_updated ?? "") > 30 * 60_000) return "gammal position";
-  const d = km({ lat: lat.value_num, lon: lon.value_num }, { lat: cfg.home_lat, lon: cfg.home_lon });
-  if (d > 0.5) {
-    if (!cfg.away) await db.from("arrival_lights").update({ away: true, away_since: new Date(now).toISOString() }).eq("household_id", hh);
-    return "borta";
-  }
-  if (d > 0.25 || !cfg.away) return "hemma";
-  await db.from("arrival_lights").update({ away: false }).eq("household_id", hh);
-  const awayLong = now - Date.parse(cfg.away_since ?? "") >= 20 * 60_000;
-  const recent = cfg.last_fired && now - Date.parse(cfg.last_fired) < 30 * 60_000;
-  const dark = sunElevation(now, cfg.home_lat, cfg.home_lon) < 3;
-  if (!awayLong || recent || (cfg.only_dark && !dark)) return "hemkommen, ingen tändning";
-  await Promise.all((cfg.zones ?? []).map((z: string) => roomScene(a, z, cfg.scene === "mys" ? "mys" : "ljust").catch(() => null)));
-  await db.from("arrival_lights").update({ last_fired: new Date(now).toISOString() }).eq("household_id", hh);
-  return "tände";
 }
 
 Deno.serve(async (req) => {
