@@ -21,7 +21,11 @@ export type Light = {
   can: { dim: boolean; temp: boolean; color: boolean };
   /** light_temperature 0 = kallt … 1 = varmt; hue/sat 0–1. */
   temp: number | null; hue: number | null; sat: number | null;
+  /** Hue: lampan klarar ljuseffekter (levande ljus, eld, glitter), och om en effekt är på. */
+  effects?: boolean; effectOn?: boolean;
 };
+/** Rörelsesensor (Hue): rörelse nu, senaste ändring, temperatur, ljus och om sensorn är påslagen. */
+export type Sensor = { id: string; name: string; motion: boolean | null; motionAt: string | null; temp: number | null; lux: number | null; enabled: boolean | null };
 export type Room = {
   id: string;
   name: string;
@@ -34,6 +38,8 @@ export type Room = {
   humidity: number | null;
   lights: Light[];
   lightsOn: number;
+  /** Hue-sensorer i rummet (rörelse, temperatur, ljus). */
+  sensors: Sensor[];
   moods: { id: string; name: string }[];
   deviceCount: number;
 };
@@ -90,6 +96,8 @@ export const CAPS = [
   'measure_wind_strength', 'measure_gust_strength', 'measure_wind_angle', 'measure_temperature.surface',
   'light_temperature', 'light_hue', 'light_saturation',
   'presence',
+  // Hue: ljuseffekter, sensor på/av och ljusnivå.
+  'hue_effects', 'hue_effect_on', 'sensor_enabled', 'measure_luminance',
   // Homey Energys uppskattning för enheter utan egen mätare (skickas av Dashboard-skriptet).
   'measure_power.homey',
 ];
@@ -160,6 +168,7 @@ export function buildHome(
       id: d.id, name: d.name.trim(), on: onoff.value_bool === true, dim: dim == null ? null : Math.round(dim * 100),
       can: { dim: !!cap(d, 'dim'), temp: !!cap(d, 'light_temperature'), color: !!cap(d, 'light_hue') && !!cap(d, 'light_saturation') },
       temp: num('light_temperature'), hue: num('light_hue'), sat: num('light_saturation'),
+      ...(cap(d, 'hue_effects') ? { effects: true, effectOn: cap(d, 'hue_effect_on')?.value_bool === true } : {}),
     };
   };
   const allLights = active.map(lightOf).filter((l): l is Light => l !== null);
@@ -182,6 +191,11 @@ export function buildHome(
         humidity: HUMIDITY_ROOMS.test(name) ? avg(nums(ds, 'measure_humidity')) : null,
         lights,
         lightsOn: lights.filter((l) => l.on).length,
+        sensors: ds.filter((d) => d.class === 'sensor' && (cap(d, 'alarm_motion') || cap(d, 'sensor_enabled'))).map((d) => ({
+          id: d.id, name: d.name.trim(), motion: cap(d, 'alarm_motion')?.value_bool ?? null, motionAt: cap(d, 'alarm_motion')?.last_updated ?? null,
+          temp: cap(d, 'measure_temperature')?.value_num ?? null, lux: cap(d, 'measure_luminance')?.value_num ?? null,
+          enabled: cap(d, 'sensor_enabled')?.value_bool ?? null,
+        })),
         moods: moods
           .filter((m) => m.zone_id === z.id)
           .map((m) => ({ id: m.id, name: m.name.trim() }))

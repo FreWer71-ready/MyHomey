@@ -114,7 +114,7 @@ test('regnvarning kräver nederbörd och öppet fönster', async () => {
 
 test('fuktvarning från 70 %', async () => {
   const { humidityWarnings } = await import('./alerts.ts');
-  const r = (name: string, humidity: number | null) => ({ id: name, name, icon: 'drop' as const, temp: 22, tempTrend: null, tempStale: false, humidity, lights: [], lightsOn: 0, moods: [], deviceCount: 1 });
+  const r = (name: string, humidity: number | null) => ({ id: name, name, icon: 'drop' as const, temp: 22, tempTrend: null, tempStale: false, humidity, lights: [], lightsOn: 0, sensors: [], moods: [], deviceCount: 1 });
   assert.deepEqual(humidityWarnings([r('Badrum', 74), r('Toa', 55), r('Kök', null)]).map((x) => x.name), ['Badrum']);
 });
 
