@@ -8,7 +8,7 @@ import { etaConfigured, reverseGeocode, routeEta } from '@/lib/route';
 import { groupRoad } from '@/lib/commute';
 import { parseLatLon, pickPosition } from '@/lib/startpoint';
 import { loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
-import { alongRoute, boxFor, km, type LatLon } from '@/lib/trip';
+import { boxFor, km, onRoute, type LatLon } from '@/lib/trip';
 
 // Resa från aktuell plats till jobbet eller hem, kollektivt (ResRobot) eller med bil (TomTom).
 // ?from=here|home|work|place&to=home|work|place&mode=transit|car (&lat&lon&acc för Min plats, &fq/&q = adress eller\n// platsnamn för valfri plats som start/mål). Position: mobilen först, sedan Life360 (eller Apple Watch).
@@ -75,7 +75,7 @@ export async function GET(req: Request) {
     const [eta, area] = await Promise.all([routeEta(pos.at, dest, null), loadArea(boxFor([pos.at, dest], 8)).catch(() => [])]);
     if (!eta) return err('Bilresan kunde inte räknas fram', 502);
     // Hinder längs vägen (Trafikverket): olyckor, vägarbeten, avstängningar – högst tre.
-    const hinder = groupRoad(alongRoute(area, pos.at, dest)).slice(0, 3)
+    const hinder = groupRoad(onRoute(area, eta.path ?? [])).slice(0, 3)
       .map((g) => ({ type: g.type, road: g.road, place: g.places[0] ?? null, tone: g.tone, count: g.count }));
     return NextResponse.json({ ...info, eta: { minutes: eta.minutes, trafficMin: eta.trafficMin, km: eta.km, arrive: eta.arrive }, hinder }, noStore);
   }
