@@ -556,7 +556,7 @@ export default async function HomePage() {
                   : <><span className="font-semibold text-fg">{tripEta.trip.start != null ? when(tripEta.trip.start) : 'Idag'}</span> · {tripEta.trip.title}</>}
               </p>
               {tripLine}
-              {!tripEta.fallback && tripEta.key && <TripMargin eventKey={tripEta.key} value={tripEta.own ?? null} />}
+              {!tripEta.fallback && tripEta.key && <TripMargin eventKey={tripEta.key} value={tripEta.own ?? null} auto={tripEta.eta.minutes >= 30 ? 15 : 5} />}
             </Card>
           )}
           {weekend && (
