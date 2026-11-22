@@ -10,7 +10,7 @@ const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour
  * Kalender (hushållets Google-kalendrar via /api/calendar). Idag och Imorgon visas alltid, övriga dagar bara
  * om något med tid är inplanerat. Heldag markeras bara vid dagen. Pågående och egna lagets matcher lyfts fram.
  */
-export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id = 'kalender-vecka' }: { src?: string; title?: string; id?: string } = {}) {
+export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id = 'kalender-vecka', collapsible = true }: { src?: string; title?: string; id?: string; collapsible?: boolean } = {}) {
   const [cal, setCal] = useState<Calendar | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -41,10 +41,12 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
   const week = useRef<HTMLDivElement>(null);
 
   // Infällt kort: bara rubriken och en sammanfattning. Valet sparas per kalender på enheten.
+  // collapsible=false (kalenderfokus på Hem): alltid utfälld, ingen knapp för att fälla in.
   const [open, setOpen] = useState(true);
   useEffect(() => {
+    if (!collapsible) return;
     try { if (localStorage.getItem(`cal-closed:${id}`) === '1') setOpen(false); } catch { /* privat läge */ }
-  }, [id]);
+  }, [id, collapsible]);
   const toggle = () => setOpen((o) => {
     try { localStorage.setItem(`cal-closed:${id}`, o ? '1' : '0'); } catch { /* privat läge */ }
     return !o;
@@ -61,12 +63,16 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
     <section aria-label={title} className="flex max-h-[30rem] min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:max-h-none lg:p-6">
       <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
         {/* Rubriken fäller in och ut; "Månad" öppnar 30 dagar i en egen ruta. */}
-        <button type="button" onClick={toggle} aria-expanded={open} aria-controls={`${id}-lista`}
-          className="flex min-h-11 min-w-0 grow items-center gap-2.5 text-left">
-          <Icon name="calendar" size={22} />
-          <span className="truncate">{title}</span>
-          <span aria-hidden="true" className={`text-[1rem] transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
-        </button>
+        {collapsible ? (
+          <button type="button" onClick={toggle} aria-expanded={open} aria-controls={`${id}-lista`}
+            className="flex min-h-11 min-w-0 grow items-center gap-2.5 text-left">
+            <Icon name="calendar" size={22} />
+            <span className="truncate">{title}</span>
+            <span aria-hidden="true" className={`text-[1rem] transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
+          </button>
+        ) : (
+          <span className="flex min-h-11 min-w-0 grow items-center gap-2.5"><Icon name="calendar" size={22} /><span className="truncate">{title}</span></span>
+        )}
         {cal && <button type="button" popoverTarget={id} className="min-h-11 shrink-0 text-[1rem] font-normal">Månad ›</button>}
       </h2>
       {!open && cal && <p className="truncate text-[1rem] text-dim">{summary}</p>}
