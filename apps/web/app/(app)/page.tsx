@@ -4,7 +4,7 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
-import { alongRoute, boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nextTrip, upcoming, type Trip } from '@/lib/trip';
+import { boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nextTrip, upcoming, type Trip, onRoute } from '@/lib/trip';
 import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
@@ -250,7 +250,9 @@ export default async function HomePage() {
     const dist = dest ? km(PLACE, dest) : 0;
     if (t && dest && dist > 3 && dist < 250) {
       trip = { ...t, km: dist };
-      weekendRoads = groupRoad(alongRoute(await loadArea(boxFor([PLACE, dest], 8)), PLACE, dest), now);
+      // Bara hinder på den faktiska rutten (TomTom); utan rutt: inga ärenden längs vägen.
+      const [area, route] = await Promise.all([loadArea(boxFor([PLACE, dest], 8)), etaConfigured() ? routeEta(PLACE, dest, null, now) : null]);
+      weekendRoads = groupRoad(onRoute(area, route?.path ?? []), now);
     } else {
       weekendRoads = groupRoad(nearHome(await loadArea(boxFor([PLACE], 20)), PLACE), now);
     }

@@ -1,5 +1,5 @@
 import 'server-only';
-import type { LatLon } from './trip';
+import { thinPath, type LatLon } from './trip';
 
 // Restid med bil via TomTom Routing (trafik i realtid nära i tiden, annars historisk trafik för tiden på dygnet).
 // TOMTOM_API_KEY i Vercel; utan nyckel visas ingen restid. Nyckeln får aldrig hamna i loggar eller svar.
@@ -10,6 +10,8 @@ export type Eta = {
   minutes: number; trafficMin: number; km: number;
   /** true: händelsen börjar snart, beräknat från "åk nu"; false: bakåt från starttiden. */
   live: boolean;
+  /** Rutten som punkter (glesad), för att hitta hinder som faktiskt ligger på vägen. */
+  path?: LatLon[];
 };
 
 export const etaConfigured = () => !!process.env.TOMTOM_API_KEY;
@@ -33,12 +35,14 @@ export async function routeEta(from: LatLon, to: LatLon, arriveBy: number | null
       next: { revalidate: live ? 300 : 900 }, signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) { console.error(`TomTom: status ${res.status}`); return null; }
-    const s = (await res.json())?.routes?.[0]?.summary;
+    const route = (await res.json())?.routes?.[0];
+    const s = route?.summary;
     if (!s?.travelTimeInSeconds) return null;
+    const pts: LatLon[] = (route.legs ?? []).flatMap((l: { points?: { latitude: number; longitude: number }[] }) => (l.points ?? []).map((p) => ({ lat: p.latitude, lon: p.longitude })));
     return {
       depart: Date.parse(s.departureTime), arrive: Date.parse(s.arrivalTime),
       minutes: Math.round(s.travelTimeInSeconds / 60), trafficMin: Math.round((s.trafficDelayInSeconds ?? 0) / 60),
-      km: s.lengthInMeters / 1000, live,
+      km: s.lengthInMeters / 1000, live, path: thinPath(pts),
     };
   } catch (e) {
     console.error(`TomTom: ${(e as Error)?.name ?? 'fel'}`);

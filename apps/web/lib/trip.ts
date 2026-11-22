@@ -107,3 +107,16 @@ export function editDistance(a: string, b: string): number {
   }
   return prev[t.length];
 }
+
+/** Glesar ut en rutt (TomTom-punkter) till en punkt per `stepKm`, så att jämförelserna går snabbt. */
+export function thinPath(points: LatLon[], stepKm = 0.15): LatLon[] {
+  const out: LatLon[] = [];
+  for (const p of points) if (!out.length || km(out[out.length - 1], p) >= stepKm) out.push(p);
+  const last = points[points.length - 1];
+  if (last && out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+
+/** Vägärenden som ligger på den faktiska rutten (inom `buffer` km från någon del av den). */
+export const onRoute = (events: RoadEvent[], path: LatLon[], buffer = 0.25) =>
+  path.length < 2 ? [] : events.filter((e) => has(e) && path.some((p, i) => i > 0 && toSegmentKm(e, path[i - 1], p) <= buffer));

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { alongRoute, boxFor, editDistance, isWeekend, km, nearHome, nextTrip, placeCandidates, placeLabel } from './trip.ts';
+import { alongRoute, boxFor, onRoute, thinPath, editDistance, isWeekend, km, nearHome, nextTrip, placeCandidates, placeLabel } from './trip.ts';
 import type { RoadEvent } from './commute.ts';
 
 const home = { lat: 59.371, lon: 16.51 }; // Eskilstuna
@@ -49,4 +49,12 @@ test('resa: platsnamn ur titel', () => {
   assert.deepEqual(placeCandidates('Möte med Anna'), []);
   assert.equal(editDistance('Tunavallen', 'Tunahallen'), 1);
   assert.ok(editDistance('Refreshments by Anna', 'Anna') > 2);
+});
+
+test('hinder bara på den faktiska rutten', () => {
+  const path = thinPath([{ lat: 59.37, lon: 16.51 }, { lat: 59.30, lon: 17.20 }, { lat: 59.31, lon: 18.0 }]);
+  const ev = (id: string, lat: number, lon: number) => ({ id, lat, lon }) as never;
+  // På vägen, 2 km bredvid, och nära målet men inte på rutten.
+  const hit = onRoute([ev('på', 59.335, 16.855), ev('bredvid', 59.355, 16.855), ev('mål', 59.29, 18.02)], path).map((e: { id: string }) => e.id);
+  assert.deepEqual(hit, ['på']);
 });
