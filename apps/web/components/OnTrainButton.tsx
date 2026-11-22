@@ -40,7 +40,7 @@ function ActionButton({ act, label, aria, className = '' }: { act: () => Promise
 
 /** "Dölj": avgången visas inte längre (man tar inte det tåget). */
 export function SkipButton({ ident, dep, time, compact }: { ident: string; dep: number; time: string; compact?: boolean }) {
-  return <ActionButton act={() => skipTrain(ident, dep)} label={compact ? '✕' : 'Dölj'} aria={`Dölj avgången ${time}, tåg ${ident}`} className={`btn-row-quiet ${compact ? 'w-9 !px-0' : ''}`} />;
+  return <ActionButton act={() => skipTrain(ident, dep)} label={compact ? '✕' : 'Dölj'} aria={`Dölj avgången ${time}, tåg ${ident}`} className={compact ? 'btn-row-danger w-9 !px-0' : 'btn-row-quiet'} />;
 }
 
 /** Visa dolda avgångar igen. */

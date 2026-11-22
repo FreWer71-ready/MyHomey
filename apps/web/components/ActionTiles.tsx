@@ -81,7 +81,7 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
  : layout === 'compact'
  ? 'h-full min-h-12 items-center rounded-[0.875rem] border border-line bg-white/[0.04] px-2.5 py-2 hover:bg-white/[0.08]'
  : 'h-14 items-center'
- } ${a.toggle ? (on(a) ? '!border-[#E6EDF3] !bg-[#E6EDF3] !text-[#0B0F14]' : '!bg-transparent') : ''} ${st === 'busy' ? 'animate-pulse' : ''}`}
+ } ${a.toggle ? (on(a) ? 'sel !border-transparent' : '!bg-transparent') : ''} ${st === 'busy' ? 'animate-pulse' : ''}`}
               >
                 <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' ? `h-5 min-w-5 ${a.toggle && on(a) ? '' : 'text-dim'}` : 'size-10 rounded-[0.75rem] bg-white/[0.06]'}`}>
                   {a.kind === 'hue' && a.colors?.length ? (

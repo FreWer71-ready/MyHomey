@@ -100,20 +100,22 @@ async function preferredHome(tr: Transfer, goal: LatLon, home: LatLon, at: numbe
  * `home`: hemifrån via TRANSIT_ORIGIN_STOP (om satt) med promenad dit; `toHome`: dit med promenad hem efteråt.
  * Med TRANSIT_VIA och TRANSIT_TRANSFER används den föredragna vägen (jobbet ↔ hemmet).
  */
-export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n = 2, home = false, toHome = false): Promise<TransitTrip[]> {
+export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n = 2, home = false, toHome = false, arrive = false): Promise<TransitTrip[]> {
   if (!process.env.RESROBOT_API_KEY) return [];
   const goal = transitGoal()?.at;
   const tr = process.env.TRANSIT_VIA ? transfer() : null;
   try {
-    if (tr && goal && !toHome && km(to, goal) < 0.2) return await preferredOut(tr, from, to, at, n, home);
-    if (tr && goal && toHome && process.env.TRANSIT_ORIGIN_STOP && km(from, goal) < 1) return await preferredHome(tr, goal, to, at, n);
+    // Ankomsttid: vanlig sökning bakåt från ankomsten (föredragen väg räknas framåt).
+    if (!arrive && tr && goal && !toHome && km(to, goal) < 0.2) return await preferredOut(tr, from, to, at, n, home);
+    if (!arrive && tr && goal && toHome && process.env.TRANSIT_ORIGIN_STOP && km(from, goal) < 1) return await preferredHome(tr, goal, to, at, n);
     // Övrigt (t.ex. från en annan plats): snabbaste vägen, utan buss.
     const stop = home ? process.env.TRANSIT_ORIGIN_STOP : undefined;
     const endStop = toHome ? process.env.TRANSIT_ORIGIN_STOP : undefined;
     const f: Point = stop ? { id: stop } : { at: from }, t: Point = endStop ? { id: endStop } : { at: to };
-    let trips = await query(f, t, at, { products: process.env.TRANSIT_PRODUCTS ?? '118', n: n + 2 });
+    let trips = await query(f, t, at, { products: process.env.TRANSIT_PRODUCTS ?? '118', n: n + 2, arrival: arrive });
     if (stop) trips = trips.map((x) => (x.startAt ? withWalk(x, km(from, x.startAt)) : x));
     if (endStop) trips = trips.map((x) => (x.endAt ? withWalkEnd(x, km(x.endAt, to)) : x));
+    if (arrive) return trips.filter((x) => x.arr <= at + MIN).sort((a, b) => b.arr - a.arr || b.dep - a.dep).slice(0, n).reverse();
     return bestTrips(trips).filter((x) => x.dep >= at - 2 * MIN).slice(0, n);
   } catch (e) {
     console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);

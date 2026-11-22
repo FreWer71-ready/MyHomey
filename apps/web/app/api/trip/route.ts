@@ -27,6 +27,12 @@ export async function GET(req: Request) {
   const from = q.get('from') ?? 'here', to = q.get('to'), mode = q.get('mode');
   const ENDS = ['home', 'work', 'place'];
   if (!['here', ...ENDS].includes(from) || !ENDS.includes(to ?? '') || (mode !== 'transit' && mode !== 'car')) return err('Ogiltig förfrågan', 400);
+  // Tid: nu, avgång vid (dep) eller framme senast (arr), t = ms. Högst två veckor fram.
+  const when = q.get('when') === 'dep' || q.get('when') === 'arr' ? q.get('when') as 'dep' | 'arr' : 'now';
+  const t = Number(q.get('t'));
+  const nowMs = Date.now();
+  if (when !== 'now' && (!Number.isFinite(t) || t < nowMs - 3600_000 || t > nowMs + 14 * 86400_000)) return err('Ogiltig tid', 400);
+  const at = when === 'now' ? nowMs : t;
   if (mode === 'transit' ? !transitConfigured() : !etaConfigured()) return err(mode === 'transit' ? 'Kollektivtrafik är inte inställd' : 'Bilresa är inte inställd', 404);
 
   // Valfri plats: adress (geokodning) eller platsnamn (TomTom-sökning nära hemmet).
@@ -63,7 +69,7 @@ export async function GET(req: Request) {
     pos = { at: o.at, src: from as 'home' | 'work' | 'place', name: o.name };
   }
   const dest = target.at;
-  const base = { from, to, mode, start: pos.src, ...(pos.name ? { fromName: pos.name } : {}), ...(target.name ? { place: target.name } : {}) };
+  const base = { from, to, mode, when, at, start: pos.src, ...(pos.name ? { fromName: pos.name } : {}), ...(target.name ? { place: target.name } : {}) };
   // Redan framme (inom 300 m)?
   if (km(pos.at, dest) <= 0.3) return NextResponse.json({ ...base, here: true });
 
@@ -72,16 +78,18 @@ export async function GET(req: Request) {
   const [fromAddr, toAddr] = await Promise.all([reverseGeocode(pos.at), reverseGeocode(dest)]);
   const info = { ...base, fromAddr, toAddr };
   if (mode === 'car') {
-    const [eta, area] = await Promise.all([routeEta(pos.at, dest, null), loadArea(boxFor([pos.at, dest], 8)).catch(() => [])]);
+    const [eta, area] = await Promise.all([
+      routeEta(pos.at, dest, when === 'arr' ? at : null, nowMs, when === 'dep' ? at : null), loadArea(boxFor([pos.at, dest], 8)).catch(() => []),
+    ]);
     if (!eta) return err('Bilresan kunde inte räknas fram', 502);
     // Hinder längs vägen (Trafikverket): olyckor, vägarbeten, avstängningar – högst tre.
     const hinder = groupRoad(onRoute(area, eta.path ?? [])).slice(0, 3)
       .map((g) => ({ type: g.type, road: g.road, place: g.places[0] ?? null, tone: g.tone, count: g.count }));
-    return NextResponse.json({ ...info, eta: { minutes: eta.minutes, trafficMin: eta.trafficMin, km: eta.km, arrive: eta.arrive }, hinder }, noStore);
+    return NextResponse.json({ ...info, eta: { minutes: eta.minutes, trafficMin: eta.trafficMin, km: eta.km, arrive: eta.arrive, depart: eta.depart, live: eta.live }, hinder }, noStore);
   }
   // Hemifrån (inom 150 m) räknas från hemmets hållplats med promenad, som på pendlingssidan.
   const atHome = from === 'home' || km(pos.at, PLACE) <= 0.15;
-  const trips = to === 'home' ? await loadTransit(pos.at, PLACE, Date.now(), 2, false, true) : await loadTransit(pos.at, dest, Date.now(), 2, atHome);
+  const trips = to === 'home' ? await loadTransit(pos.at, PLACE, at, 2, false, true, when === 'arr') : await loadTransit(pos.at, dest, at, 2, atHome, false, when === 'arr');
   if (!trips.length) return err('Ingen kollektivresa hittades', 502);
   const c = await loadCommute().catch(() => null);
   const idents = new Set(trips.flatMap((t) => t.legs.map((l) => l.num).filter(Boolean)));
