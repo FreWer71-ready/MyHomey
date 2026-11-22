@@ -23,6 +23,8 @@ import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
 import { OnTrainButton } from '@/components/OnTrainButton';
+import { TripMargin } from '@/components/TripMargin';
+import { cookies } from 'next/headers';
 import { NearDepartures, nearDepartures } from '@/components/NearDepartures';
 import { loadTrips, saveTrip, ticket } from '@/lib/trips-source';
 import { claimAt, claimable, compensation } from '@/lib/trips';
@@ -39,7 +41,7 @@ import { compass } from '@/lib/home';
 import { type RoadGroup, commuteAlerts, direction, groupRoad, shortPlace, slip, trainTone } from '@/lib/commute';
 import { sumSeries } from '@/lib/history';
 import { seenAgo, startOfDayStockholm } from '@/lib/time';
-import { addDays, dayInfo, dayOf } from '@/lib/calendar-view';
+import { addDays, dayInfo, dayOf, shortTitle } from '@/lib/calendar-view';
 import { zoned } from '@/lib/calendar';
 import { symbolInfo, weatherKind } from '@/lib/weather';
 import { WeatherIcon } from '@/components/WeatherIcon';
@@ -232,6 +234,9 @@ export default async function HomePage() {
   const roads = commute ? groupRoad(commute.road) : [];
   const trafficAlerts = commute ? commuteAlerts(commute, now, hhmm) : [];
   const hasCal = calendarConfigured();
+  // Härnäst i kalendern (inom 36 h) – visas under klockan när inget spelas.
+  const nextUp = hasCal && !playing.length ? (await loadCalendarServer().catch(() => null))?.days
+    .flatMap((d) => d.timed).find((e) => e.start != null && e.start > now && e.start < now + 36 * 3600_000) ?? null : null;
   const hasMirror = mirrorConfigured();
   // Helg: ingen tågpendling. Visa i stället vägläget mot nästa kalenderhändelse med plats (t.ex. Mariefred),
   // annars trafikläget i närområdet. Samma kortstorlek som pendlingen.
@@ -257,7 +262,11 @@ export default async function HomePage() {
   // om hen inte redan är där. Rubrik i DEFAULT_DESTINATION_LABEL (standard "Jobbet").
   // Plats: kalenderns platsfält, annars gissad ur titeln (TomTom Search, t.ex. "Tunahallen W fotboll"). Minst 1 km bort.
   // Marginal: 5 min, och 15 min när bilresan tar minst 30 min.
-  let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean; fallback: boolean; guessed: boolean; margin: number } | null = null;
+  // Egen marginal per kalenderhändelse ("Vill vara där …"), sparad på enheten.
+  let margins: Record<string, number> = {};
+  try { margins = JSON.parse((await cookies()).get('trip_margins')?.value ?? '{}'); } catch { /* ingen eller trasig kaka */ }
+  const eventKey = (e: { start: number; title: string }) => `${e.start}|${e.title.slice(0, 80)}`;
+  let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean; fallback: boolean; guessed: boolean; margin: number; key?: string; own?: number | null } | null = null;
   if (etaConfigured()) {
     const o = origin(locate.members);
     const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
@@ -268,10 +277,12 @@ export default async function HomePage() {
       if (!dest || dist <= 1 || dist >= 400) continue;
       const first = await routeEta(o.from, dest, e.start - 5 * 60_000, now);
       if (!first) break;
-      const margin = first.minutes >= 30 ? 15 : 5;
-      const eta = margin === 15 ? { ...first, depart: first.depart - 10 * 60_000 } : first;
+      // Marginal: eget val (kaka, "Vill vara där …") eller automatiskt 5 min, 15 min för resor på minst 30 min.
+      const own = margins[eventKey(e)];
+      const margin = typeof own === 'number' && own >= 0 && own <= 60 ? own : (first.minutes >= 30 ? 15 : 5);
+      const eta = margin !== 5 ? { ...first, depart: first.depart - (margin - 5) * 60_000 } : first;
       const place = e.location ? placeLabel(e.location) : `${guess!.name}?`;
-      tripEta = { trip: { title: e.title, location: e.location ?? guess!.name, place, start: e.start, km: dist }, eta, fromHere: o.away, fallback: false, guessed: !e.location, margin };
+      tripEta = { trip: { title: e.title, location: e.location ?? guess!.name, place, start: e.start, km: dist }, eta, fromHere: o.away, fallback: false, guessed: !e.location, margin, key: eventKey(e), own: typeof own === 'number' ? own : null };
       break;
     }
   }
@@ -436,7 +447,16 @@ export default async function HomePage() {
           </span>
           {/* Spelar nu under klockan: fyller ytan och låter varningarna ligga högst upp i mitten. */}
           <div className="min-w-0 basis-full overflow-hidden">
-            <NowPlayingStrip items={playing} />
+            {/* Inget spelas: härnäst i kalendern på samma plats (annars blir ytan tom). */}
+            {playing.length ? <NowPlayingStrip items={playing} /> : nextUp && (
+              <div className="flex h-[4.5rem] min-w-0 items-center gap-3.5 rounded-[1.125rem] border border-line bg-card pl-3 pr-4">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name="calendar" size={24} /></span>
+                <span className="flex min-w-0 grow flex-col leading-tight">
+                  <span className="truncate text-[0.875rem] text-dim">Härnäst · {dayOf(nextUp.start!) === dayOf(now) ? 'idag' : dayOf(nextUp.start!) === addDays(dayOf(now), 1) ? 'imorgon' : dayInfo(dayOf(nextUp.start!), now).main.toLowerCase()} {hhmm(nextUp.start!)}</span>
+                  <span className="truncate text-[1.3125rem] font-bold">{shortTitle(nextUp.title)}{nextUp.location && <span className="text-[1rem] font-semibold text-dim"> · {placeLabel(nextUp.location)}</span>}</span>
+                </span>
+              </div>
+            )}
           </div>
         </header>
 
@@ -528,7 +548,7 @@ export default async function HomePage() {
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 2xl:col-span-5 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
           {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
           {tripEta && !(weekend && trip) && !sure && (
-            <Card title={`Resa · ${tripEta.trip.place}`} icon="road" href="/pendling"
+            <Card title={`Resa · ${tripEta.trip.place}`} icon="road"
               label={`Resa till ${tripEta.trip.place.replace(/\?$/, ' (gissad plats)')}${tripEta.trip.start != null ? ` klockan ${hhmm(tripEta.trip.start)}` : ''}: ${tripEta.eta.live ? `åk nu, framme ${hhmm(tripEta.eta.arrive)}` : `åk senast ${hhmm(tripEta.eta.depart)}`}, ${plural(tripEta.eta.minutes, 'minut', 'minuter')} plus ${tripEta.margin} minuters marginal. Visa trafikläget.`} className="order-3 lg:order-none lg:shrink-0">
               <p className="truncate text-[1rem] text-dim">
                 {tripEta.fallback
@@ -536,6 +556,7 @@ export default async function HomePage() {
                   : <><span className="font-semibold text-fg">{tripEta.trip.start != null ? when(tripEta.trip.start) : 'Idag'}</span> · {tripEta.trip.title}</>}
               </p>
               {tripLine}
+              {!tripEta.fallback && tripEta.key && <TripMargin eventKey={tripEta.key} value={tripEta.own ?? null} auto={tripEta.eta.minutes >= 30 ? 15 : 5} />}
             </Card>
           )}
           {weekend && (

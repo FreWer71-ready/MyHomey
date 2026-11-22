@@ -47,8 +47,9 @@ export function AlertChips({ alerts, max = 2 }: { alerts: Alert[]; max?: number 
       })}
       {rest > 0 && (
         <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all}
-          className="flex min-h-12 items-center justify-center rounded-[0.875rem] border border-line bg-card px-4 text-[1rem] font-semibold text-fg">
-          {all ? 'Visa färre' : `+${rest} ${rest === 1 ? 'varning' : 'varningar'} till`}
+          className="-my-1 flex min-h-11 items-center justify-center gap-1.5 self-center rounded-full px-4 text-[0.9375rem] font-semibold text-dim hover:text-fg">
+          {/* Diskret textknapp i stället för en hel platta: tar minimal plats. */}
+          {all ? 'Visa färre ▴' : `+${rest} ${rest === 1 ? 'varning' : 'varningar'} till ▾`}
         </button>
       )}
     </div>
