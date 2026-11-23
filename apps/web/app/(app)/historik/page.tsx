@@ -17,6 +17,7 @@ type View = MetricKey | 'lights' | 'presence' | 'wine' | 'road' | 'train';
 const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: 'temp', label: METRICS.temp.label, icon: 'thermo' },
   { key: 'hum', label: 'Fukt', icon: 'drop' },
+  { key: 'lux', label: METRICS.lux.label, icon: 'sun' },
   { key: 'power', label: METRICS.power.label, icon: 'bolt' },
   { key: 'energy', label: METRICS.energy.label, icon: 'chart' },
   { key: 'lights', label: 'Lampor', icon: 'bulb' },
@@ -76,7 +77,7 @@ export default async function HistoryPage({
   const period: PeriodKey = isPeriod(p) ? p : '24h';
   // Flikar utan data för hushållet visas inte. Kommer data in dyker fliken upp av sig själv.
   const [wine, avail] = await Promise.all([loadWine(), loadHistoryAvail()]);
-  const has = (v: View) => v === 'temp' ? avail.caps.has('measure_temperature') : v === 'hum' ? avail.caps.has('measure_humidity')
+  const has = (v: View) => v === 'temp' ? avail.caps.has('measure_temperature') : v === 'hum' ? avail.caps.has('measure_humidity') : v === 'lux' ? avail.caps.has('measure_luminance')
     : v === 'power' ? avail.caps.has('measure_power') || avail.caps.has('measure_power.homey') : v === 'energy' ? avail.caps.has('meter_power')
     : v === 'lights' ? avail.caps.has('onoff') : v === 'presence' ? avail.caps.has('alarm_motion')
     : v === 'wine' ? !!wine : v === 'train' ? avail.trips : avail.road;
@@ -125,7 +126,7 @@ export default async function HistoryPage({
         </nav>}
       </header>
 
-      <nav aria-label="Mått" className={`scroll-x flex gap-2 max-lg:-mx-3 max-lg:overflow-x-auto max-lg:px-3 lg:grid lg:gap-2.5 ${views.length > 8 ? 'lg:grid-cols-9' : views.length > 7 ? 'lg:grid-cols-8' : views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
+      <nav aria-label="Mått" className={`scroll-x flex gap-2 max-lg:-mx-3 max-lg:overflow-x-auto max-lg:px-3 lg:grid lg:gap-2.5 ${views.length > 9 ? 'lg:grid-cols-10' : views.length > 8 ? 'lg:grid-cols-9' : views.length > 7 ? 'lg:grid-cols-8' : views.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
         {views.map((v) => (
           <Link
             key={v.key}

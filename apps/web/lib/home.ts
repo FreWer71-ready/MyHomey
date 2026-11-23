@@ -36,6 +36,8 @@ export type Room = {
   /** Rummet har temperatursensorer men inga värden från de senaste TEMP_MAX_DAYS dagarna. */
   tempStale: boolean;
   humidity: number | null;
+  /** Ljusnivå i lux (den ljusaste sensorn i rummet), om någon sensor mäter det. */
+  lux: number | null;
   lights: Light[];
   lightsOn: number;
   /** Hue-sensorer i rummet (rörelse, temperatur, ljus). */
@@ -191,6 +193,7 @@ export function buildHome(
         tempTrend: trendOf(ds.filter((d) => d.class === 'sensor' && fresh(cap(d, 'measure_temperature'))), TREND_INDOOR),
         tempStale: hasTemp(ds.filter((d) => d.class === 'sensor')) && !temps(ds.filter((d) => d.class === 'sensor')).length,
         humidity: HUMIDITY_ROOMS.test(name) ? avg(nums(ds, 'measure_humidity')) : null,
+        lux: ((l) => (l.length ? Math.max(...l) : null))(nums(ds.filter((d) => d.class === 'sensor'), 'measure_luminance')),
         lights,
         lightsOn: lights.filter((l) => l.on).length,
         sensors: ds.filter((d) => d.class === 'sensor' && (cap(d, 'alarm_motion') || cap(d, 'sensor_enabled'))).map((d) => ({

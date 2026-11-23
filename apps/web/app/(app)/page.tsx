@@ -5,6 +5,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { houseActions } from '@/lib/house-actions';
+import { fmtLux, luxLabel } from '@/lib/lux';
 import { boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nextTrip, upcoming, type Trip, onRoute } from '@/lib/trip';
 import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
@@ -383,6 +384,9 @@ export default async function HomePage() {
 
   // ---- Hemmet ----
   const tempRooms = h.rooms.filter((r) => r.temp != null);
+  // Ljusnivå (lux): det ljusaste rummet med en ljussensor.
+  const luxRooms = h.rooms.filter((r) => r.lux != null);
+  const luxBest = luxRooms.length ? luxRooms.reduce((a, r) => (r.lux! > a.lux! ? r : a)) : null;
   const tempAvg = tempRooms.length ? tempRooms.reduce((a, r) => a + r.temp!, 0) / tempRooms.length : null;
   const odd = tempRooms.filter((r) => r.temp! >= COMFORT.high || r.temp! < COMFORT.low).sort((a, b) => b.temp! - a.temp!);
   const open = h.openings.filter((o) => o.open);
@@ -438,7 +442,7 @@ export default async function HomePage() {
   const trainNote = commute?.trains ? (trains.some((t) => trainTone(t) !== 'ok') ? 'tåg med förseningar' : 'tågen i tid') : null;
 
   // Antal rader i Hemmet: fler än sex ger lite lägre rader så att allt ryms på plattan.
-  const rowCount = [tempAvg != null, h.openings.length > 0, !!net, h.lightsTotal > 0, h.powerMeters + h.powerEstimated > 0, !!price.now, !!wine].filter(Boolean).length;
+  const rowCount = [tempAvg != null, luxBest != null, h.openings.length > 0, !!net, h.lightsTotal > 0, h.powerMeters + h.powerEstimated > 0, !!price.now, !!wine].filter(Boolean).length;
   // Närvaro: Homeys närvaroappar plus Life360-medlemmar som inte redan finns med (matchas på förnamn).
   const first = (n: string) => n.split(/\s+/)[0].toLowerCase();
   // Life360 går före Smart Presence: matchad person får Life360:s hemma/borta.
@@ -797,6 +801,7 @@ export default async function HomePage() {
                 ) : `Alla rum ${COMFORT.low}–${COMFORT.high}°`}
               />
             )}
+            {luxBest && <Row icon="sun" label="Ljusnivå" href="/temperatur" value={fmtLux(luxBest.lux!)} unit="lux" detail={`${luxBest.name} · ${luxLabel(luxBest.lux!)}`} />}
             {h.openings.length > 0 && (
               <Row
                 icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/dorrar"

@@ -326,7 +326,7 @@ export type WineCellar = { total: number; by_color: Record<string, number>; late
 /** Vilka Historik-vyer som har data för hushållet. Flikar utan data visas inte. */
 export type HistoryAvail = { caps: Set<string>; trips: boolean; road: boolean };
 async function loadHistoryAvailFresh(): Promise<HistoryAvail> {
-  if (DEMO) return { caps: new Set(['measure_temperature', 'measure_humidity', 'measure_power', 'meter_power', 'onoff', 'alarm_motion']), trips: true, road: true };
+  if (DEMO) return { caps: new Set(['measure_temperature', 'measure_humidity', 'measure_power', 'meter_power', 'measure_luminance', 'onoff', 'alarm_motion']), trips: true, road: true };
   const sb = await createClient();
   const [caps, trips, road] = await Promise.all([
     sb.from('capability_state').select('capability_id'),
