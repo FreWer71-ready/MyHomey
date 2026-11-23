@@ -43,6 +43,28 @@ export function greeting(now: number): string {
   return h >= 4 && h < 10 ? 'Godmorgon' : 'Hej';
 }
 
+/** Tid på dygnet för avslutet: dag 04–17, kväll 18–21, natt 22–03 (Stockholm). */
+export type DayPart = 'dag' | 'kvall' | 'natt';
+export function dayPart(now: number): DayPart {
+  const h = stockholm(now).hour;
+  return h >= 4 && h < 18 ? 'dag' : h >= 18 && h < 22 ? 'kvall' : 'natt';
+}
+const CLOSING: Record<DayPart, string> = { dag: 'Ha en trevlig dag.', kvall: 'Ha en bra kväll.', natt: 'Sov gott.' };
+
+/** Egna avslutsord ur `BRIEFING_AVSLUT="dag=Ha en fin dag;kväll=Ha en härlig kväll;natt=Sov gott"` (semikolonseparerat). Okända nycklar och tomma texter hoppas över. */
+export function parseClosings(raw: string | undefined): Partial<Record<DayPart, string>> {
+  const out: Partial<Record<DayPart, string>> = {};
+  for (const part of (raw ?? '').split(';')) {
+    const [k, ...rest] = part.split('=');
+    const key = k?.trim().toLowerCase().replace('ä', 'a');
+    const text = rest.join('=').trim().slice(0, 120);
+    if ((key === 'dag' || key === 'kvall' || key === 'natt') && text) out[key] = /[.!?]$/.test(text) ? text : `${text}.`;
+  }
+  return out;
+}
+/** Avslutet efter klockan: "Ha en trevlig dag." / "Ha en bra kväll." / "Sov gott.", eller egna ord. */
+export const closing = (now: number, custom: Partial<Record<DayPart, string>> = {}) => { const d = dayPart(now); return custom[d] ?? CLOSING[d]; };
+
 /**
  * Rapportens text. Hälsningen står för sig ("Hej Fredrik.") och följs av ett stycke, så att rösten gör en tydlig paus
  * (Siri och andra röster gör längre uppehåll vid styckebrytning än vid kommatecken). Sedan datum, väder och `parts`
@@ -147,6 +169,7 @@ export type BriefingInput = {
   car?: { home: boolean; label: string; minutes: number; trafficMin: number; warnings: number } | null;
   evening?: { title: string; start: number }[];
   home?: HomeInput | null;
+  /** Nu och egna avslutsord; utan `now` blir avslutet dagens. */ now?: number; closings?: Partial<Record<DayPart, string>>;
 };
 
 /** Rapportens meningar efter första meningen, i fast ordning; delar utan data hoppas över. */
@@ -177,7 +200,7 @@ export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
     if (rest.length) out.push(`Ikväll har ${joinList(rest.map((e) => `${e.title} klockan ${spokenTime(e.start)}`))}.`);
     games.forEach((g, k) => { const [a, b] = matchOf(g.title)!; out.push(`${k === 0 && !rest.length ? 'Ikväll klockan' : 'Klockan'} ${spokenTime(g.start)} är det match mellan ${a} och ${b}.`); });
   }
-  if (on.has('avslut')) out.push('Ha en trevlig dag.');
+  if (on.has('avslut')) out.push(i.now == null ? (i.closings?.dag ?? CLOSING.dag) : closing(i.now, i.closings));
   return out;
 }
 
