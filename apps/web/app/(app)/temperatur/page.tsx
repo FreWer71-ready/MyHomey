@@ -92,7 +92,7 @@ export default async function TemperaturePage() {
       </section>
 
       {/* INNE */}
-      <section aria-label="Inne" className={`${card} lg:col-span-8`}>
+      {(inside.length > 0 || dead.length > 0) && <section aria-label="Inne" className={`${card} lg:col-span-8`}>
         <h2 className={`${h2} justify-between`}>
           <span className="flex items-center gap-2.5"><Icon name="home" size={22} />Inne · {inside.length} givare</span>
           {avg != null && <span className="text-fg"><span className="text-[1.375rem] font-bold tabular-nums">{n1(avg)}°</span> <span className="text-[0.9375rem] font-normal text-dim">snitt</span></span>}
@@ -101,14 +101,14 @@ export default async function TemperaturePage() {
           <ul className="flex flex-col">
             {inside.map((s) => <SensorRow key={s.id} s={s} hum={humOf.get(s.id) ?? null} />)}
           </ul>
-        ) : <p className="text-[1rem] text-dim">Inga temperaturgivare med värden.</p>}
+        ) : null}
         {dead.length > 0 && (
           <p className="flex items-center gap-2 text-[0.9375rem] text-dim">
             <span className="size-2 rounded-full bg-danger" />Ej nåbara: {dead.map((r) => r.name).join(', ')}
           </p>
         )}
         <p className="text-[0.875rem] text-dim">Kurvor, min och max: senaste 24 h. Rött ≥ {COMFORT.high}°, blått under {COMFORT.low}°.</p>
-      </section>
+      </section>}
     </div>
   );
 }

@@ -114,9 +114,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
             ))}
           </ul>
         </section>
-      ) : (
-        <p className={`${card} text-[1.0625rem] text-dim`}>Inga lampor i det här rummet.</p>
-      )}
+      ) : null}
     </>
   );
 }

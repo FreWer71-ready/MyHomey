@@ -25,7 +25,16 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 
 ## Hue (Ulrika)
 - Hallsensorns automation ligger i Hue-bryggan (behavior_instance "Sensor hall"): rörelse 08–22 tänder zonen "Alla rum" (scen "Ljust", allt utom "Använts ej"), 22–08 gör ingenting, ingen automatisk släckning. Ändras i Hue-appen eller via CLIP v2.
+- Favoriter: Rutiner i fyra kolumner (`ActionTiles` layout `tiles`) med plats för 8 rutiner för hela hemmet, "Mys i hela huset" och "Släck alla lampor" först. Fler fälls ut under "Fler rutiner".
+- "Ringa mobilen" (`NTFY_TOPICS`) ligger i varningsraden på Hem, direkt under klockan. Lägg den inte i Snabbval: kortet klipper innehåll på stor skärm.
 - Hemkomst sköts av Hues egen automation "Komma hem" (geofence i Hue-appen). Dashboardens egen variant är borttagen (kod och tabellen `arrival_lights`).
+
+## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
+- **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.
+- **Villkora på datan, inte på inställningar:** `data.length > 0 && …`. När data kommer in visas avsnittet av sig självt vid nästa laddning, utan kodändring.
+- **"Inga problem" är data:** statusrader som "Inga störningar", "Alla batterier är ok" och "Alla dörrar är stängda" visas så länge underlaget finns (enheterna eller källan). Saknas underlaget (t.ex. inga batterienheter) döljs hela avsnittet.
+- **Undantag:** en sida eller vald vy som blir helt tom visar en kort rad (t.ex. "Ingen historik än.") så att den inte blir blank.
+- Ny funktion: kontrollera sidan med ett hushåll som saknar data. Ulrika saknar flöden, TV, nätverk, vin, tåg, fukt-, effekt- och dörrsensorer.
 
 ## Prestanda
 - Klientcache 30 s (`staleTimes`), `loading.tsx` vid sidhopp. Ändra inte utan skäl.

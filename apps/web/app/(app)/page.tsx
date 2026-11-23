@@ -481,6 +481,12 @@ export default async function HomePage() {
               </span>
             </Link>
           )}
+          {/* Hitta mobilen (Android via ntfy): väl synlig direkt under klockan, larmar tills den stängs på telefonen. */}
+          {pingable.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 flex-1 basis-36 justify-center" />)}
+            </div>
+          )}
         </section>
 
         {/* NÄRVARO (höger, egen yta): vem är hemma, var de andra är. Källa (Life360/Smart Presence) visas på Hitta. */}
@@ -556,13 +562,11 @@ export default async function HomePage() {
             )}
           </Card>
 
-          {(quick.length > 0 || pingable.length > 0) && (
+          {quick.length > 0 && (
             <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0">
               <div className="flex min-h-0 flex-col overflow-y-auto">
                 <ActionTiles items={quick} layout="compact" />
               </div>
-              {/* Hitta mobilen (Android via ntfy): larmar tills den stängs på telefonen. */}
-              {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}s mobil`} className="w-full justify-center" />)}
             </Card>
           )}
         </div>
