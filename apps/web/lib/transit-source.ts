@@ -121,7 +121,10 @@ export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n =
     const stop = home ? process.env.TRANSIT_ORIGIN_STOP : undefined;
     const endStop = toHome ? process.env.TRANSIT_ORIGIN_STOP : undefined;
     const f: Point = stop ? { id: stop } : { at: from, name: home ? 'Hem' : 'Start' }, t: Point = endStop ? { id: endStop } : { at: to, name: toHome ? 'Hem' : 'Mål' };
-    let trips = await query(f, t, at, { products: process.env.TRANSIT_PRODUCTS ?? '118', n: n + 2, arrival: arrive });
+    // Utan TRANSIT_ORIGIN_STOP (t.ex. Ulrika) finns inget pendlarspår att utgå från: alla trafikslag. Med bara tåg och spårvagn
+    // (118) hittar ResRobot ingen hållplats nära hemmet (SVC_LOC H9220). TRANSIT_PRODUCTS styr om det är satt.
+    const products = process.env.TRANSIT_PRODUCTS ?? (process.env.TRANSIT_ORIGIN_STOP ? '118' : undefined);
+    let trips = await query(f, t, at, { products, n: n + 2, arrival: arrive });
     if (stop) trips = trips.map((x) => (x.startAt ? withWalk(x, km(from, x.startAt)) : x));
     if (endStop) trips = trips.map((x) => (x.endAt ? withWalkEnd(x, km(x.endAt, to)) : x));
     if (arrive) return trips.filter((x) => x.arr <= at + MIN).sort((a, b) => b.arr - a.arr || b.dep - a.dep).slice(0, n).reverse();
