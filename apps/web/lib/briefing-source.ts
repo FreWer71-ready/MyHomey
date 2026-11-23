@@ -1,10 +1,10 @@
 import 'server-only';
 import { humidityWarnings } from './alerts.ts';
-import { batteryLabel, briefingParts, parseClosings, sectionsOn, todayPlan, weatherPhrase, type HomeInput, type SchoolKid } from './briefing.ts';
+import { batteryLabel, briefingParts, nameDaysFor, parseClosings, sectionsOn, todayPlan, weatherPhrase, type HomeInput, type SchoolKid } from './briefing.ts';
 import { calendarConfigured, loadCalendarServer } from './calendar-source.ts';
 import { addDays, dayInfo, dayOf, type Calendar } from './calendar-view.ts';
 import { direction, groupRoad } from './commute.ts';
-import { loadCommute, loadHome, loadLocate, loadNet, loadWeather, PLACE } from './data.ts';
+import { loadCommute, loadHome, loadLocate, loadNameDay, loadNet, loadWeather, PLACE } from './data.ts';
 import { goalEta } from './goal.ts';
 import { buildHome, CAPS, type Cap, type Device, type Zone } from './home.ts';
 import { buildLocate, type LocCap } from './locate.ts';
@@ -35,6 +35,19 @@ async function homeByToken(token: string) {
 }
 
 /**
+ * Dagens namnsdagar. Med inloggning ur tabellen name_days (som Hem); utan (adressen för genvägar) hämtas Svenska dagars öppna
+ * årsdata (cachad ett dygn), eftersom tabellen kräver inloggning. Tom lista om något går fel.
+ */
+async function nameDaysOf(now: number, session: boolean): Promise<string[]> {
+  if (session) return loadNameDay().catch(() => []);
+  const date = dayOf(now);
+  try {
+    const res = await fetch(`https://sholiday.faboul.se/dagar/v2.1/${date.slice(0, 4)}`, { next: { revalidate: 86400 } });
+    return res.ok ? nameDaysFor(await res.json(), date) : [];
+  } catch { return []; }
+}
+
+/**
  * Rapportens innehåll för hushållet (HOUSEHOLD), hämtat från samma källor som Hem: väder, nästa tåg och när man ska gå,
  * dagens kalender, hemresan efter sista mötet, bilresan och kvällens händelser. `weather` är väderfrasen till första
  * meningen, `parts` övriga meningar. Delar utan data hoppas över; `BRIEFING` väljer delar (se `sectionsOn`).
@@ -45,11 +58,12 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
   // Med inloggning (knappen i appen): hushållets egna läsningar. Utan (adressen för genvägar): hemmets data via nyckeln
   // (homeByToken), annars inga hushållsdata; bilresan räknas då hemifrån.
   const session = !opts.anonymous;
-  const [hSes, w, commute, locSes, netSes, tok, schools] = await Promise.all([
+  const [hSes, w, commute, locSes, netSes, tok, schools, nameDays] = await Promise.all([
     session ? loadHome().catch(() => null) : null, loadWeather().catch(() => null), loadCommute().catch(() => null),
     session ? loadLocate().catch(() => ({ members: [], items: [] })) : null, session ? loadNet().catch(() => null) : null,
     !session && opts.token ? homeByToken(opts.token).catch(() => null) : null,
     skolschemaConfigured() ? loadSchoolCalendars().catch(() => []) : [],
+    nameDaysOf(now, session),
   ]);
   // Barnens skoldag idag och imorgon (SKOLSCHEMA, aktuell vecka): första start och sista slut.
   const day = (cal: Calendar | null, date: string) => { const e = cal?.days.find((d) => d.date === date)?.timed.find((t) => t.id.startsWith('skola@')); return e ? { start: e.start!, end: e.end! } : null; };
@@ -95,7 +109,7 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
 
   return {
     name, weather: on.has('vader') ? weather : '',
-    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
+    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, nameDays, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
   };
 }
 
