@@ -54,8 +54,13 @@ export function briefingText({ name, now, weather = '', parts = [] }: { name?: s
   return `${greeting(now)}${who}.\n\n${[first, ...parts.map((p) => p.trim()).filter(Boolean)].join(' ')}`;
 }
 
-/** Titel för tal: tankstreck mellan lag ("Hammarby IF – IFK Göteborg") blir "mot" (annars läser vissa röster "minus"). */
-export const spokenTitle = (t: string) => t.replace(/\s[–—]\s/g, ' mot ');
+/** Match ur Forza-titeln "Hemma – Borta" (tankstreck med mellanslag runt); null för andra titlar. */
+export const matchOf = (title: string): [string, string] | null => {
+  const m = title.trim().match(/^(.+?)\s[–—]\s(.+)$/);
+  return m ? [m[1].trim(), m[2].trim()] : null;
+};
+/** Titel för tal: en match blir "match mellan Hammarby IF och IFK Göteborg", andra titlar som de är. */
+export const spokenTitle = (t: string) => { const m = matchOf(t); return m ? `match mellan ${m[0]} och ${m[1]}` : t; };
 
 /** "A", "A och B", "A, B och C". */
 export const joinList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} och ${xs.at(-1)}`);
@@ -166,7 +171,12 @@ export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
     out.push(`Resan ${where} ser ut att ta ${minutes(c.minutes)}${warn}${delay}.`);
   }
   if (on.has('hemma') && i.home) out.push(...homeSentences(i.home));
-  if (on.has('kvall') && i.evening?.length) out.push(`Ikväll har ${joinList(i.evening.map((e) => `${spokenTitle(e.title)} klockan ${spokenTime(e.start)}`))}.`);
+  if (on.has('kvall') && i.evening?.length) {
+    // Matcher får egna meningar: "Ikväll klockan nitton är det match mellan A och B." Övriga i en lista: "Ikväll har X klockan …".
+    const games = i.evening.filter((e) => matchOf(e.title)), rest = i.evening.filter((e) => !matchOf(e.title));
+    if (rest.length) out.push(`Ikväll har ${joinList(rest.map((e) => `${e.title} klockan ${spokenTime(e.start)}`))}.`);
+    games.forEach((g, k) => { const [a, b] = matchOf(g.title)!; out.push(`${k === 0 && !rest.length ? 'Ikväll klockan' : 'Klockan'} ${spokenTime(g.start)} är det match mellan ${a} och ${b}.`); });
+  }
   if (on.has('avslut')) out.push('Ha en trevlig dag.');
   return out;
 }

@@ -71,8 +71,13 @@ test('rapport: Ulrikas manus (bilresa med vägvarning, kvällens händelser, avs
   assert.equal(briefingParts({ car: { home: false, label: 'Västerås', minutes: 38, trafficMin: 3, warnings: 0 } }, new Set(['bil']))[0], 'Resan till Västerås ser ut att ta trettioåtta minuter, trafiken ger tre minuter längre restid.');
   assert.equal(briefingParts({ car: { home: true, label: 'Hem', minutes: 1, trafficMin: 0, warnings: 2 } }, new Set(['bil']))[0], 'Resan hem ser ut att ta en minut, det finns två vägvarningar för resan.');
   assert.equal(briefingParts({ car: { home: false, label: 'Jobbet', minutes: 20, trafficMin: 0, warnings: 0 } }, new Set(['bil']))[0], 'Resan till jobbet ser ut att ta tjugo minuter.');
-  // Hel timme får "klockan" och tankstreck mellan lag blir "mot".
-  assert.equal(briefingParts({ evening: [{ title: 'Hammarby IF – IFK Göteborg', start: at(19) }] }, new Set(['kvall']))[0], 'Ikväll har Hammarby IF mot IFK Göteborg klockan nitton.');
+  // Match (Forza-titel): egen mening med "match mellan"; övriga händelser i listan före. Hel timme får "klockan".
+  assert.deepEqual(briefingParts({ evening: [{ title: 'Hammarby IF – IFK Göteborg', start: at(19) }] }, new Set(['kvall'])), ['Ikväll klockan nitton är det match mellan Hammarby IF och IFK Göteborg.']);
+  assert.deepEqual(briefingParts({ evening: [{ title: 'Wilmer golf', start: at(17, 30) }, { title: 'Hammarby IF – IFK Göteborg', start: at(19) }] }, new Set(['kvall'])),
+    ['Ikväll har Wilmer golf klockan sjutton trettio.', 'Klockan nitton är det match mellan Hammarby IF och IFK Göteborg.']);
+  assert.equal(briefingParts({ first: { title: 'Hammarby IF – IFK Göteborg', start: at(19), next: false, meetings: false } }, new Set(['forsta']))[0], 'Din första kalenderhändelse är match mellan Hammarby IF och IFK Göteborg klockan nitton.');
+  // Vanliga titlar med bindestreck rörs inte.
+  assert.equal(briefingParts({ evening: [{ title: 'Tandläkare - Karin', start: at(18) }] }, new Set(['kvall']))[0], 'Ikväll har Tandläkare - Karin klockan arton.');
   // Delar utan data hoppas över.
   assert.deepEqual(briefingParts({}, new Set(['tag', 'forsta', 'hemresa', 'bil', 'kvall'])), []);
 });
