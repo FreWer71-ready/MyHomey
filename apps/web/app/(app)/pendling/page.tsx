@@ -6,6 +6,7 @@ import { loadOnward, loadTransit, transitConfigured, transitGoal, transitSearcha
 import { allPositions, earliestAt, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
 import { detectTrain, loadConfirmed, positionHistory } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
+import { progress } from '@/lib/transit';
 import type { TransitLeg } from '@/lib/transit';
 import { RoadImpact } from '@/components/RoadImpact';
 import { km } from '@/lib/trip';
@@ -241,7 +242,7 @@ export default async function CommutePage() {
         <section aria-label={goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`} className="flex flex-col gap-2">
           <h2 className="text-[1.125rem] font-bold">{goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`}{o.away ? ' · härifrån' : ''}</h2>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {transit.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={rtTrains} first={i === 0} home={goingHome} />)}
+            {transit.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={rtTrains} first={i === 0} home={goingHome} pos={progress(t.legs, here, goingHome ? (o.away ? o.pos : tg.at) : o.from, nowMs)} />)}
           </div>
         </section>
       )}
