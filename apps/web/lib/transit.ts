@@ -90,11 +90,11 @@ export function bestTrips(trips: TransitTrip[]): TransitTrip[] {
 
 const walkMin = (km: number) => Math.max(1, Math.ceil(((km * 1.25) / 4.8) * 60));
 
-/** Lägger till promenaden från sista hållplatsen till målet (t.ex. hem från Eskilstuna C). */
-export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma'): TransitTrip {
+/** Lägger till promenaden från sista hållplatsen till målet (t.ex. hem från Eskilstuna C). `toAt` = målets läge (bekräftar sträckan). */
+export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma', toAt: { lat: number; lon: number } | null = null): TransitTrip {
   const last = t.legs.at(-1)!;
   const min = walkMin(km);
-  const walk: TransitLeg = { kind: 'walk', from: last.to, to, dep: last.arr, arr: last.arr + min * 60_000, minutes: min, label: null, num: null, dir: null, track: null };
+  const walk: TransitLeg = { kind: 'walk', from: last.to, to, dep: last.arr, arr: last.arr + min * 60_000, minutes: min, label: null, num: null, dir: null, track: null, fromAt: last.toAt ?? null, toAt };
   return { ...t, arr: walk.arr, legs: [...t.legs, walk] };
 }
 
@@ -102,11 +102,24 @@ export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma'): TransitTr
 export function withWalk(t: TransitTrip, km: number): TransitTrip {
   const min = walkMin(km);
   const first = t.legs[0];
-  const walk: TransitLeg = { kind: 'walk', from: 'Hemma', to: first.from, dep: first.dep - (min + 2) * 60_000, arr: first.dep - 2 * 60_000, minutes: min, label: null, num: null, dir: null, track: null };
+  const walk: TransitLeg = { kind: 'walk', from: 'Hemma', to: first.from, dep: first.dep - (min + 2) * 60_000, arr: first.dep - 2 * 60_000, minutes: min, label: null, num: null, dir: null, track: null, toAt: first.fromAt ?? null };
   return { ...t, dep: walk.dep, legs: [walk, ...t.legs] };
 }
 
-type Here = { at: { lat: number; lon: number }; ts: number };
+export type Here = { at: { lat: number; lon: number }; ts: number };
+
+/**
+ * Hur långt man kommit i en plan, enligt positionen och inte klockan:
+ * `known` = färsk position finns (annars visas ingen markering alls), `done` = antal avklarade sträckor (bekräftade av
+ * positionen), `waiting` = planens första avgång har passerat men positionen är kvar vid startpunkten (man har inte gått än).
+ */
+export type Progress = { known: boolean; done: number; waiting: boolean };
+export function progress(legs: TransitLeg[], here: Here | null, start: { lat: number; lon: number } | null, now: number, near = 0.4): Progress {
+  if (!here || !legs.length) return { known: false, done: 0, waiting: false };
+  const done = doneLegs(legs, here, near).length;
+  const waiting = done === 0 && legs[0].dep < now - 60_000 && !!start && dist(start, here.at) <= near;
+  return { known: true, done, waiting };
+}
 
 /**
  * Avklarade delsträckor i en plan utifrån var man sågs senast: allt till och med den sista sträckan som slutar

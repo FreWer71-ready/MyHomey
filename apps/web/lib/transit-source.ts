@@ -60,8 +60,9 @@ async function query(from: Point, to: Point, at: number, opts: { products?: stri
 }
 
 const walkMin = (d: number) => Math.max(1, Math.ceil(((d * 1.25) / 4.8) * 60));
-const walkLeg = (from: string, to: string, dep: number, min: number): TransitLeg =>
-  ({ kind: 'walk', from, to, dep, arr: dep + min * MIN, minutes: min, label: null, num: null, dir: null, track: null });
+/** Gångben. `fromAt`/`toAt` (om kända) låter positionen bekräfta att sträckan är gjord. */
+const walkLeg = (from: string, to: string, dep: number, min: number, fromAt: LatLon | null = null, toAt: LatLon | null = null): TransitLeg =>
+  ({ kind: 'walk', from, to, dep, arr: dep + min * MIN, minutes: min, label: null, num: null, dir: null, track: null, fromAt, toAt });
 
 /**
  * Sista/första biten mellan bytespunkten och målet: spårvagn (med gång) eller bara gång, det som är framme först.
@@ -73,7 +74,7 @@ async function lastMile(tr: Transfer, goal: LatLon, at: number, out: boolean): P
     .filter((t) => t.legs.some((l) => l.kind === 'tram'))[0];
   const walkArr = at + walk * MIN;
   if (tram && tram.arr < walkArr) return tram.legs;
-  return [out ? walkLeg(tr.name, 'Jobbet', at, walk) : walkLeg('Jobbet', tr.name, at, walk)];
+  return [out ? walkLeg(tr.name, 'Jobbet', at, walk, tr.at, goal) : walkLeg('Jobbet', tr.name, at, walk, goal, tr.at)];
 }
 
 /** Föredragen väg till jobbet: (gång +) tåg via TRANSIT_VIA till TRANSIT_TRANSFER, sedan gång eller spårvagn. */
@@ -100,7 +101,7 @@ async function preferredHome(tr: Transfer, goal: LatLon, home: LatLon, at: numbe
     const shift = i === 0 ? 0 : Math.max(0, t.dep - 2 * MIN - reach);
     const legs = head.map((l) => ({ ...l, dep: l.dep + shift, arr: l.arr + shift }));
     const full = { ...t, dep: legs[0].dep, legs: [...legs, ...t.legs], startAt: goal };
-    return full.endAt ? withWalkEnd(full, km(full.endAt, home)) : full;
+    return full.endAt ? withWalkEnd(full, km(full.endAt, home), 'Hemma', home) : full;
   });
 }
 
@@ -126,7 +127,7 @@ export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n =
     const products = process.env.TRANSIT_PRODUCTS ?? (process.env.TRANSIT_ORIGIN_STOP ? '118' : undefined);
     let trips = await query(f, t, at, { products, n: n + 2, arrival: arrive });
     if (stop) trips = trips.map((x) => (x.startAt ? withWalk(x, km(from, x.startAt)) : x));
-    if (endStop) trips = trips.map((x) => (x.endAt ? withWalkEnd(x, km(x.endAt, to)) : x));
+    if (endStop) trips = trips.map((x) => (x.endAt ? withWalkEnd(x, km(x.endAt, to), 'Hemma', to) : x));
     if (arrive) return trips.filter((x) => x.arr <= at + MIN).sort((a, b) => b.arr - a.arr || b.dep - a.dep).slice(0, n).reverse();
     return bestTrips(trips).filter((x) => x.dep >= at - 2 * MIN).slice(0, n);
   } catch (e) {
@@ -168,14 +169,14 @@ export async function loadOnward(arr: number, toWork: boolean, home: LatLon, her
         const found = await query({ at: seen.at }, { at: goal }, t, { products, n: 3 });
         options.push(...found.filter((x) => x.dep >= t - 2 * MIN).map((x) => x.legs));
       }
-      options.push([walkLeg('Din plats', 'Jobbet', t, walkMin(km(seen.at, goal)))]);
+      options.push([walkLeg('Din plats', 'Jobbet', t, walkMin(km(seen.at, goal)), seen.at, goal)]);
       const next = fastest(options)?.map((l, i, a) => ({ ...l, from: i === 0 && l.from === 'Start' ? 'Din plats' : l.from, to: i === a.length - 1 && l.to === 'Start' ? 'Jobbet' : l.to }));
       return next ? [...done, ...next] : plan;
     }
     // Hem från Eskilstuna C: promenad (buss sparar ingen tid och är inte aktuell), samma som dörr till dörr.
     if (!process.env.TRANSIT_ORIGIN_STOP) return [];
-    if (seen && km(STATION_ET, seen.at) > 0.3) return [walkLeg('Din plats', 'Hemma', seen.ts, walkMin(km(seen.at, home)))];
-    return [walkLeg('Eskilstuna C', 'Hemma', arr, walkMin(km(STATION_ET, home)))];
+    if (seen && km(STATION_ET, seen.at) > 0.3) return [walkLeg('Din plats', 'Hemma', seen.ts, walkMin(km(seen.at, home)), seen.at, home)];
+    return [walkLeg('Eskilstuna C', 'Hemma', arr, walkMin(km(STATION_ET, home)), STATION_ET, home)];
   } catch (e) {
     console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);
     return [];
@@ -186,6 +187,7 @@ export async function loadOnward(arr: number, toWork: boolean, home: LatLon, her
 export type JourneyTrain = { ident: string; dep: number; arr: number | null; track: string | null; product: string | null; dest: string; delay: number; canceled: boolean };
 
 const STATION_ET: LatLon = { lat: 59.369482, lon: 16.505193 };
+const STATION_ST: LatLon = { lat: 59.330136, lon: 18.058151 };
 
 /**
  * Resa dörr till dörr runt ett visst tåg (Pendling och Hem). Mot jobbet: promenad hemifrån till Eskilstuna C, tåget,
@@ -202,12 +204,13 @@ export async function journeyFor(t: JourneyTrain, toWork: boolean, home: LatLon,
   const train: TransitLeg = {
     kind: 'train', from: toWork ? 'Eskilstuna C' : 'Stockholm C', to: toWork ? 'Stockholm C' : 'Eskilstuna C',
     dep, arr, minutes: Math.round((arr - dep) / MIN), label: `${t.product ?? 'Tåg'} ${t.ident}`, num: t.ident, dir: t.dest, track: t.track,
+    fromAt: toWork ? STATION_ET : STATION_ST, toAt: toWork ? STATION_ST : STATION_ET,
   };
   try {
     if (toWork) {
       const from = start ?? { at: home, src: 'home' as const };
       const walk = walkMin(km(from.at, STATION_ET));
-      const before = walkLeg(from.src === 'home' ? 'Hemma' : 'Din plats', 'Eskilstuna C', dep - (walk + 2) * MIN, walk);
+      const before = walkLeg(from.src === 'home' ? 'Hemma' : 'Din plats', 'Eskilstuna C', dep - (walk + 2) * MIN, walk, from.at, STATION_ET);
       const after = (await query({ id: via }, { at: goal }, arr + 3 * MIN, { via: tr.id, products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2 }))
         .sort((a, b) => a.arr - b.arr)[0];
       const legs = [before, train, ...(after?.legs ?? [])];
@@ -218,7 +221,7 @@ export async function journeyFor(t: JourneyTrain, toWork: boolean, home: LatLon,
     const before = (await query(origin, { id: via }, dep - 4 * MIN, { via: tr.id, products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2, arrival: true }))
       .filter((x) => x.arr <= dep - 2 * MIN).sort((a, b) => b.dep - a.dep)[0];
     const walk = walkMin(km(STATION_ET, home));
-    const after = walkLeg('Eskilstuna C', 'Hemma', arr, walk);
+    const after = walkLeg('Eskilstuna C', 'Hemma', arr, walk, STATION_ET, home);
     const legs = [...(before?.legs ?? []), train, after];
     return { legs, leave: legs[0].dep, arrive: after.arr, start: start?.src ?? 'home' };
   } catch (e) {

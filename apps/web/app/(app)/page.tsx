@@ -12,6 +12,7 @@ import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
 import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
+import { progress } from '@/lib/transit';
 import type { TransitLeg } from '@/lib/transit';
 import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
@@ -311,6 +312,9 @@ export default async function HomePage() {
   const o2 = tg ? origin(locate.members) : null;
   let nextTransit: Awaited<ReturnType<typeof loadTransit>>[number] | null = null;
   const transitHome = !!tg && dir === 'home';
+  // Färsk position (högst 10 min): styr vad som är avklarat i resplanen, och om man har gått än.
+  const here = freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '', now);
+  let replanned = false;
   if (tg && o2) {
     const atGoal = !!o2.pos && km(o2.pos, tg.at) <= 1;
     const elsewhere = o2.away && !atGoal;
@@ -318,7 +322,15 @@ export default async function HomePage() {
     const next = trains.find((t) => !t.canceled && (t.est ?? t.dep) > now);
     const viaPref = !!process.env.TRANSIT_VIA && !!process.env.TRANSIT_TRANSFER;
     if (viaPref && next && !elsewhere && (transitHome ? atGoal || !o2.pos : !atGoal)) {
-      const j = await journeyFor(next, !transitHome, PLACE);
+      let j = await journeyFor(next, !transitHome, PLACE);
+      // Gångtiden till tåget har passerat men positionen är kvar vid startpunkten: räkna om till nästa tåg man hinner.
+      if (j && here && j.leave < now - 60_000 && km(here.at, transitHome ? tg.at : PLACE) <= 0.4) {
+        const nextAt = next.est ?? next.dep;
+        for (const t of trains.filter((x) => !x.canceled && (x.est ?? x.dep) > nextAt).slice(0, 2)) {
+          const alt = await journeyFor(t, !transitHome, PLACE);
+          if (alt && alt.leave >= now - 60_000) { j = alt; replanned = true; break; }
+        }
+      }
       if (j) nextTransit = { dep: j.leave, arr: j.arrive, legs: j.legs, startAt: null, endAt: null };
     } else {
       if (!transitHome && !atGoal) nextTransit = (await loadTransit(o2.from, tg.at, now, 1, !o2.away))[0] ?? null;
@@ -327,6 +339,9 @@ export default async function HomePage() {
   }
   const transitLate = nextTransit && commute ? tripDelay(nextTransit, [...commute.out, ...commute.home, ...commute.all]) : null;
   const leaveIn = nextTransit ? Math.round((nextTransit.dep - now) / 60_000) : 0;
+  // Avklarat enligt positionen (✓ bara när positionen bekräftar), och om man ännu inte gått från startpunkten.
+  const transitStart = !tg || !o2 ? null : transitHome ? (o2.away ? o2.pos : tg.at) : o2.from;
+  const transitPos = nextTransit ? progress(nextTransit.legs, here, transitStart, now) : undefined;
   // Tågläge: sitter dashboardens person på ett tåg (Life360/Apple Watch mot tågens GPS) visar pendlingskortet bara det
   // tåget och resten av resan.
   const me = process.env.HOUSEHOLD ?? '';
@@ -357,7 +372,6 @@ export default async function HomePage() {
   // Efter ankomsten pågår resan till sista delsträckan är klar (byte i Stockholm C, promenad hem).
   const arrived = riddenArr != null && now > riddenArr;
   // Framme (positionen vid jobbet eller hemma, högst 10 min gammal): tillbaka till normalläget.
-  const here = freshestPosition(locate.members, locate.items, me, now);
   const goalAt = riddenToWork ? transitGoal()?.at : PLACE;
   const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
   const ridden = run && !atGoal && (!arrived || (onward.length > 0 && now <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
@@ -667,7 +681,10 @@ export default async function HomePage() {
                 </p>
               )}
               {/* Resebeskrivningen för förslaget (gång, tåg, SL) med spår och förseningar. */}
-              {!ridden && nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact />}
+              {!ridden && nextTransit && (transitPos?.waiting || replanned) && (
+                <p className="text-[1rem] font-semibold" style={{ color: C.warn }}>Du har inte gått än{replanned ? ' – räknat om till nästa tåg' : ''}</p>
+              )}
+              {!ridden && nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact pos={transitPos} />}
               {ridden && sure ? (
                 // Säkert tågläge: måltiden stort (som utetemperaturen), var tåget är och resplanen.
                 <>

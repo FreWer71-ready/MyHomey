@@ -1,7 +1,7 @@
 import type { Train } from '@/lib/commute';
 import { TONE_COLOR } from '@/lib/commute';
 import { hhmm } from '@/lib/prices';
-import type { TransitLeg, TransitTrip } from '@/lib/transit';
+import type { Progress, TransitLeg, TransitTrip } from '@/lib/transit';
 
 const KIND: Record<TransitLeg['kind'], string> = { walk: 'Gå', train: 'Tåg', bus: 'Buss', metro: 'T-bana', tram: 'Spårv', other: 'Resa' };
 /** Linjesymboler för färdsätt (följer textfärgen). */
@@ -36,7 +36,7 @@ export function tripDelay(trip: TransitTrip, trains: Train[]): { delay: number; 
 }
 
 /** En kollektivresa: avresa, ankomst och benen (gång, buss, tåg, SL) med spår och tågens realtid. */
-export function TransitTripCard({ trip, trains, first, home = false, ongoing = false }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean; ongoing?: boolean }) {
+export function TransitTripCard({ trip, trains, first, home = false, ongoing = false, pos }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean; ongoing?: boolean; pos?: Progress }) {
   const { delay, canceled } = tripDelay(trip, trains);
   const total = Math.round((trip.arr - trip.dep) / 60_000);
   // Serverrenderat per sidvisning (sidan är dynamisk), så "om X min" stämmer när sidan laddas.
@@ -46,7 +46,10 @@ export function TransitTripCard({ trip, trains, first, home = false, ongoing = f
       <div className="flex flex-wrap items-baseline gap-x-3">
         {ongoing
           ? <span className="text-[1.375rem] font-extrabold">Pågående resa</span>
-          : <>
+          : pos?.waiting
+            // Positionen är kvar vid startpunkten fast avgångstiden passerat.
+            ? <span className="text-[1.375rem] font-extrabold" style={{ color: TONE_COLOR.warn }}>Du har inte gått än</span>
+            : <>
               <span className="text-[1.375rem] font-extrabold tabular-nums">{leaveIn <= 0 ? 'Gå nu' : `Gå om ${leaveIn} min`}</span>
               <span className="text-[0.9375rem] text-dim tabular-nums">kl {hhmm(trip.dep)}</span>
             </>}
@@ -56,21 +59,27 @@ export function TransitTripCard({ trip, trains, first, home = false, ongoing = f
         <span className="ml-auto text-[0.875rem] text-dim">{dur(total)}</span>
       </div>
       {canceled && <p className="text-[0.9375rem] font-bold" style={{ color: TONE_COLOR.bad }}>Ett tåg på resan är inställt – välj nästa resa.</p>}
-      <TransitLegs trip={trip} trains={trains} />
+      <TransitLegs trip={trip} trains={trains} pos={pos} />
     </section>
   );
 }
 
-/** Benen i en resa (gång, buss, tåg, SL) med spår och tågens realtid. `compact` för kortet på Hem. */
-export function TransitLegs({ trip, trains, compact = false, now = Date.now() }: { trip: TransitTrip; trains: Train[]; compact?: boolean; now?: number }) {
-  // Pågående delsträcka markeras ("Nu · framme 07:49"); avklarade blir grå.
-  const current = trip.legs.findIndex((l) => l.dep <= now && now < l.arr);
+/**
+ * Benen i en resa (gång, buss, tåg, SL) med spår och tågens realtid. `compact` för kortet på Hem.
+ * Pågående delsträcka markeras ("Nu"), avklarade får ✓ och blir grå. Utan `pos` styr klockan (planer som räknats från nu).
+ * Med `pos` styr positionen: ✓ bara för sträckor som positionen bekräftar, och varken ✓ eller "Nu" utan färsk position
+ * eller när man inte gått än.
+ */
+export function TransitLegs({ trip, trains, compact = false, now = Date.now(), pos }: { trip: TransitTrip; trains: Train[]; compact?: boolean; now?: number; pos?: Progress }) {
+  const byPos = pos !== undefined;
+  const current = !byPos ? trip.legs.findIndex((l) => l.dep <= now && now < l.arr)
+    : pos.known && !pos.waiting ? trip.legs.findIndex((l, i) => i >= pos.done && l.dep <= now && now < l.arr) : -1;
   return (
       <ol className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1'}`}>
         {trip.legs.map((l, i) => {
           const rt = legRealtime(l, trains);
           const live = i === current;
-          const done = l.arr <= now;
+          const done = byPos ? i < pos.done : l.arr <= now;
           return (
             <li key={i} aria-current={live ? 'step' : undefined}
               className={`flex min-w-0 items-center gap-2 ${live ? '-mx-1.5 rounded-lg bg-white/[0.14] px-1.5 py-0.5 ring-1 ring-sun/60' : ''} ${done && !live ? 'text-dim' : ''}`}>
