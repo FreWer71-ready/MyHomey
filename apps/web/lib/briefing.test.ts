@@ -87,6 +87,16 @@ test('rapport: delar väljs av BRIEFING eller efter vad hushållet har', () => {
   assert.deepEqual([...sectionsOn('kvall, avslut ,okänd', has)], ['kvall', 'avslut']);
   assert.deepEqual([...sectionsOn(undefined, has)], ['vader', 'tag', 'forsta', 'hemresa', 'kvall', 'avslut']);
   assert.deepEqual([...sectionsOn('', { vader: false, tag: false, pendlar: false, bil: true })], ['bil', 'kvall', 'avslut']);
+  // Nästa händelse för alla med kalender (utan pendling), men hemresan bara för pendlare.
+  assert.deepEqual([...sectionsOn(undefined, { vader: true, tag: false, pendlar: false, bil: true, kalender: true })], ['vader', 'forsta', 'bil', 'kvall', 'avslut']);
+});
+
+test('rapport: nästa händelse nämns inte två gånger när den är en av kvällens', () => {
+  const on = sectionsOn(undefined, { vader: false, tag: false, pendlar: false, bil: false, kalender: true });
+  const plan = todayPlan([{ id: 'a', title: 'Tandläkare', start: at(10), end: at(11) }, { id: 'b', title: 'Wilmer golf', start: at(17, 30), end: at(19) }], at(7));
+  assert.deepEqual(briefingParts({ first: plan.first, evening: plan.evening }, on), ['Din första kalenderhändelse är Tandläkare klockan tio.', 'Ikväll har Wilmer golf klockan sjutton trettio.', 'Ha en trevlig dag.']);
+  const late = todayPlan([{ id: 'b', title: 'Wilmer golf', start: at(17, 30), end: at(19) }], at(12));
+  assert.deepEqual(briefingParts({ first: late.first, evening: late.evening }, on), ['Ikväll har Wilmer golf klockan sjutton trettio.', 'Ha en trevlig dag.']);
 });
 
 test('rapport: dagens läge ur kalendern', () => {

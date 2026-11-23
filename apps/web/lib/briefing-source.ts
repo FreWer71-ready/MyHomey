@@ -63,7 +63,7 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
   const goal = transitConfigured() && commute?.trains && !isWeekend(now) && !dayInfo(dayOf(now), now).free ? transitGoal() : null;
   const viaPref = !!process.env.TRANSIT_VIA && !!process.env.TRANSIT_TRANSFER;
   const carGoal = etaConfigured() && !!process.env.DEFAULT_DESTINATION && !!commute && !commute.trains;
-  const on = sectionsOn(process.env.BRIEFING, { vader: !!weather, tag: !!goal && viaPref, pendlar: !!goal, bil: carGoal, hemma: !!home, skola: school.length > 0 });
+  const on = sectionsOn(process.env.BRIEFING, { vader: !!weather, tag: !!goal && viaPref, pendlar: !!goal, bil: carGoal, hemma: !!home, skola: school.length > 0, kalender: calendarConfigured() });
 
   let train: { dep: number; delay: number; leave: number } | null = null;
   if (on.has('tag') && goal && viaPref && commute) {
