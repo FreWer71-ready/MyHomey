@@ -14,6 +14,7 @@ import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal, tr
 import { EventTransit } from '@/components/EventTransit';
 import { DepartsFrom, TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { LeaveIn } from '@/components/LeaveIn';
+import { SpeakBriefing } from '@/components/SpeakBriefing';
 import { progress } from '@/lib/transit';
 import type { TransitLeg } from '@/lib/transit';
 import { HourStrip } from '@/components/HourStrip';
@@ -527,11 +528,11 @@ export default async function HomePage() {
             </Link>
           )}
           {/* Hitta mobilen (Android via ntfy): väl synlig direkt under klockan, larmar tills den stängs på telefonen. */}
-          {pingable.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 flex-1 basis-36 justify-center" />)}
-            </div>
-          )}
+          {/* Läs upp rapport (webbläsarens röst, startar vid tryck) i samma rad. Raden döljs när den är tom (ingen talsyntes). */}
+          <div className="flex flex-wrap gap-2 empty:hidden">
+            {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 flex-1 basis-36 justify-center" />)}
+            <SpeakBriefing name={me} className="min-w-0 flex-1 basis-36 justify-center" />
+          </div>
         </section>
 
         {/* NÄRVARO (höger, egen yta): vem är hemma, var de andra är. Källa (Life360/Smart Presence) visas på Hitta. */}

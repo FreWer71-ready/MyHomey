@@ -45,6 +45,10 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 ## Ljusnivå (lux)
 - Från sensorernas `measure_luminance` (Hue-sensorn i hallen). Visas där den finns: KPI-raden **Ljusnivå** i Hemmet-kortet på Hem (ljusaste rummet, med ord: Mörkt < 5, Dunkelt < 50, Svagt ljus < 200, Normalt < 500, Ljust < 2 000, Dagsljus), per sensor på Temperatur, i rumskortets rubrik på Styrning, som mått på rumssidan och som fliken **Ljus** i Historik. `Room.lux` är den ljusaste sensorn i rummet. Format och ord: `lib/lux.ts`. Utan ljussensor visas ingenting (regeln om tomma avsnitt).
 
+## Rapport (tal)
+- Knappen **Läs upp rapport** (`SpeakBriefing`) ligger i varningsraden på Hem, bredvid "Ringa mobilen". Webbläsarens svenska talsyntes (`speechSynthesis`, `sv-SE`, inga nycklar), startar bara vid tryck (iPhone tillåter inget annat), läser en mening i taget och byter till "Stoppa". Visas inte där talsyntes saknas.
+- Texten byggs vid tryck i `lib/briefing.ts` (`briefingText`): hälsning efter klockan (Godmorgon, God förmiddag …), namnet ur `HOUSEHOLD`, "här är din rapport", dagens datum, sedan valfria meningar (`parts`). Innehållet (väder, kalender, tåg …) är inte bestämt än. Planerat steg 2: iOS-genväg som läser upp rapporten vid väckning (textadress med hemlig nyckel); steg 3 vid behov neural röst.
+
 ## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
 - **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.
 - **Villkora på datan, inte på inställningar:** `data.length > 0 && …`. När data kommer in visas avsnittet av sig självt vid nästa laddning, utan kodändring.
