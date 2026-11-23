@@ -64,13 +64,15 @@ test('rapport: Ulrikas manus (bilresa med vägvarning, kvällens händelser, avs
   }, on);
   assert.deepEqual(parts, [
     'Resan till Västerås ser ut att ta trettioåtta minuter, det finns en vägvarning för resan, den påverkar restiden med två minuter.',
-    'Ikväll har Wilmer golf sjutton trettio och Molly pianolektion nitton trettio.',
+    'Ikväll har Wilmer golf klockan sjutton trettio och Molly pianolektion klockan nitton trettio.',
     'Ha en trevlig dag.',
   ]);
   // Utan vägvarning men med trafik, utan trafik alls, hem och jobbet.
   assert.equal(briefingParts({ car: { home: false, label: 'Västerås', minutes: 38, trafficMin: 3, warnings: 0 } }, new Set(['bil']))[0], 'Resan till Västerås ser ut att ta trettioåtta minuter, trafiken ger tre minuter längre restid.');
   assert.equal(briefingParts({ car: { home: true, label: 'Hem', minutes: 1, trafficMin: 0, warnings: 2 } }, new Set(['bil']))[0], 'Resan hem ser ut att ta en minut, det finns två vägvarningar för resan.');
   assert.equal(briefingParts({ car: { home: false, label: 'Jobbet', minutes: 20, trafficMin: 0, warnings: 0 } }, new Set(['bil']))[0], 'Resan till jobbet ser ut att ta tjugo minuter.');
+  // Hel timme får "klockan" och tankstreck mellan lag blir "mot".
+  assert.equal(briefingParts({ evening: [{ title: 'Hammarby IF – IFK Göteborg', start: at(19) }] }, new Set(['kvall']))[0], 'Ikväll har Hammarby IF mot IFK Göteborg klockan nitton.');
   // Delar utan data hoppas över.
   assert.deepEqual(briefingParts({}, new Set(['tag', 'forsta', 'hemresa', 'bil', 'kvall'])), []);
 });
