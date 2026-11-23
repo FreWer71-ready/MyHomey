@@ -159,7 +159,7 @@ export default async function HomePage() {
   const hueMode = process.env.CONTROL === 'hue';
   const quickList: Action[] = hueMode ? (() => {
     const seen = new Set<string>();
-    return [...houseActions(h.rooms, ['ljust', 'mys', 'slack']), ...quick, ...h.homeMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const }))]
+    return [...houseActions(h.rooms, ['ljust', 'mys', 'slack', 'stad']), ...quick, ...h.homeMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const }))]
       .filter((a) => { const k = a.name.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
   })() : quick;
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
