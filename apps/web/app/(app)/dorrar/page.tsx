@@ -43,10 +43,10 @@ export default async function DoorsPage() {
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
       <header className="lg:col-span-12">
         <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight">Dörrar & fönster</h1>
-        <p className="text-[1rem] text-dim">{nOpen ? `${nOpen} öppna` : 'Alla stängda'} · {list.length} {list.length === 1 ? 'sensor' : 'sensorer'}</p>
+        {list.length > 0 && <p className="text-[1rem] text-dim">{nOpen ? `${nOpen} öppna` : 'Alla stängda'} · {list.length} {list.length === 1 ? 'sensor' : 'sensorer'}</p>}
       </header>
 
-      <section aria-label="Nuläge" className={`${card} lg:col-span-5`}>
+      {list.length > 0 && <section aria-label="Nuläge" className={`${card} lg:col-span-5`}>
         <h2 className={h2}><Icon name="shield" size={22} />Nuläge</h2>
         <ul>
           {list.map((o) => {
@@ -65,12 +65,10 @@ export default async function DoorsPage() {
             );
           })}
         </ul>
-        {list.length === 0 && <p className="text-[1rem] text-dim">Inga dörr- eller fönstersensorer.</p>}
-      </section>
+      </section>}
 
-      <section aria-label="Logg" className={`${card} lg:col-span-7`}>
+      {days.length > 0 && <section aria-label="Logg" className={`${card} lg:col-span-7`}>
         <h2 className={h2}><Icon name="chart" size={22} />Logg · 7 dygn</h2>
-        {days.length === 0 && <p className="text-[1rem] text-dim">Inga händelser.</p>}
         {days.map((d) => {
           const evs = log.filter((e) => dayKey(e.ts) === d);
           return (
@@ -93,7 +91,8 @@ export default async function DoorsPage() {
             </div>
           );
         })}
-      </section>
+      </section>}
+      {list.length + days.length === 0 && <p className={`${card} text-[1rem] text-dim lg:col-span-12`}>Inga dörr- eller fönstersensorer.</p>}
     </div>
   );
 }

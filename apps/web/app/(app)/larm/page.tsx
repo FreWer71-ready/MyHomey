@@ -147,6 +147,7 @@ export default async function AlarmPage() {
       })()}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        {h.batteryTotal > 0 && (
         <Section id="batteri" icon="battery" title="Lågt batteri" count={h.lowBatteryList.length} tone={h.lowBatteryList.length ? 'warn' : 'ok'}>
           {h.lowBatteryList.length ? (
             <ul className="flex flex-col gap-2">
@@ -167,8 +168,10 @@ export default async function AlarmPage() {
             <Empty text="Alla batterier är ok." />
           )}
         </Section>
+        )}
 
         {/* Lampor som inte går att nå (otillgängliga i Homey, t.ex. strömbrytaren avslagen). */}
+        {h.lightsTotal > 0 && (
         <Section id="lampor" icon="bulb" title="Lampor som inte nås" count={deadLights.length} tone={deadLights.length ? 'warn' : 'ok'}>
           {deadLights.length ? (
             <ul className="flex flex-col gap-2">
@@ -186,7 +189,9 @@ export default async function AlarmPage() {
             <Empty text="Alla lampor går att nå." />
           )}
         </Section>
+        )}
 
+        {h.deviceTotal > h.lightsTotal && (
         <Section id="enheter" icon="wifi" title="Svarar inte" count={otherSilent.length} tone={otherSilent.length ? 'warn' : 'ok'}>
           {otherSilent.length ? (
             <ul className="flex flex-col gap-2">
@@ -204,7 +209,9 @@ export default async function AlarmPage() {
             <Empty text={`Alla sensorer har rapporterat de senaste ${STALE_HOURS} timmarna.`} />
           )}
         </Section>
+        )}
 
+        {h.openings.length > 0 && (
         <Section id="oppet" icon={open.length ? 'windowOpen' : 'window'} title="Öppna dörrar och fönster" count={open.length} tone={open.length ? 'warn' : 'ok'}>
           {open.length ? <ul className="flex flex-col gap-2">
             {open.map((o) => (
@@ -223,7 +230,9 @@ export default async function AlarmPage() {
             ))}
           </ul> : <Empty text="Alla dörrar och fönster är stängda." />}
         </Section>
+        )}
 
+        {wet.length > 0 && (
         <Section id="fukt" icon="drop" title="Luftfuktighet i våtrum" count={damp.length} tone={damp.length ? 'warn' : 'ok'}>
           {wetHigh.length ? (
             <ul className="flex flex-col gap-2">
@@ -241,6 +250,7 @@ export default async function AlarmPage() {
             <Empty text={wet.length ? `Normal luftfuktighet (under ${HUMIDITY_LIMIT} %).` : 'Ingen fuktsensor i badrum eller toalett.'} />
           )}
         </Section>
+        )}
       </div>
 
       {net && (

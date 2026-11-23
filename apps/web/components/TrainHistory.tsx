@@ -65,12 +65,11 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
         </section>
       )}
 
-      <section aria-label="Ersättning" className="flex flex-col gap-2 rounded-[1.5rem] glass p-3">
+      {claims.length > 0 && <section aria-label="Ersättning" className="flex flex-col gap-2 rounded-[1.5rem] glass p-3">
         <h2 className="flex flex-wrap items-baseline justify-between gap-2 text-xl font-extrabold">
           Begär ersättning
           <span className="text-[0.875rem] font-bold text-dim">{open > 0 ? `${open} att begära` : 'inget att begära'} · försenad {CLAIM_MIN} min eller mer</span>
         </h2>
-        {claims.length === 0 && <p className="rounded-2xl bg-glass-2 p-3 font-bold text-dim">Inga resor med {CLAIM_MIN} minuters försening eller mer.</p>}
         {/* Reglerna (Mälardalstrafik, Movingo) – fälls ut. */}
         <details className="group rounded-2xl bg-glass-2 px-3 py-2">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between font-bold [&::-webkit-details-marker]:hidden">
@@ -118,7 +117,7 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
             </li>
           ))}
         </ul>
-      </section>
+      </section>}
 
       {inRange.length > 0 && (
         <section aria-label="Resor" className="flex flex-col gap-1.5 rounded-[1.5rem] glass p-3">

@@ -76,6 +76,8 @@ export type Home = {
   doorsTotal: number;
   motion: number;
   lowBattery: number;
+  /** Antal enheter som rapporterar batteri (Larm visar batterilistan bara om det finns några). */
+  batteryTotal: number;
   lowBatteryList: BatteryItem[];
   openings: Opening[];
   silent: Silent[];
@@ -283,6 +285,7 @@ export function buildHome(
     doorsTotal: contacts.length,
     motion: active.filter((d) => cap(d, 'alarm_motion')?.value_bool === true).length,
     lowBattery: lowBatteryList.length,
+    batteryTotal: active.filter((d) => cap(d, 'measure_battery') || cap(d, 'alarm_battery')).length,
     lowBatteryList,
     openings,
     silent,
