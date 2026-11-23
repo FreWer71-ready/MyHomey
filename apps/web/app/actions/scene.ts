@@ -1,7 +1,7 @@
 'use server';
 import { createClient } from '@/lib/supabase/server';
 
-const SCENES = ['ljust', 'mys', 'slack'];
+const SCENES = ['ljust', 'mys', 'slack', 'stad'];
 type Result = { ok: boolean; error?: string };
 
 /**

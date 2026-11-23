@@ -29,7 +29,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     : h.favoriteMoods;
 
   // Hue-hushåll: Mys och Släck i alla rum med lampor, med ett tryck, först i Rutiner.
-  const house: Action[] = hueMode ? houseActions(h.rooms) : [];
+  const house: Action[] = hueMode ? houseActions(h.rooms, ['mys', 'slack', 'stad']) : [];
 
   const routines: Action[] = [
     ...flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' as const, advanced: f.advanced })),

@@ -1,6 +1,6 @@
 // Philips Hue Remote API (moln) per hushåll: OAuth, scener, styrning och synk till dashboardens tabeller.
 // Användaranrop (JWT): authorize {state} · exchange {code} · status · scenes · activate {id, dynamic?}
-//                      light {id, on?, dim?, temp?, hue?, sat?} · room {zone, scene: ljust|mys|slack}
+//                      light {id, on?, dim?, temp?, hue?, sat?} · room {zone, scene: ljust|mys|slack|stad}
 //                      group {zone, on?, dim?, fade?} (hela rummet, fade = släck mjukt på N min) · effect {id, effect}
 //                      identify {id} (lampan blinkar) · sensor {id, enabled} (rörelsesensor på/av)
 // Cron (x-cron-secret): sync – fyller zones/devices/capability_state/readings/moods för Hue-hushåll.
@@ -192,7 +192,7 @@ async function setLight(a: Auth, id: string, c: { on?: boolean; dim?: number; te
   await clip(a, `/resource/light/${id}`, { method: "PUT", body: JSON.stringify(body) });
 }
 
-/** Ljust / Mys (solnedgång) / Släck för ett Hue-rum, samma idé som Homey-skriptet DB Scen. */
+/** Ljust / Mys (solnedgång) / Släck / Städ (alla lampor på, 100 %, kallaste vita ljuset) för ett Hue-rum, samma idé som Homey-skriptet DB Scen. */
 async function roomScene(a: Auth, zone: string, scene: string) {
   const [rooms, lights] = await Promise.all([clip(a, "/resource/room"), clip(a, "/resource/light")]);
   const room = rooms.data.find((r) => r.id === zone);
@@ -204,6 +204,7 @@ async function roomScene(a: Auth, zone: string, scene: string) {
   await Promise.all(inRoom.map((l) => {
     if (scene === "slack") return clip(a, `/resource/light/${l.id}`, { method: "PUT", body: JSON.stringify({ on: { on: false } }) });
     if (scene === "ljust") return setLight(a, l.id, { on: true, dim: 1, temp: 0.3 });
+    if (scene === "stad") return setLight(a, l.id, { on: true, dim: 1, temp: 0 });
     if (l.color) { const [h, s, d] = sunset[n++ % sunset.length]; return setLight(a, l.id, { on: true, hue: h, sat: s, dim: d }); }
     return setLight(a, l.id, { on: true, dim: 0.35, temp: 1 });
   }));
@@ -314,7 +315,7 @@ Deno.serve(async (req) => {
       if (!ms.length) return json({ error: "okänd sensor" }, 400);
       await Promise.all(ms.map((m) => clip(a, `/resource/motion/${m.id}`, { method: "PUT", body: JSON.stringify({ enabled: p.enabled }) })));
     } else if (p.action === "room") {
-      if (!valid(p.zone) || !["ljust", "mys", "slack"].includes(p.scene)) return json({ error: "ogiltigt rum eller scen" }, 400);
+      if (!valid(p.zone) || !["ljust", "mys", "slack", "stad"].includes(p.scene)) return json({ error: "ogiltigt rum eller scen" }, 400);
       await roomScene(a, p.zone, p.scene);
     } else {
       return json({ error: "okänd action" }, 400);

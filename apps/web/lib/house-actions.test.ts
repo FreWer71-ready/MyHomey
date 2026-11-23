@@ -9,6 +9,7 @@ test('houseActions: bara rum med lampor, Mys och Släck som standard', () => {
 });
 
 test('houseActions: valfria scener i given ordning, och tomt utan lampor', () => {
-  assert.deepEqual(houseActions([{ id: 'a', lights: [1] }], ['ljust', 'mys', 'slack']).map((x) => x.name), ['Ljust i hela huset', 'Mys i hela huset', 'Släck alla lampor']);
+  assert.deepEqual(houseActions([{ id: 'a', lights: [1] }], ['ljust', 'mys', 'slack', 'stad']).map((x) => x.name), ['Ljust i hela huset', 'Mys i hela huset', 'Släck alla lampor', 'Städ i hela huset']);
+  assert.equal(houseActions([{ id: 'a', lights: [1] }], ['stad'])[0].scene, 'stad');
   assert.deepEqual(houseActions([{ id: 'a', lights: [] }]), []);
 });
