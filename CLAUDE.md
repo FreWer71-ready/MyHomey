@@ -36,7 +36,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 ## Kalender
 - Egen kalender på Hem: idag + 14 dagar, högst 8 händelser per dag. Den speglade (den andres, `compact`): idag + 7 dagar, högst 4. "Månad" visar 30 dagar. Konstanter överst i `CalendarWidget`.
 
-- Sidan **Kalender** (`/kalender`, fliken visas bara när en kalender är kopplad): Ulrikas och Fredriks händelser i två kolumner bredvid varandra, en rad per datum, innevarande och nästa månad (`monthsWindow`). Ulrika alltid till vänster, i båda dashboards. Egen kalender + den speglade (`CALENDAR_MIRROR_*`; mottagaren hämtar `…/api/calendar/share?range=months`). Helg och röda dagar markeras som i kalenderkortet, pågående händelse har den dova `.sel`-markeringen, sidan hoppar till idag.
+- Sidan **Kalender** (`/kalender`, fliken visas bara när en kalender är kopplad): Ulrikas och Fredriks händelser i två kolumner bredvid varandra, en rad per datum, innevarande och nästa månad (`monthsWindow`). Ulrika alltid till vänster, i båda dashboards. Egen kalender + den speglade (`CALENDAR_MIRROR_*`; mottagaren hämtar `…/api/calendar/share?range=months`). Helg och röda dagar markeras som i kalenderkortet, pågående händelse har den dova `.sel`-markeringen, sidan hoppar till idag. "Möten på jobbet" visar första start och sista slut (under varandra) och antal möten.
 
 ## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
 - **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.
@@ -50,7 +50,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - `BirthdayOverlay` (i layouten) visar "Grattis / på födelsedagen" med namnet i gult under, med fyrverkerier, konfetti, blommor och champagne i cirka 5 s (avslutas med ett finalsalvo av fyrverkerier) vid varje full omladdning under dagen, inte vid sidbyte eller automatisk uppdatering. Tryck stänger direkt. Utan `BIRTHDAYS` visas inget.
 
 ## Version
-- Versionsnumret (`APP_VERSION` i `lib/version.ts`, nu **V0.9**) visas diskret ovanför huset i sidomenyn (stor skärm). Höj det där vid ny version.
+- Versionen heter **V0.9.PR<nummer>**: grundversionen `BASE_VERSION` (nu V0.9) och numret på PR:en som byggdes, tagen ur squash-commitens rubrik `(#nnn)` (`VERCEL_GIT_COMMIT_MESSAGE`, annars `VERCEL_GIT_PULL_REQUEST_ID`) i `next.config.ts`. Varje PR ger alltså ett nytt nummer automatiskt. Lokalt utan PR: V0.9. Höj `BASE_VERSION` vid större version. Visas diskret ovanför huset i sidomenyn (stor skärm, på två rader: V0.9 / PR111).
 
 ## Prestanda
 - Klientcache 30 s (`staleTimes`), `loading.tsx` vid sidhopp. Ändra inte utan skäl.
