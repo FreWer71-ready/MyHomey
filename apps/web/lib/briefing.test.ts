@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bearer, keyOk } from './briefing-auth.ts';
-import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, nameDaysFor, parseClosings, schoolSentences, statusSentences, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
+import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, nameDaysFor, parseClosings, tempSpan, schoolSentences, statusSentences, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
 
 // 23 nov 2026 är en måndag; Stockholm är UTC+1 då.
 const at = (h: number, m = 0) => Date.UTC(2026, 10, 23, h - 1, m);
@@ -262,4 +262,24 @@ test('rapport: namnsdagar ur Svenska dagars årsdata', () => {
   assert.deepEqual(nameDaysFor(year, '2027-01-01'), []);
   assert.deepEqual(nameDaysFor(null, '2026-11-23'), []);
   assert.deepEqual(nameDaysFor({ dagar: 'fel' }, '2026-11-23'), []);
+});
+
+test('rapport: väder imorgon från klockan 20 (spann, lika värden, bara med delen vader)', () => {
+  assert.equal(tempSpan(1.2, 3.8), 'en och fyra plusgrader');
+  assert.equal(tempSpan(-4.6, -2.6), 'tre och fem minusgrader');
+  assert.equal(tempSpan(-2, 4), 'två minusgrader och fyra plusgrader');
+  assert.equal(tempSpan(0.2, 1), 'noll grader och en plusgrad');
+  assert.equal(tempSpan(3.6, 4.2), 'fyra plusgrader');
+  const on = sectionsOn(undefined, { vader: true, tag: false, pendlar: false, bil: false });
+  const tomorrow = { label: 'Lätt regn', min: 1, max: 4 };
+  assert.deepEqual(briefingParts({ tomorrow, now: at(20, 0) }, on).slice(-2), ['Imorgon blir det lätt regn, mellan en och fyra plusgrader.', 'Ha en bra kväll.']);
+  assert.equal(briefingParts({ tomorrow: { label: 'Mulet', min: 3.6, max: 4.2 }, now: at(23, 30) }, on).at(-2), 'Imorgon blir det mulet och fyra plusgrader.');
+  // Före klockan 20, utan prognos, utan klockslag eller utan delen vader: ingenting.
+  assert.ok(!briefingParts({ tomorrow, now: at(19, 59) }, on).some((p) => /Imorgon/.test(p)));
+  assert.ok(!briefingParts({ tomorrow: null, now: at(21, 0) }, on).some((p) => /Imorgon/.test(p)));
+  assert.ok(!briefingParts({ tomorrow }, on).some((p) => /Imorgon/.test(p)));
+  assert.ok(!briefingParts({ tomorrow, now: at(21, 0) }, sectionsOn('kvall,avslut', { vader: true, tag: false, pendlar: false, bil: false })).some((p) => /Imorgon/.test(p)));
+  // Efter kvällens händelser, före avslutet.
+  const evening = [{ title: 'Wilmer golf', start: at(22, 0) }];
+  assert.deepEqual(briefingParts({ tomorrow, evening, now: at(20, 30) }, on).slice(-3), ['Ikväll har Wilmer golf klockan tjugotvå.', 'Imorgon blir det lätt regn, mellan en och fyra plusgrader.', 'Ha en bra kväll.']);
 });
