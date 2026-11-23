@@ -72,3 +72,29 @@ export function schoolDays(w: SchoolWeek): SchoolDay[] {
     }];
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
+
+/**
+ * Manuella skoldagar när ingen källa finns: SKOLSCHEMA_MANUELLT="Molly|2026-11-23|08:30-15:45|4;Molly|2026-11-24|08:30-15:35|5"
+ * (namn | datum | första start–sista slut | antal lektioner, semikolon mellan dagarna). Gäller bara de datumen, så de går ut av
+ * sig själva. Ogiltiga poster hoppas över.
+ */
+export function parseManualDays(raw: string | undefined): (SchoolDay & { name: string })[] {
+  const out: (SchoolDay & { name: string })[] = [];
+  for (const part of (raw ?? '').split(';')) {
+    const m = part.trim().match(/^([^|]+)\|(\d{4}-\d{2}-\d{2})\|(\d{1,2}:\d{2})-(\d{1,2}:\d{2})\|(\d{1,2})$/);
+    if (!m) continue;
+    const norm = (t: string) => t.padStart(5, '0');
+    const [start, end, slots] = [norm(m[3]), norm(m[4]), Number(m[5])];
+    if (!(Date.parse(`${m[2]}T12:00:00Z`) > 0) || start >= end || start > '23:59' || end > '23:59' || slots < 1) continue;
+    out.push({ name: m[1].trim(), date: m[2], start, end, slots });
+  }
+  return out;
+}
+
+/** Hämtade skoldagar (null = gick inte att hämta) och manuella dagar ihop; manuella gäller på samma datum. Null om inget finns. */
+export function mergeSchoolDays(fetched: SchoolDay[] | null, manual: SchoolDay[]): SchoolDay[] | null {
+  if (!fetched && !manual.length) return null;
+  const by = new Map<string, SchoolDay>((fetched ?? []).map((d) => [d.date, d]));
+  for (const d of manual) by.set(d.date, { date: d.date, start: d.start, end: d.end, slots: d.slots });
+  return [...by.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
