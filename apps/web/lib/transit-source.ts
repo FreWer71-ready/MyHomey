@@ -20,7 +20,8 @@ export function transitGoal(): { label: string; at: LatLon } | null {
   return c ? { label: process.env.TRANSIT_DESTINATION_LABEL || 'Jobbet', at: { lat: Number(c[1]), lon: Number(c[2]) } } : null;
 }
 
-type Point = { id: string } | { at: LatLon };
+/** Hållplats (id) eller koordinat. ResRobot kräver ett namn när koordinaten inte går att lösa till en adress eller plats. */
+type Point = { id: string } | { at: LatLon; name?: string };
 type Transfer = { id: string; at: LatLon; name: string };
 
 /** Bytespunkten ur TRANSIT_TRANSFER ("id|lat,lon|namn"), eller null. */
@@ -41,15 +42,21 @@ async function query(from: Point, to: Point, at: number, opts: { products?: stri
   const q = new URLSearchParams({
     format: 'json', accessId: key, numF: String(opts.n ?? 4), passlist: '0',
     date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}`,
-    ...('id' in from ? { originId: from.id } : { originCoordLat: from.at.lat.toFixed(5), originCoordLong: from.at.lon.toFixed(5) }),
-    ...('id' in to ? { destId: to.id } : { destCoordLat: to.at.lat.toFixed(5), destCoordLong: to.at.lon.toFixed(5) }),
+    ...('id' in from ? { originId: from.id } : { originCoordLat: from.at.lat.toFixed(5), originCoordLong: from.at.lon.toFixed(5), originCoordName: from.name ?? 'Start' }),
+    ...('id' in to ? { destId: to.id } : { destCoordLat: to.at.lat.toFixed(5), destCoordLong: to.at.lon.toFixed(5), destCoordName: to.name ?? 'Mål' }),
     ...(opts.products ? { products: opts.products } : {}),
     ...(opts.via ? { viaId: opts.via } : {}),
     ...(opts.arrival ? { searchForArrival: '1' } : {}),
   });
   const res = await fetch(`https://api.resrobot.se/v2.1/trip?${q}`, { next: { revalidate: 120 }, signal: AbortSignal.timeout(8000) });
-  if (!res.ok) { console.error(`ResRobot: status ${res.status}`); return []; }
-  return parseTrips(await res.json());
+  const body = await res.json().catch(() => null) as { errorCode?: string; errorText?: string } | null;
+  if (!res.ok || body?.errorCode) {
+    // Felkod och text (utan nyckeln) i loggen, så orsaken syns i Vercel.
+    const text = String(body?.errorText ?? '').split(key).join('***').slice(0, 160);
+    console.error(`ResRobot: status ${res.status}${body?.errorCode ? ` ${body.errorCode}` : ''}${text ? ` ${text}` : ''}`);
+    if (!res.ok) return [];
+  }
+  return body ? parseTrips(body) : [];
 }
 
 const walkMin = (d: number) => Math.max(1, Math.ceil(((d * 1.25) / 4.8) * 60));
@@ -113,7 +120,7 @@ export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n =
     // Övrigt (t.ex. från en annan plats): snabbaste vägen, utan buss.
     const stop = home ? process.env.TRANSIT_ORIGIN_STOP : undefined;
     const endStop = toHome ? process.env.TRANSIT_ORIGIN_STOP : undefined;
-    const f: Point = stop ? { id: stop } : { at: from }, t: Point = endStop ? { id: endStop } : { at: to };
+    const f: Point = stop ? { id: stop } : { at: from, name: home ? 'Hem' : 'Start' }, t: Point = endStop ? { id: endStop } : { at: to, name: toHome ? 'Hem' : 'Mål' };
     let trips = await query(f, t, at, { products: process.env.TRANSIT_PRODUCTS ?? '118', n: n + 2, arrival: arrive });
     if (stop) trips = trips.map((x) => (x.startAt ? withWalk(x, km(from, x.startAt)) : x));
     if (endStop) trips = trips.map((x) => (x.endAt ? withWalkEnd(x, km(x.endAt, to)) : x));
