@@ -19,10 +19,16 @@ function useRun() {
 }
 const chip = (on = false) => `pill min-h-11 px-3.5 text-[0.9375rem] ${on ? 'on' : ''}`;
 
-/** Hela rummet: på/av och ljusstyrka (en order för alla lampor), samt släck mjukt om 15/30 min. */
+/**
+ * Hela rummet: på/av och ljusstyrka (en order för alla lampor), samt släck mjukt om 15/30 min.
+ * Släckt rum: reglaget är nedtonat och låst och visar "Av", inte ett fyllt reglage med 100 %.
+ */
 export function RoomDimmer({ zone, room, on, level }: { zone: string; room: string; on: boolean; level: number }) {
   const { busy, err, run } = useRun();
+  const [isOn, setIsOn] = useState(on); // visas direkt vid tryck, och rättas av servern vid nästa uppdatering
   const [val, setVal] = useState(level);
+  const [seen, setSeen] = useState({ on, level });
+  if (seen.on !== on || seen.level !== level) { setSeen({ on, level }); setIsOn(on); setVal(level); }
   const [fading, setFading] = useState<number | null>(null);
   const t = useRef<ReturnType<typeof setTimeout> | null>(null);
   const change = (v: number) => {
@@ -30,20 +36,27 @@ export function RoomDimmer({ zone, room, on, level }: { zone: string; room: stri
     if (t.current) clearTimeout(t.current);
     t.current = setTimeout(() => run(() => hueRoom(zone, { dim: v / 100 })), 350);
   };
+  const toggle = () => {
+    const next = !isOn;
+    setIsOn(next);
+    run(async () => { const r = await hueRoom(zone, { on: next }); if (!r.ok) setIsOn(!next); return r; });
+  };
   return (
     <div className={`flex flex-col gap-2 ${busy ? 'opacity-80' : ''}`}>
       <div className="flex items-center gap-3">
-        <button type="button" role="switch" aria-checked={on} aria-label={`${room}: ${on ? 'släck' : 'tänd'} alla lampor`}
-          onClick={() => run(() => hueRoom(zone, { on: !on }))}
-          className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${on ? 'bg-sun' : 'bg-white/15'}`}>
-          <span className={`absolute top-1 size-6 rounded-full bg-white shadow transition-[left] ${on ? 'left-7' : 'left-1'}`} />
+        <button type="button" role="switch" aria-checked={isOn} aria-label={`${room}: ${isOn ? 'släck' : 'tänd'} alla lampor`}
+          onClick={toggle}
+          className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${isOn ? 'bg-sun' : 'bg-white/15'}`}>
+          <span className={`absolute top-1 size-6 rounded-full bg-white shadow transition-[left] ${isOn ? 'left-7' : 'left-1'}`} />
         </button>
-        <input type="range" min={1} max={100} value={val} onChange={(e) => change(Number(e.target.value))}
-          aria-label={`Ljusstyrka ${room}`} aria-valuetext={`${val} %`}
-          className="h-11 min-w-0 grow accent-[var(--color-sun)]" />
-        <span className="w-11 shrink-0 text-right text-[0.9375rem] font-semibold tabular-nums">{val} %</span>
+        <input type="range" min={1} max={100} value={val} disabled={!isOn} onChange={(e) => change(Number(e.target.value))}
+          aria-label={`Ljusstyrka ${room}`} aria-valuetext={isOn ? `${val} %` : 'Av'}
+          className={`h-11 min-w-0 grow transition-opacity ${isOn ? 'accent-[var(--color-sun)]' : 'accent-[var(--color-dim)] opacity-40'}`} />
+        <span className={`w-12 shrink-0 text-right text-[0.9375rem] font-semibold whitespace-nowrap tabular-nums ${isOn ? '' : 'text-dim'}`}>
+          {isOn ? `${val} %` : 'Av'}
+        </span>
       </div>
-      {on && (
+      {isOn && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[0.875rem] text-dim">Släck mjukt</span>
           {[15, 30].map((m) => (
