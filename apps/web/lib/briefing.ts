@@ -61,19 +61,19 @@ export const spokenTitle = (t: string) => t.replace(/\s[–—]\s/g, ' mot ');
 export const joinList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} och ${xs.at(-1)}`);
 
 // ---- Delar ----
-export const SECTIONS = ['vader', 'tag', 'forsta', 'hemresa', 'bil', 'kvall', 'avslut'] as const;
+export const SECTIONS = ['vader', 'tag', 'forsta', 'hemresa', 'bil', 'hemma', 'kvall', 'avslut'] as const;
 export type Section = (typeof SECTIONS)[number];
 
 /**
- * Vilka delar rapporten har. `BRIEFING="vader,tag,forsta,hemresa,bil,kvall,avslut"` (valfri delmängd, i den ordningen
+ * Vilka delar rapporten har. `BRIEFING="vader,tag,forsta,hemresa,bil,hemma,kvall,avslut"` (valfri delmängd, i den ordningen
  * delarna alltid läses) styr; utan värdet väljs delar efter vad hushållet har: väder, tåg/första händelse/hemresa för
- * den som pendlar med tåg, bil för den som kör, kvällens händelser och avslut för alla.
+ * den som pendlar med tåg, bil för den som kör, hemmet, kvällens händelser och avslut för alla.
  */
-export function sectionsOn(raw: string | undefined, has: { vader: boolean; tag: boolean; pendlar: boolean; bil: boolean }): Set<Section> {
+export function sectionsOn(raw: string | undefined, has: { vader: boolean; tag: boolean; pendlar: boolean; bil: boolean; hemma?: boolean }): Set<Section> {
   const listed = (raw ?? '').split(',').map((s) => s.trim().toLowerCase()).filter((s): s is Section => (SECTIONS as readonly string[]).includes(s));
   if (listed.length) return new Set(listed);
   return new Set<Section>([...(has.vader ? ['vader' as const] : []), ...(has.tag ? ['tag' as const] : []),
-    ...(has.pendlar ? ['forsta' as const, 'hemresa' as const] : []), ...(has.bil ? ['bil' as const] : []), 'kvall', 'avslut']);
+    ...(has.pendlar ? ['forsta' as const, 'hemresa' as const] : []), ...(has.bil ? ['bil' as const] : []), ...(has.hemma ? ['hemma' as const] : []), 'kvall', 'avslut']);
 }
 
 type Ev = { id: string; title: string; start: number | null; end: number | null };
@@ -93,6 +93,47 @@ export function todayPlan(events: Ev[], now: number): { first: { title: string; 
   };
 }
 
+
+// ---- Hemmet ----
+export type HomeInput = {
+  /** Dashboardens person (förnamn): "du" i texten. */ me: string;
+  lightsOn: number; lightsTotal: number; tempAvg: number | null;
+  /** Förnamn och om personen är hemma. */ people: { name: string; present: boolean }[];
+  internet: 'ok' | 'slow' | 'down' | 'unknown' | null;
+  /** Finns fuktsensorer, och vilka rum som har hög fukt. */ humidity: { measured: boolean; damp: string[] };
+  /** Enheter med lågt batteri (färdiga namn); null = inga batterienheter finns. */ batteries: string[] | null;
+};
+
+/** Vem en klocka tillhör: "din klocka", "Ulrikas klocka"; andra enheter med sitt namn. */
+export function batteryLabel(deviceName: string, me: string, others: string[] = []): string {
+  const name = deviceName.trim();
+  if (!/apple watch|klocka|\bwatch\b/i.test(name)) return name;
+  const owner = [me, ...others].find((n) => n && name.toLowerCase().includes(n.toLowerCase()));
+  return !owner ? 'en klocka' : owner.toLowerCase() === me.toLowerCase() ? 'din klocka' : `${owner.charAt(0).toUpperCase()}${owner.slice(1).toLowerCase()}s klocka`;
+}
+
+/** Hemmet i korta meningar: lampor och snittemperatur, vilka som är hemma, och internet, fukt och larm. Delar utan data hoppas över. */
+export function homeSentences(i: HomeInput): string[] {
+  const out: string[] = [];
+  const lamps = i.lightsTotal > 0 ? (i.lightsOn === 0 ? 'är alla lampor släckta' : `lyser ${i.lightsOn === 1 ? 'en lampa' : `${cnt(i.lightsOn)} lampor`}`) : null;
+  const t = i.tempAvg != null ? Math.round(i.tempAvg) : null;
+  const deg = t != null ? `${cnt(t)} ${t === 1 ? 'grad' : 'grader'} i snitt` : null;
+  if (lamps || deg) out.push(`Hemma ${lamps ?? ''}${lamps && deg ? ' och det är ' : deg ? 'är det ' : ''}${deg ?? ''}.`.replace(/\s+/g, ' ').replace(' .', '.'));
+  if (i.people.length) {
+    const home = i.people.filter((p) => p.present).map((p) => p.name);
+    const others = home.filter((n) => n.toLowerCase() !== i.me.toLowerCase());
+    const you = home.length > others.length;
+    out.push(home.length ? `${joinList([...others, ...(you ? ['du'] : [])]).replace(/^du$/, 'Du')} är hemma.` : 'Ingen är hemma.');
+  }
+  const status = [
+    i.internet === 'ok' ? 'Internet: check' : i.internet === 'slow' ? 'Internet: långsamt' : i.internet === 'down' ? 'Internet: nere' : null,
+    i.humidity.measured ? (i.humidity.damp.length ? `Fukt: hög fukt i ${joinList(i.humidity.damp)}` : 'Fukt: check') : null,
+    i.batteries ? (i.batteries.length === 0 ? 'Larm: check' : `Larm: dåligt batteri i ${i.batteries.length > 2 ? `${cnt(i.batteries.length)} enheter` : joinList(i.batteries)}`) : null,
+  ].filter(Boolean);
+  if (status.length) out.push(`${status.join(', ')}.`);
+  return out;
+}
+
 export type BriefingInput = {
   /** Nästa tåg: planerad avgång, förseningen i minuter och när man behöver gå. */ train?: { dep: number; delay: number; leave: number } | null;
   first?: { title: string; start: number; next: boolean; meetings: boolean } | null;
@@ -100,6 +141,7 @@ export type BriefingInput = {
   /** Hemresan efter sista mötet: tågets avgång (om tåg ingår) och när man är hemma. */ homePlan?: { trainDep: number | null; home: number } | null;
   car?: { home: boolean; label: string; minutes: number; trafficMin: number; warnings: number } | null;
   evening?: { title: string; start: number }[];
+  home?: HomeInput | null;
 };
 
 /** Rapportens meningar efter första meningen, i fast ordning; delar utan data hoppas över. */
@@ -123,6 +165,7 @@ export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
     const delay = c.trafficMin > 0 ? (w > 0 ? `, ${w === 1 ? 'den' : 'de'} påverkar restiden med ${minutes(c.trafficMin)}` : `, trafiken ger ${minutes(c.trafficMin)} längre restid`) : '';
     out.push(`Resan ${where} ser ut att ta ${minutes(c.minutes)}${warn}${delay}.`);
   }
+  if (on.has('hemma') && i.home) out.push(...homeSentences(i.home));
   if (on.has('kvall') && i.evening?.length) out.push(`Ikväll har ${joinList(i.evening.map((e) => `${spokenTitle(e.title)} klockan ${spokenTime(e.start)}`))}.`);
   if (on.has('avslut')) out.push('Ha en trevlig dag.');
   return out;
