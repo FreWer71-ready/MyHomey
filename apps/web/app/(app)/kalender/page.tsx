@@ -32,12 +32,20 @@ function Events({ day, now }: { day?: CalDay; now: number }) {
         const past = !live && e.end! <= now;
         const edge = e.src !== undefined ? `inset 3px 0 0 ${CAL_COLORS[e.src % CAL_COLORS.length]}` : undefined;
         const shadow = live ? (edge ? `${edge}, ${RING}` : undefined) : edge;
+        // "Möten på jobbet" är sammanslagna möten (id jobb@datum): första startar, sista slutar, plus antal möten.
+        const work = e.id.startsWith('jobb@');
         return (
-          <div key={e.id} title={[shortTitle(e.title), e.location?.split(',')[0]].filter(Boolean).join(' · ')}
+          <div key={e.id} title={work ? `${shortTitle(e.title)}: första ${hm(e.start!)}, sista ${hm(e.end!)}${e.location ? ` (${e.location})` : ''}` : [shortTitle(e.title), e.location?.split(',')[0]].filter(Boolean).join(' · ')}
             className={`flex min-w-0 gap-1.5 rounded-[0.5rem] py-0.5 pr-1.5 pl-2 ${live ? 'sel' : ''} ${past ? 'text-dim' : ''}`}
             style={shadow ? { boxShadow: shadow } : undefined}>
-            <span className="w-[2.4rem] shrink-0 text-[0.8125rem] leading-snug font-bold tabular-nums">{hm(e.start!)}</span>
-            <span className="min-w-0 text-[0.875rem] leading-snug break-words hyphens-auto">{shortTitle(e.title)}</span>
+            <span className="flex w-[2.4rem] shrink-0 flex-col leading-snug tabular-nums">
+              <span className="text-[0.8125rem] font-bold">{hm(e.start!)}</span>
+              {work && <span className="text-[0.75rem] text-dim">{hm(e.end!)}</span>}
+            </span>
+            <span className="flex min-w-0 flex-col leading-snug">
+              <span className="text-[0.875rem] break-words hyphens-auto">{shortTitle(e.title)}</span>
+              {work && e.location && <span className="text-[0.75rem] text-dim">{e.location}</span>}
+            </span>
           </div>
         );
       })}
