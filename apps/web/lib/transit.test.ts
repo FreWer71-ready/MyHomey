@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { bestTrips, doneLegs, fastest, parseTrips, progress, stopName, withWalk, withWalkEnd } from './transit.ts';
+import { bestTrips, decodeEntities, doneLegs, fastest, fmtMeters, lineBadge, parseTrips, progress, stopName, walkMeters, withWalk, withWalkEnd } from './transit.ts';
 
 test('kollektiv: ResRobot-resa tolkas till ben', () => {
   const raw = JSON.parse(readFileSync(new URL('./transit.fixture.json', import.meta.url), 'utf8'));
@@ -36,6 +36,27 @@ test('kollektiv: promenad hem läggs efter sista hållplatsen', () => {
   const w = withWalkEnd(t, 0.7);
   assert.equal(w.legs.at(-1)!.to, 'Hemma');
   assert.equal(w.arr, arr + 11 * 60_000);
+});
+
+test('kollektiv: HTML-kodade namn avkodas, gångmeter och linjebrickor som i SL', () => {
+  assert.equal(stopName('M&aring;l'), 'Mål');
+  assert.equal(stopName('Olof Palmes gata 9'), 'Olof Palmes gata 9');
+  assert.equal(decodeEntities('&Ouml;rebro &#229; &#xE4;'), 'Örebro å ä');
+  assert.equal(decodeEntities('&okänd;'), '&okänd;');
+  assert.equal(walkMeters(0.2), 250);
+  assert.equal(fmtMeters(280), '280 m');
+  assert.equal(fmtMeters(1240), '1,2 km');
+  const leg = (kind: 'metro' | 'tram' | 'train' | 'bus' | 'walk', label: string | null, num: string | null = null) => ({ kind, label, num });
+  assert.deepEqual(lineBadge(leg('metro', 'Tunnelbana 13')), { text: '13', color: '#C8282A' });
+  assert.equal(lineBadge(leg('metro', 'Tunnelbana 17'))?.color, '#1F7A33');
+  assert.equal(lineBadge(leg('metro', 'Tunnelbana 10'))?.color, '#0B6BAE');
+  assert.equal(lineBadge(leg('tram', 'Tvärbana 30'))?.color, '#9A5B16');
+  assert.equal(lineBadge(leg('train', 'Pendeltåg 41'))?.color, '#C93D7B');
+  assert.equal(lineBadge(leg('train', 'Regionaltåg 914')), null);
+  assert.equal(lineBadge(leg('bus', 'Buss 3'))?.text, '3');
+  assert.equal(lineBadge(leg('walk', null)), null);
+  // Nummer saknas i namnet: tågnumret används om det är siffror.
+  assert.equal(lineBadge(leg('metro', 'Tunnelbana', '14'))?.text, '14');
 });
 
 test('kollektiv: läge i planen styrs av positionen (inget ✓ utan position, "har inte gått än" vid startpunkten)', () => {

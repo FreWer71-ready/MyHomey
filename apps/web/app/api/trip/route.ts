@@ -90,7 +90,7 @@ export async function GET(req: Request) {
   }
   // Hemifrån (inom 150 m) räknas från hemmets hållplats med promenad, som på pendlingssidan.
   const atHome = from === 'home' || km(pos.at, PLACE) <= 0.15;
-  const trips = to === 'home' ? await loadTransit(pos.at, PLACE, at, 2, false, true, when === 'arr') : await loadTransit(pos.at, dest, at, 2, atHome, false, when === 'arr');
+  const trips = to === 'home' ? await loadTransit(pos.at, PLACE, at, 2, false, true, when === 'arr') : await loadTransit(pos.at, dest, at, 2, atHome, false, when === 'arr', target.name ?? (to === 'work' ? 'Jobbet' : undefined));
   if (!trips.length) return err('Ingen kollektivresa hittades', 502);
   const c = await loadCommute().catch(() => null);
   const idents = new Set(trips.flatMap((t) => t.legs.map((l) => l.num).filter(Boolean)));

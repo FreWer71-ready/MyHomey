@@ -145,7 +145,7 @@ export default async function CommutePage() {
   const elsewhere = o.away && !(o.pos && km(o.pos, tg?.at ?? PLACE) <= 1);
   const transit = !tg || (perTrain && !elsewhere) ? []
     : direction() === 'home' ? (goingHome ? await loadTransit(o.away ? o.pos! : tg.at, PLACE, Date.now(), 2, false, true) : [])
-    : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
+    : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away, false, false, tg.label) : [];
   const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
   // Tågläge: på ett tåg i pendlingen visas bara det tåget och resten av resan.
   const me = process.env.HOUSEHOLD ?? '', nowMs = Date.now(), d0 = direction();

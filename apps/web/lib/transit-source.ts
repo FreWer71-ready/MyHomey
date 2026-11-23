@@ -1,5 +1,5 @@
 import 'server-only';
-import { bestTrips, doneLegs, fastest, parseTrips, withWalk, withWalkEnd, type TransitLeg, type TransitTrip } from './transit.ts';
+import { bestTrips, doneLegs, fastest, parseTrips, walkMeters, withWalk, withWalkEnd, type TransitLeg, type TransitTrip } from './transit.ts';
 import { km, type LatLon } from './trip.ts';
 import type { Start } from './startpoint.ts';
 
@@ -60,9 +60,9 @@ async function query(from: Point, to: Point, at: number, opts: { products?: stri
 }
 
 const walkMin = (d: number) => Math.max(1, Math.ceil(((d * 1.25) / 4.8) * 60));
-/** Gångben. `fromAt`/`toAt` (om kända) låter positionen bekräfta att sträckan är gjord. */
+/** Gångben. `fromAt`/`toAt` (om kända) låter positionen bekräfta att sträckan är gjord och ger sträckan i meter. */
 const walkLeg = (from: string, to: string, dep: number, min: number, fromAt: LatLon | null = null, toAt: LatLon | null = null): TransitLeg =>
-  ({ kind: 'walk', from, to, dep, arr: dep + min * MIN, minutes: min, label: null, num: null, dir: null, track: null, fromAt, toAt });
+  ({ kind: 'walk', from, to, dep, arr: dep + min * MIN, minutes: min, label: null, num: null, dir: null, track: null, fromAt, toAt, meters: fromAt && toAt ? walkMeters(km(fromAt, toAt)) : null });
 
 /**
  * Sista/första biten mellan bytespunkten och målet: spårvagn (med gång) eller bara gång, det som är framme först.
@@ -110,7 +110,7 @@ async function preferredHome(tr: Transfer, goal: LatLon, home: LatLon, at: numbe
  * `home`: hemifrån via TRANSIT_ORIGIN_STOP (om satt) med promenad dit; `toHome`: dit med promenad hem efteråt.
  * Med TRANSIT_VIA och TRANSIT_TRANSFER används den föredragna vägen (jobbet ↔ hemmet).
  */
-export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n = 2, home = false, toHome = false, arrive = false): Promise<TransitTrip[]> {
+export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n = 2, home = false, toHome = false, arrive = false, toName?: string): Promise<TransitTrip[]> {
   if (!process.env.RESROBOT_API_KEY) return [];
   const goal = transitGoal()?.at;
   const tr = process.env.TRANSIT_VIA ? transfer() : null;
@@ -121,7 +121,7 @@ export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n =
     // Övrigt (t.ex. från en annan plats): snabbaste vägen, utan buss.
     const stop = home ? process.env.TRANSIT_ORIGIN_STOP : undefined;
     const endStop = toHome ? process.env.TRANSIT_ORIGIN_STOP : undefined;
-    const f: Point = stop ? { id: stop } : { at: from, name: home ? 'Hem' : 'Start' }, t: Point = endStop ? { id: endStop } : { at: to, name: toHome ? 'Hem' : 'Mål' };
+    const f: Point = stop ? { id: stop } : { at: from, name: home ? 'Hem' : 'Start' }, t: Point = endStop ? { id: endStop } : { at: to, name: toHome ? 'Hem' : (toName ?? 'Mål') };
     // Utan TRANSIT_ORIGIN_STOP (t.ex. Ulrika) finns inget pendlarspår att utgå från: alla trafikslag. Med bara tåg och spårvagn
     // (118) hittar ResRobot ingen hållplats nära hemmet (SVC_LOC H9220). TRANSIT_PRODUCTS styr om det är satt.
     const products = process.env.TRANSIT_PRODUCTS ?? (process.env.TRANSIT_ORIGIN_STOP ? '118' : undefined);
