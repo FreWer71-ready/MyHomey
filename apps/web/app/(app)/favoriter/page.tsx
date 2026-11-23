@@ -89,9 +89,21 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
       {routines.length + house.length > 0 && (
         <section className="flex flex-col gap-3 rounded-[1.25rem] bg-card p-5 lg:p-6">
           <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim"><Icon name="home" size={22} />Rutiner</h2>
-          {/* Hela huset: två knappar bredvid varandra överst. */}
-          {house.length > 0 && <ActionTiles items={house} layout="compact" />}
-          {routines.length > 0 && <ActionTiles items={routines} cols={2} />}
+          {hueMode ? (
+            <>
+              {/* Hue: fyra kolumner, plats för 8 rutiner för hela hemmet (hela huset först). Fler fälls ut. */}
+              <ActionTiles items={[...house, ...routines].slice(0, 8)} layout="tiles" />
+              {house.length + routines.length > 8 && (
+                <details className="group border-t border-line pt-1">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[1rem] font-semibold text-dim [&::-webkit-details-marker]:hidden">
+                    Fler rutiner ({house.length + routines.length - 8})
+                    <span aria-hidden="true" className="text-[1.25rem] transition-transform group-open:rotate-90">›</span>
+                  </summary>
+                  <div className="pt-2"><ActionTiles items={[...house, ...routines].slice(8)} layout="tiles" /></div>
+                </details>
+              )}
+            </>
+          ) : <ActionTiles items={routines} cols={2} />}
         </section>
       )}
 
