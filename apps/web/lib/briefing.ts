@@ -93,14 +93,14 @@ export type Section = (typeof SECTIONS)[number];
 
 /**
  * Vilka delar rapporten har. `BRIEFING="vader,tag,forsta,hemresa,bil,skola,hemma,kvall,avslut"` (valfri delmängd, i den ordningen
- * delarna alltid läses) styr; utan värdet väljs delar efter vad hushållet har: väder, tåg/första händelse/hemresa för
- * den som pendlar med tåg, bil för den som kör, skolan när barnens scheman finns, hemmet, kvällens händelser och avslut för alla.
+ * delarna alltid läses) styr; utan värdet väljs delar efter vad hushållet har: väder, tåg/hemresa för den som pendlar
+ * med tåg, första/nästa händelse för alla med kalender, bil för den som kör, skolan när barnens scheman finns, hemmet, kvällens händelser och avslut för alla.
  */
-export function sectionsOn(raw: string | undefined, has: { vader: boolean; tag: boolean; pendlar: boolean; bil: boolean; hemma?: boolean; skola?: boolean }): Set<Section> {
+export function sectionsOn(raw: string | undefined, has: { vader: boolean; tag: boolean; pendlar: boolean; bil: boolean; hemma?: boolean; skola?: boolean; kalender?: boolean }): Set<Section> {
   const listed = (raw ?? '').split(',').map((s) => s.trim().toLowerCase()).filter((s): s is Section => (SECTIONS as readonly string[]).includes(s));
   if (listed.length) return new Set(listed);
   return new Set<Section>([...(has.vader ? ['vader' as const] : []), ...(has.tag ? ['tag' as const] : []),
-    ...(has.pendlar ? ['forsta' as const, 'hemresa' as const] : []), ...(has.bil ? ['bil' as const] : []), ...(has.skola ? ['skola' as const] : []), ...(has.hemma ? ['hemma' as const] : []), 'kvall', 'avslut']);
+    ...(has.pendlar || has.kalender ? ['forsta' as const] : []), ...(has.pendlar ? ['hemresa' as const] : []), ...(has.bil ? ['bil' as const] : []), ...(has.skola ? ['skola' as const] : []), ...(has.hemma ? ['hemma' as const] : []), 'kvall', 'avslut']);
 }
 
 type Ev = { id: string; title: string; start: number | null; end: number | null };
@@ -229,7 +229,9 @@ export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
     const t = spokenTime(i.train.dep), go = spokenTime(i.train.leave);
     out.push(i.train.delay >= 1 ? `Tåget ${t} är ${minutes(i.train.delay)} försenat, så du bör gå ${go} för att hinna i tid.` : `Tåget ${t} går i tid, så du bör gå ${go}.`);
   }
-  if (on.has('forsta') && i.first) {
+  // Är nästa händelse en av kvällens sägs den bara i kvällsmeningen ("Ikväll har …"), inte två gånger.
+  const inEvening = on.has('kvall') && !!i.first && !!i.evening?.some((e) => e.start === i.first!.start && e.title === i.first!.title);
+  if (on.has('forsta') && i.first && !inEvening) {
     out.push(`${i.first.next ? 'Din nästa' : 'Din första'} kalenderhändelse är ${i.first.meetings ? 'möte' : spokenTitle(i.first.title)} klockan ${spokenTime(i.first.start)}.`);
   }
   if (on.has('hemresa') && i.lastEnd != null) {
