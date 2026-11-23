@@ -6,7 +6,7 @@ import { ScrollActive } from '@/components/ScrollActive';
 import { TrainHistory, isRange } from '@/components/TrainHistory';
 import { loadTrips, ticket } from '@/lib/trips-source';
 
-import { loadHistory, loadLightTimeline, loadPresenceTimeline, loadRoadHistory, loadWine, loadWineHistory, type RoadHistRow } from '@/lib/data';
+import { loadHistory, loadHistoryAvail, loadLightTimeline, loadPresenceTimeline, loadRoadHistory, loadWine, loadWineHistory, type RoadHistRow } from '@/lib/data';
 import {
   METRICS, PERIODS, fmtValue, isMetric, isPeriod, sumSeries, type MetricKey, type PeriodKey,
 } from '@/lib/history';
@@ -72,11 +72,27 @@ export default async function HistoryPage({
   searchParams,
 }: { searchParams: Promise<{ m?: string; p?: string; s?: string; r?: string }> }) {
   const { m, p, s: sel, r } = await searchParams;
-  const view: View = m === 'lights' || m === 'presence' || m === 'wine' || m === 'road' || m === 'train' ? m : isMetric(m) ? m : 'temp';
-  const metric: MetricKey = view === 'lights' || view === 'presence' || view === 'wine' || view === 'road' || view === 'train' ? 'temp' : view;
+  const wanted: View = m === 'lights' || m === 'presence' || m === 'wine' || m === 'road' || m === 'train' ? m : isMetric(m) ? m : 'temp';
   const period: PeriodKey = isPeriod(p) ? p : '24h';
+  // Flikar utan data för hushållet visas inte. Kommer data in dyker fliken upp av sig själv.
+  const [wine, avail] = await Promise.all([loadWine(), loadHistoryAvail()]);
+  const has = (v: View) => v === 'temp' ? avail.caps.has('measure_temperature') : v === 'hum' ? avail.caps.has('measure_humidity')
+    : v === 'power' ? avail.caps.has('measure_power') || avail.caps.has('measure_power.homey') : v === 'energy' ? avail.caps.has('meter_power')
+    : v === 'lights' ? avail.caps.has('onoff') : v === 'presence' ? avail.caps.has('alarm_motion')
+    : v === 'wine' ? !!wine : v === 'train' ? avail.trips : avail.road;
+  const views = VIEWS.filter((v) => has(v.key));
+  if (!views.length) {
+    return (
+      <>
+        <h1 className="text-[2rem] leading-tight font-extrabold tracking-tight">Historik</h1>
+        <p className="rounded-[1.5rem] glass p-10 text-center text-lg font-bold text-dim">Ingen historik än.</p>
+      </>
+    );
+  }
+  const view: View = views.some((v) => v.key === wanted) ? wanted : views[0].key;
+  const metric: MetricKey = view === 'lights' || view === 'presence' || view === 'wine' || view === 'road' || view === 'train' ? 'temp' : view;
   const cfg = METRICS[metric];
-  const [wine, winePts] = await Promise.all([loadWine(), view === 'wine' ? loadWineHistory() : Promise.resolve([] as [number, number][])]);
+  const winePts = view === 'wine' ? await loadWineHistory() : ([] as [number, number][]);
   const roadStation = ROAD_STATIONS.some(([id]) => id === sel) ? sel! : '429';
   const roadRows = view === 'road' ? await loadRoadHistory(roadStation, period) : [];
   const trips = view === 'train' ? await loadTrips() : [];
@@ -85,7 +101,6 @@ export default async function HistoryPage({
     : view === 'lights' || view === 'presence'
       ? [[], await (view === 'presence' ? loadPresenceTimeline(period) : loadLightTimeline(period))]
       : [await loadHistory(metric, period), null];
-  const views = VIEWS.filter((v) => v.key !== 'wine' || wine);
 
   // Valt rum/serie (?s=) filtrerar grafen; samma tryck igen visar alla.
   const shown = sel ? series.filter((x) => x.id === sel) : series;

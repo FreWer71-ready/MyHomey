@@ -23,9 +23,8 @@ export default async function LocatePage() {
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
       <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight lg:col-span-12">Var är</h1>
 
-      <section aria-label="Familjen" className={`${card} lg:col-span-6`}>
+      {members.length > 0 && <section aria-label="Familjen" className={`${card} lg:col-span-6`}>
         <h2 className={h2}><Icon name="home" size={22} />Familjen · Life360</h2>
-        {members.length === 0 && <p className="text-[1rem] text-dim">Ingen Life360-medlem i Homey.</p>}
         <ul>
           {members.map((m) => {
             const where = whereText(m);
@@ -48,11 +47,10 @@ export default async function LocatePage() {
             );
           })}
         </ul>
-      </section>
+      </section>}
 
-      {(items.length > 0 || process.env.CONTROL !== 'hue') && <section aria-label="Prylar" className={`${card} lg:col-span-6`}>
+      {items.length > 0 && <section aria-label="Prylar" className={`${card} lg:col-span-6`}>
         <h2 className={h2}><Icon name="star" size={22} />Prylar · Apple Hitta</h2>
-        {items.length === 0 && <p className="text-[1rem] text-dim">Inga Hitta-prylar i Homey.</p>}
         <ul>
           {items.map((it) => {
             const map = mapUrl(it.lat, it.lon);
@@ -73,6 +71,7 @@ export default async function LocatePage() {
           })}
         </ul>
       </section>}
+      {members.length + items.length === 0 && <p className={`${card} text-[1rem] text-dim lg:col-span-12`}>Ingen plats- eller Hitta-data än.</p>}
     </div>
   );
 }

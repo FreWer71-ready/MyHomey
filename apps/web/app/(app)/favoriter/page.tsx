@@ -35,12 +35,9 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
   ] : [];
 
   const routines: Action[] = [
-    ...house,
-    ...[
-      ...flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' as const, advanced: f.advanced })),
-      ...favMoods.filter((m) => !m.room).map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
-    ].sort(byName),
-  ];
+    ...flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' as const, advanced: f.advanced })),
+    ...favMoods.filter((m) => !m.room).map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
+  ].sort(byName);
 
   // Rumskorten visas som murverk (CSS-kolumner): de staplas tätt under varandra oavsett längd.
   // Rum: favoritmoods + Hue-scener (Homey-hushåll med anslutet Hue) i samma kort.
@@ -89,10 +86,24 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
       {hueResult === 'ok' && <p role="status" className="rounded-[0.875rem] bg-card px-4 py-2 text-[1rem] font-semibold text-ok">Hue är anslutet.</p>}
       {hueResult === 'fel' && <p role="alert" className="rounded-[0.875rem] bg-card px-4 py-2 text-[1rem] font-semibold text-danger">Det gick inte att ansluta Hue. Försök igen.</p>}
 
-      {routines.length > 0 && (
+      {routines.length + house.length > 0 && (
         <section className="flex flex-col gap-3 rounded-[1.25rem] bg-card p-5 lg:p-6">
           <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim"><Icon name="home" size={22} />Rutiner</h2>
-          <ActionTiles items={routines} cols={2} />
+          {hueMode ? (
+            <>
+              {/* Hue: fyra kolumner, plats för 8 rutiner för hela hemmet (hela huset först). Fler fälls ut. */}
+              <ActionTiles items={[...house, ...routines].slice(0, 8)} layout="tiles" />
+              {house.length + routines.length > 8 && (
+                <details className="group border-t border-line pt-1">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[1rem] font-semibold text-dim [&::-webkit-details-marker]:hidden">
+                    Fler rutiner ({house.length + routines.length - 8})
+                    <span aria-hidden="true" className="text-[1.25rem] transition-transform group-open:rotate-90">›</span>
+                  </summary>
+                  <div className="pt-2"><ActionTiles items={[...house, ...routines].slice(8)} layout="tiles" /></div>
+                </details>
+              )}
+            </>
+          ) : <ActionTiles items={routines} cols={2} />}
         </section>
       )}
 
@@ -161,7 +172,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
             </section>
           ))}
         </section>
-      ) : routines.length === 0 && (
+      ) : routines.length + house.length === 0 && (
         <p className="rounded-[1.25rem] bg-card p-5 text-[1.0625rem] text-dim">
           {hueMode ? 'Inga scener än. Anslut Philips Hue nedan.' : 'Inga favoriter än. Markera moods och flows som favoriter i Homey-appen så dyker de upp här.'}
         </p>

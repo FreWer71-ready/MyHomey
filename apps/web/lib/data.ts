@@ -323,6 +323,20 @@ async function loadHueScenesFresh(): Promise<{ connected: boolean; scenes: HueSc
 
 export type WineCellar = { total: number; by_color: Record<string, number>; latest: { name?: string; producer?: string; year?: number } | null; updated_at: string };
 
+/** Vilka Historik-vyer som har data för hushållet. Flikar utan data visas inte. */
+export type HistoryAvail = { caps: Set<string>; trips: boolean; road: boolean };
+async function loadHistoryAvailFresh(): Promise<HistoryAvail> {
+  if (DEMO) return { caps: new Set(['measure_temperature', 'measure_humidity', 'measure_power', 'meter_power', 'onoff', 'alarm_motion']), trips: true, road: true };
+  const sb = await createClient();
+  const [caps, trips, road] = await Promise.all([
+    sb.from('capability_state').select('capability_id'),
+    sb.from('train_trips').select('id', { count: 'exact', head: true }).eq('hidden', false),
+    loadRoadHistory('429', '24h').catch(() => []),
+  ]);
+  return { caps: new Set((caps.data ?? []).map((c) => c.capability_id as string)), trips: (trips.count ?? 0) > 0, road: road.length > 0 };
+}
+export const loadHistoryAvail = cache(loadHistoryAvailFresh);
+
 /** Vinkällaren (från Trandvine via wine-ingest). Null om hushållet inte har någon källare kopplad. */
 async function loadWineFresh(): Promise<WineCellar | null> {
   if (DEMO) return { total: 27, by_color: { red: 21, white: 4, sparkling: 2 }, latest: { name: 'Amarone della Valpolicella Classico', producer: 'Zenato', year: 2020 }, updated_at: new Date().toISOString() };
