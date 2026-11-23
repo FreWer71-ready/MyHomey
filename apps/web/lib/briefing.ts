@@ -50,6 +50,9 @@ export function briefingText({ name, now, weather = '', parts = [] }: { name?: s
   return [first, ...parts.map((p) => p.trim()).filter(Boolean)].join(' ');
 }
 
+/** Titel för tal: tankstreck mellan lag ("Hammarby IF – IFK Göteborg") blir "mot" (annars läser vissa röster "minus"). */
+export const spokenTitle = (t: string) => t.replace(/\s[–—]\s/g, ' mot ');
+
 /** "A", "A och B", "A, B och C". */
 export const joinList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} och ${xs.at(-1)}`);
 
@@ -103,7 +106,7 @@ export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
     out.push(i.train.delay >= 1 ? `Tåget ${t} är ${minutes(i.train.delay)} försenat, så du bör gå ${go} för att hinna i tid.` : `Tåget ${t} går i tid, så du bör gå ${go}.`);
   }
   if (on.has('forsta') && i.first) {
-    out.push(`${i.first.next ? 'Din nästa' : 'Din första'} kalenderhändelse är ${i.first.meetings ? 'möte' : i.first.title} klockan ${spokenTime(i.first.start)}.`);
+    out.push(`${i.first.next ? 'Din nästa' : 'Din första'} kalenderhändelse är ${i.first.meetings ? 'möte' : spokenTitle(i.first.title)} klockan ${spokenTime(i.first.start)}.`);
   }
   if (on.has('hemresa') && i.lastEnd != null) {
     const home = i.homePlan;
@@ -116,7 +119,7 @@ export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
     const delay = c.trafficMin > 0 ? (w > 0 ? `, ${w === 1 ? 'den' : 'de'} påverkar restiden med ${minutes(c.trafficMin)}` : `, trafiken ger ${minutes(c.trafficMin)} längre restid`) : '';
     out.push(`Resan ${where} ser ut att ta ${minutes(c.minutes)}${warn}${delay}.`);
   }
-  if (on.has('kvall') && i.evening?.length) out.push(`Ikväll har ${joinList(i.evening.map((e) => `${e.title} ${spokenTime(e.start)}`))}.`);
+  if (on.has('kvall') && i.evening?.length) out.push(`Ikväll har ${joinList(i.evening.map((e) => `${spokenTitle(e.title)} klockan ${spokenTime(e.start)}`))}.`);
   if (on.has('avslut')) out.push('Ha en trevlig dag.');
   return out;
 }
