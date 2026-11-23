@@ -45,7 +45,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 
 ## Födelsedagar
 - `BIRTHDAYS="Förnamn=MM-DD,…"` i Vercel (t.ex. `Ulrika=11-23,Fredrik=03-14`), per dashboard. Upprepas varje år (29 feb firas 28 feb under icke-skottår). Flera på samma dag visas som "Ulrika & Fredrik". Ny variabel kräver ny deploy.
-- `BirthdayOverlay` (i layouten) visar "Grattis / på födelsedagen" med namnet i gult under, med fyrverkerier, konfetti, blommor och champagne i cirka 4,8 s vid varje full omladdning under dagen, inte vid sidbyte eller automatisk uppdatering. Tryck stänger direkt. Utan `BIRTHDAYS` visas inget.
+- `BirthdayOverlay` (i layouten) visar "Grattis / på födelsedagen" med namnet i gult under, med fyrverkerier, konfetti, blommor och champagne i cirka 5 s (avslutas med ett finalsalvo av fyrverkerier) vid varje full omladdning under dagen, inte vid sidbyte eller automatisk uppdatering. Tryck stänger direkt. Utan `BIRTHDAYS` visas inget.
 
 ## Prestanda
 - Klientcache 30 s (`staleTimes`), `loading.tsx` vid sidhopp. Ändra inte utan skäl.
