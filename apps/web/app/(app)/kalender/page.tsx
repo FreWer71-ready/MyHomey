@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 // Kalender: Ulrikas och Fredriks händelser i kolumner bredvid varandra, en rad per datum så att dagarna går att jämföra.
 // Innevarande och nästa månad. Helg och röda dagar markeras som i kalenderkortet på Hem. Egen kalender + den speglade (CALENDAR_MIRROR_*).
-// Barnens skolscheman (SKOLSCHEMA, t.ex. Wilmer) kommer som egna kolumner efter Ulrika och Fredrik: en rad "Skola" per skoldag.
+// Barnens skolscheman (SKOLSCHEMA, t.ex. Wilmer) kommer som egna kolumner mellan Ulrika (vänster) och Fredrik (höger): en rad "Skola" per skoldag.
 
 const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);
 const monthName = (date: string) => {
@@ -72,7 +72,8 @@ export default async function CalendarPage() {
     .sort((a, b) => Number(a.name !== 'Ulrika') - Number(b.name !== 'Ulrika')) // Ulrika till vänster, Fredrik till höger, i båda dashboards
     .map((c) => ({ ...c, days: byDate(c.cal) }));
   const kids = schools.map((c) => ({ ...c, days: byDate(c.cal) }));
-  const cols = [...people, ...kids];
+  // Ulrika längst till vänster, Fredrik längst till höger, barnens scheman däremellan.
+  const cols = [...people.filter((c) => c.name === 'Ulrika'), ...kids, ...people.filter((c) => c.name !== 'Ulrika')];
 
   if (!cols.length) return <p className="rounded-[1.25rem] bg-card p-5 text-[1.0625rem] text-dim">Ingen kalender är kopplad.</p>;
 

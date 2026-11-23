@@ -88,19 +88,19 @@ export const spokenTitle = (t: string) => { const m = matchOf(t); return m ? `ma
 export const joinList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} och ${xs.at(-1)}`);
 
 // ---- Delar ----
-export const SECTIONS = ['vader', 'tag', 'forsta', 'hemresa', 'bil', 'hemma', 'kvall', 'avslut'] as const;
+export const SECTIONS = ['vader', 'tag', 'forsta', 'hemresa', 'bil', 'skola', 'hemma', 'kvall', 'avslut'] as const;
 export type Section = (typeof SECTIONS)[number];
 
 /**
- * Vilka delar rapporten har. `BRIEFING="vader,tag,forsta,hemresa,bil,hemma,kvall,avslut"` (valfri delmängd, i den ordningen
+ * Vilka delar rapporten har. `BRIEFING="vader,tag,forsta,hemresa,bil,skola,hemma,kvall,avslut"` (valfri delmängd, i den ordningen
  * delarna alltid läses) styr; utan värdet väljs delar efter vad hushållet har: väder, tåg/första händelse/hemresa för
- * den som pendlar med tåg, bil för den som kör, hemmet, kvällens händelser och avslut för alla.
+ * den som pendlar med tåg, bil för den som kör, skolan när barnens scheman finns, hemmet, kvällens händelser och avslut för alla.
  */
-export function sectionsOn(raw: string | undefined, has: { vader: boolean; tag: boolean; pendlar: boolean; bil: boolean; hemma?: boolean }): Set<Section> {
+export function sectionsOn(raw: string | undefined, has: { vader: boolean; tag: boolean; pendlar: boolean; bil: boolean; hemma?: boolean; skola?: boolean }): Set<Section> {
   const listed = (raw ?? '').split(',').map((s) => s.trim().toLowerCase()).filter((s): s is Section => (SECTIONS as readonly string[]).includes(s));
   if (listed.length) return new Set(listed);
   return new Set<Section>([...(has.vader ? ['vader' as const] : []), ...(has.tag ? ['tag' as const] : []),
-    ...(has.pendlar ? ['forsta' as const, 'hemresa' as const] : []), ...(has.bil ? ['bil' as const] : []), ...(has.hemma ? ['hemma' as const] : []), 'kvall', 'avslut']);
+    ...(has.pendlar ? ['forsta' as const, 'hemresa' as const] : []), ...(has.bil ? ['bil' as const] : []), ...(has.skola ? ['skola' as const] : []), ...(has.hemma ? ['hemma' as const] : []), 'kvall', 'avslut']);
 }
 
 type Ev = { id: string; title: string; start: number | null; end: number | null };
@@ -181,6 +181,25 @@ export function homeSentences(i: HomeInput): string[] {
   return out;
 }
 
+// ---- Skolan ----
+export type SchoolKid = { name: string; today: { start: number; end: number } | null; tomorrow: { start: number; end: number } | null };
+/**
+ * Barnens skoldag: "Wilmer börjar klockan åtta och slutar klockan fjorton femtiofem." (idag, före start), "Wilmer slutar klockan …"
+ * (pågår) och när dagens skola är slut för alla, från klockan 16: "Imorgon börjar Wilmer klockan åtta." Barn med samma tider
+ * slås ihop ("Wilmer och Molly börjar …"). Inget om skolan är slut och imorgon saknas.
+ */
+export function schoolSentences(kids: SchoolKid[], now: number): string[] {
+  const group = (items: { name: string; start: number; end: number }[]) => {
+    const by = new Map<string, { names: string[]; start: number; end: number }>();
+    for (const k of items) { const g = by.get(`${k.start}|${k.end}`) ?? { names: [], start: k.start, end: k.end }; g.names.push(k.name); by.set(`${k.start}|${k.end}`, g); }
+    return [...by.values()];
+  };
+  const todays = group(kids.filter((k) => k.today && k.today.end > now).map((k) => ({ name: k.name, ...k.today! })));
+  if (todays.length) return todays.map((g) => (g.start > now ? `${joinList(g.names)} börjar klockan ${spokenTime(g.start)} och slutar klockan ${spokenTime(g.end)}.` : `${joinList(g.names)} slutar klockan ${spokenTime(g.end)}.`));
+  if (stockholm(now).hour < 16) return [];
+  return group(kids.filter((k) => k.tomorrow).map((k) => ({ name: k.name, ...k.tomorrow! }))).map((g) => `Imorgon börjar ${joinList(g.names)} klockan ${spokenTime(g.start)}.`);
+}
+
 export type BriefingInput = {
   /** Nästa tåg: planerad avgång, förseningen i minuter och när man behöver gå. */ train?: { dep: number; delay: number; leave: number } | null;
   first?: { title: string; start: number; next: boolean; meetings: boolean } | null;
@@ -189,6 +208,7 @@ export type BriefingInput = {
   car?: { home: boolean; label: string; minutes: number; trafficMin: number; warnings: number } | null;
   evening?: { title: string; start: number }[];
   home?: HomeInput | null;
+  school?: SchoolKid[];
   /** Nu och egna avslutsord; utan `now` blir avslutet dagens. */ now?: number; closings?: Partial<Record<DayPart, string>>;
 };
 
@@ -213,6 +233,7 @@ export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
     const delay = c.trafficMin > 0 ? (w > 0 ? `, ${w === 1 ? 'den' : 'de'} påverkar restiden med ${minutes(c.trafficMin)}` : `, trafiken ger ${minutes(c.trafficMin)} längre restid`) : '';
     out.push(`Resan ${where} ser ut att ta ${minutes(c.minutes)}${warn}${delay}.`);
   }
+  if (on.has('skola') && i.school?.length) out.push(...schoolSentences(i.school, i.now ?? Date.now()));
   if (on.has('hemma') && i.home) out.push(...homeSentences(i.home));
   if (on.has('kvall') && i.evening?.length) {
     // Matcher får egna meningar: "Ikväll klockan nitton är det match mellan A och B." Övriga i en lista: "Ikväll har X klockan …".

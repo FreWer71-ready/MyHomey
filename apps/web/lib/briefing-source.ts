@@ -1,8 +1,8 @@
 import 'server-only';
 import { humidityWarnings } from './alerts.ts';
-import { batteryLabel, briefingParts, parseClosings, sectionsOn, todayPlan, weatherPhrase, type HomeInput } from './briefing.ts';
+import { batteryLabel, briefingParts, parseClosings, sectionsOn, todayPlan, weatherPhrase, type HomeInput, type SchoolKid } from './briefing.ts';
 import { calendarConfigured, loadCalendarServer } from './calendar-source.ts';
-import { dayInfo, dayOf } from './calendar-view.ts';
+import { addDays, dayInfo, dayOf, type Calendar } from './calendar-view.ts';
 import { direction, groupRoad } from './commute.ts';
 import { loadCommute, loadHome, loadLocate, loadNet, loadWeather, PLACE } from './data.ts';
 import { goalEta } from './goal.ts';
@@ -11,6 +11,7 @@ import { buildLocate, type LocCap } from './locate.ts';
 import { summarizeNet, type NetDevice, type NetIsp, type NetStatusRow } from './net.ts';
 import { etaConfigured } from './route.ts';
 import { createClient } from './supabase/server.ts';
+import { loadSchoolCalendars, skolschemaConfigured } from './skolschema-source.ts';
 import { journeyFor, loadTransit, transitConfigured, transitGoal } from './transit-source.ts';
 import { isWeekend } from './trip.ts';
 import { symbolInfo } from './weather.ts';
@@ -44,11 +45,15 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
   // Med inloggning (knappen i appen): hushållets egna läsningar. Utan (adressen för genvägar): hemmets data via nyckeln
   // (homeByToken), annars inga hushållsdata; bilresan räknas då hemifrån.
   const session = !opts.anonymous;
-  const [hSes, w, commute, locSes, netSes, tok] = await Promise.all([
+  const [hSes, w, commute, locSes, netSes, tok, schools] = await Promise.all([
     session ? loadHome().catch(() => null) : null, loadWeather().catch(() => null), loadCommute().catch(() => null),
     session ? loadLocate().catch(() => ({ members: [], items: [] })) : null, session ? loadNet().catch(() => null) : null,
     !session && opts.token ? homeByToken(opts.token).catch(() => null) : null,
+    skolschemaConfigured() ? loadSchoolCalendars().catch(() => []) : [],
   ]);
+  // Barnens skoldag idag och imorgon (SKOLSCHEMA, aktuell vecka): första start och sista slut.
+  const day = (cal: Calendar | null, date: string) => { const e = cal?.days.find((d) => d.date === date)?.timed.find((t) => t.id.startsWith('skola@')); return e ? { start: e.start!, end: e.end! } : null; };
+  const school: SchoolKid[] = schools.map((c) => ({ name: c.name, today: day(c.cal, dayOf(now)), tomorrow: day(c.cal, addDays(dayOf(now), 1)) })).filter((k) => k.today || k.tomorrow);
   const h = hSes ?? tok?.h ?? null;
   const locate = locSes ?? tok?.locate ?? { members: [], items: [] };
   const net = session ? netSes : tok?.net ?? null;
@@ -58,7 +63,7 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
   const goal = transitConfigured() && commute?.trains && !isWeekend(now) && !dayInfo(dayOf(now), now).free ? transitGoal() : null;
   const viaPref = !!process.env.TRANSIT_VIA && !!process.env.TRANSIT_TRANSFER;
   const carGoal = etaConfigured() && !!process.env.DEFAULT_DESTINATION && !!commute && !commute.trains;
-  const on = sectionsOn(process.env.BRIEFING, { vader: !!weather, tag: !!goal && viaPref, pendlar: !!goal, bil: carGoal, hemma: !!home });
+  const on = sectionsOn(process.env.BRIEFING, { vader: !!weather, tag: !!goal && viaPref, pendlar: !!goal, bil: carGoal, hemma: !!home, skola: school.length > 0 });
 
   let train: { dep: number; delay: number; leave: number } | null = null;
   if (on.has('tag') && goal && viaPref && commute) {
@@ -90,7 +95,7 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
 
   return {
     name, weather: on.has('vader') ? weather : '',
-    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, home, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
+    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
   };
 }
 
