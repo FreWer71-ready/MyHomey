@@ -26,8 +26,12 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 ## Hue (Ulrika)
 - Hallsensorns automation ligger i Hue-bryggan (behavior_instance "Sensor hall"): rörelse 08–22 tänder zonen "Alla rum" (scen "Ljust", allt utom "Använts ej"), 22–08 gör ingenting, ingen automatisk släckning. Ändras i Hue-appen eller via CLIP v2.
 - Favoriter: Rutiner i fyra kolumner (`ActionTiles` layout `tiles`) med plats för 8 rutiner för hela hemmet, "Mys i hela huset" och "Släck alla lampor" först. Fler fälls ut under "Fler rutiner".
+- Hem: Snabbval ligger under trafikkortet (Till jobbet), i fyra kolumner med 8 rutor: Ljust/Mys/Släck i hela huset, förvalen (`QUICK_SCENES`), favoriterna och hemmets scener (dubbletter på namn bort). Fler visas på Favoriter. Andra hushåll har Snabbval kvar i vänsterkolumnen.
 - "Ringa mobilen" (`NTFY_TOPICS`) ligger i varningsraden på Hem, direkt under klockan. Lägg den inte i Snabbval: kortet klipper innehåll på stor skärm.
 - Hemkomst sköts av Hues egen automation "Komma hem" (geofence i Hue-appen). Dashboardens egen variant är borttagen (kod och tabellen `arrival_lights`).
+
+## Kalender
+- Egen kalender på Hem: idag + 14 dagar, högst 8 händelser per dag. Den speglade (den andres, `compact`): idag + 7 dagar, högst 4. "Månad" visar 30 dagar. Konstanter överst i `CalendarWidget`.
 
 ## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
 - **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.

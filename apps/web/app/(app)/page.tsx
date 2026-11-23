@@ -4,6 +4,7 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
+import { houseActions } from '@/lib/house-actions';
 import { boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nextTrip, upcoming, type Trip, onRoute } from '@/lib/trip';
 import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
@@ -153,6 +154,14 @@ export default async function HomePage() {
     const zones = m[2] === '*' ? h.rooms.map((r) => r.id) : h.rooms.filter((r) => r.name.toLowerCase() === m[2].toLowerCase()).map((r) => r.id);
     return zones.length ? [{ id: `preset-${i}`, name: m[1], kind: 'room', zones, scene: m[3] }] : [];
   }));
+  // Hue-hushåll (Ulrika): Snabbval ligger under Till jobbet och fylls med hela huset (Ljust, Mys, Släck), förvalen,
+  // favoriterna och hemmets scener. Dubbletter på namn tas bort, hela-huset-knapparna först.
+  const hueMode = process.env.CONTROL === 'hue';
+  const quickList: Action[] = hueMode ? (() => {
+    const seen = new Set<string>();
+    return [...houseActions(h.rooms, ['ljust', 'mys', 'slack']), ...quick, ...h.homeMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const }))]
+      .filter((a) => { const k = a.name.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  })() : quick;
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
   const tvRows = await loadTvStatuses().catch(() => []);
   const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
@@ -436,6 +445,19 @@ export default async function HomePage() {
       .map((m) => ({ id: m.id, name: m.first, present: m.home, since: null as string | null, src: 'L360' })),
   ].sort((x, y) => Number(y.present) - Number(x.present));
 
+  const snabbval = quickList.length > 0 && (
+    <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0">
+      <div className="flex min-h-0 flex-col overflow-y-auto">
+        <ActionTiles items={hueMode ? quickList.slice(0, 8) : quickList} layout={hueMode ? 'tiles' : 'compact'} />
+      </div>
+      {hueMode && quickList.length > 8 && (
+        <Link href="/favoriter" className="flex min-h-11 items-center justify-between text-[1rem] font-semibold text-dim">
+          Fler på Favoriter<span aria-hidden="true">›</span>
+        </Link>
+      )}
+    </Card>
+  );
+
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
       {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
@@ -525,7 +547,7 @@ export default async function HomePage() {
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
           {/* Kalenderfokus (HOME_FOCUS=calendar): kalendrarna direkt under klockan, på alla skärmstorlekar. */}
           {calFocus && hasCal && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget collapsible={false} /></div>}
-          {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={false} /></div>}
+          {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={false} compact /></div>}
           <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
             label={`Ute ${outTemp != null ? fmtTemp(outTemp) : ''}${sky ? `, ${sky.label.toLowerCase()}` : ''}${hint ? `. ${hint.text}` : ''}. Visa väderprognosen.`} className="order-4 lg:order-none lg:shrink-0">
             <div className="flex items-center gap-3">
@@ -562,13 +584,7 @@ export default async function HomePage() {
             )}
           </Card>
 
-          {quick.length > 0 && (
-            <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0">
-              <div className="flex min-h-0 flex-col overflow-y-auto">
-                <ActionTiles items={quick} layout="compact" />
-              </div>
-            </Card>
-          )}
+          {!hueMode && snabbval}
         </div>
 
         {/* HÄRNÄST: pendling och kalender. */}
@@ -756,9 +772,10 @@ export default async function HomePage() {
               )}
             </Card>
           )}
+          {hueMode && snabbval}
           {!calFocus && hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget /></div>}
           {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
-          {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
+          {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" compact /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}

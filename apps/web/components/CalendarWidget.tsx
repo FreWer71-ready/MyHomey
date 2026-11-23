@@ -10,7 +10,7 @@ const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour
  * Kalender (hushållets Google-kalendrar via /api/calendar). Idag och Imorgon visas alltid, övriga dagar bara
  * om något med tid är inplanerat. Heldag markeras bara vid dagen. Pågående och egna lagets matcher lyfts fram.
  */
-export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id = 'kalender-vecka', collapsible = true }: { src?: string; title?: string; id?: string; collapsible?: boolean } = {}) {
+export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id = 'kalender-vecka', collapsible = true, compact = false }: { src?: string; title?: string; id?: string; collapsible?: boolean; compact?: boolean } = {}) {
   const [cal, setCal] = useState<Calendar | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -36,7 +36,9 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
 
   // Bara dagar med något kvar: tidsatta som inte är slut, eller heldag.
   // Kortet: idag + 7 dagar, högst 4 händelser per dag. Rutan vid tryck: hela månaden (30 dagar).
-  const days = (cal?.days ?? []).slice(0, 8).filter((d) => d.allDay.length > 0 || d.timed.some((e) => e.end! > now));
+  // Egen kalender: idag + 14 dagar, högst 8 händelser per dag. Speglad (compact): idag + 7 dagar, högst 4.
+  const ahead = compact ? 7 : 14, perDay = compact ? 4 : 8;
+  const days = (cal?.days ?? []).slice(0, ahead + 1).filter((d) => d.allDay.length > 0 || d.timed.some((e) => e.end! > now));
   const monthDays = (cal?.days ?? []).filter((d) => d.allDay.length + d.timed.length > 0);
   const week = useRef<HTMLDivElement>(null);
 
@@ -56,11 +58,11 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
   const todayCount = cal && days[0] && days[0].date === cal.days[0]?.date ? days[0].timed.filter((e) => e.end! > now).length : 0;
   const summary = !cal ? '' : next
     ? `${todayCount ? `Idag ${todayCount} · ` : ''}nästa ${dayOf(next.start!) === dayOf(now) ? '' : `${dayInfo(dayOf(next.start!), now).main.toLowerCase()} `}${hm(next.start!)} ${shortTitle(next.title)}`
-    : 'Inget inplanerat de närmaste 7 dagarna';
+    : `Inget inplanerat de närmaste ${ahead} dagarna`;
 
   return (
     <>
-    <section aria-label={title} className="flex max-h-[30rem] min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:max-h-none lg:p-6">
+    <section aria-label={title} className={`flex min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:max-h-none lg:p-6 ${compact ? 'max-h-[30rem]' : 'max-h-[44rem]'}`}>
       <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
         {/* Rubriken fäller in och ut; "Månad" öppnar 30 dagar i en egen ruta. */}
         {collapsible ? (
@@ -83,7 +85,7 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
         <p className="animate-pulse text-[1rem] text-dim">Hämtar kalendern …</p>
       ) : (
         <div className="scroll-x -mr-2 flex min-h-0 flex-col gap-4 overflow-y-auto pr-2">
-          {days.length === 0 && <p className="text-[1rem] text-dim">Inget inplanerat de närmaste 7 dagarna</p>}
+          {days.length === 0 && <p className="text-[1rem] text-dim">Inget inplanerat de närmaste {ahead} dagarna</p>}
           {days.map((d, i) => {
             const timed = d.timed.filter((e) => e.end! > now || d.date !== cal.days[0].date);
             const info = dayInfo(d.date, now);
@@ -93,8 +95,8 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
                 {prev && prev.week !== info.week && <WeekLine week={info.week} />}
                 <Day info={info} count={timed.length + d.allDay.length}>
                   {d.allDay.map((e) => <AllDay key={e.id} e={e} />)}
-                  {timed.slice(0, 4).map((e) => <Row key={e.id} e={e} now={now} />)}
-                  {timed.length > 4 && <p className="pl-[4.75rem] text-[0.875rem] font-semibold text-dim">+{timed.length - 4} till</p>}
+                  {timed.slice(0, perDay).map((e) => <Row key={e.id} e={e} now={now} />)}
+                  {timed.length > perDay && <p className="pl-[4.75rem] text-[0.875rem] font-semibold text-dim">+{timed.length - perDay} till</p>}
                 </Day>
               </Fragment>
             );
