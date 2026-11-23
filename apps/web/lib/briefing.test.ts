@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bearer, keyOk } from './briefing-auth.ts';
-import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, parseClosings, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
+import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, parseClosings, statusSentences, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
 
 // 23 nov 2026 är en måndag; Stockholm är UTC+1 då.
 const at = (h: number, m = 0) => Date.UTC(2026, 10, 23, h - 1, m);
@@ -139,7 +139,8 @@ test('rapport: hemmet (lampor, temperatur, vilka som är hemma, internet, fukt o
   assert.deepEqual(homeSentences(base), [
     'Hemma lyser tretton lampor och det är tjugotre grader i snitt.',
     'Ulrika och du är hemma.',
-    'Internet: check, Fukt: check, Larm: dåligt batteri i din klocka.',
+    'Det är dåligt batteri i din klocka.',
+    'Internet och fuktnivåerna är ok.',
   ]);
   // Bara du, släckt, en lampa, hög fukt, nere, flera batterier, inga larm.
   assert.equal(homeSentences({ ...base, people: [{ name: 'Fredrik', present: true }] })[1], 'Du är hemma.');
@@ -149,9 +150,9 @@ test('rapport: hemmet (lampor, temperatur, vilka som är hemma, internet, fukt o
   assert.equal(homeSentences({ ...base, lightsOn: 0 })[0], 'Hemma är alla lampor släckta och det är tjugotre grader i snitt.');
   assert.equal(homeSentences({ ...base, lightsOn: 1, tempAvg: null })[0], 'Hemma lyser en lampa.');
   assert.equal(homeSentences({ ...base, lightsTotal: 0, lightsOn: 0 })[0], 'Hemma är det tjugotre grader i snitt.');
-  assert.equal(homeSentences({ ...base, internet: 'down', humidity: { measured: true, damp: ['Badrum', 'Tvättstuga'] }, batteries: [] }).at(-1), 'Internet: nere, Fukt: hög fukt i Badrum och Tvättstuga, Larm: check.');
-  assert.equal(homeSentences({ ...base, batteries: ['a', 'b', 'c'] }).at(-1), 'Internet: check, Fukt: check, Larm: dåligt batteri i tre enheter.');
-  assert.equal(homeSentences({ ...base, batteries: ['din klocka', 'Dörrsensor hall'] }).at(-1), 'Internet: check, Fukt: check, Larm: dåligt batteri i din klocka och Dörrsensor hall.');
+  assert.deepEqual(homeSentences({ ...base, internet: 'down', humidity: { measured: true, damp: ['Badrum', 'Tvättstuga'] }, batteries: [] }).slice(2), ['Internet är nere och fuktnivåerna är höga i Badrum och Tvättstuga.', 'Inga larm.']);
+  assert.deepEqual(homeSentences({ ...base, batteries: ['a', 'b', 'c'] }).slice(2), ['Det är dåligt batteri i tre enheter.', 'Internet och fuktnivåerna är ok.']);
+  assert.deepEqual(homeSentences({ ...base, batteries: ['din klocka', 'Dörrsensor hall'] }).slice(2), ['Det är dåligt batteri i din klocka och Dörrsensor hall.', 'Internet och fuktnivåerna är ok.']);
   // Utan data hoppas delarna över.
   assert.deepEqual(homeSentences({ me: 'Fredrik', lightsOn: 0, lightsTotal: 0, tempAvg: null, people: [], internet: null, humidity: { measured: false, damp: [] }, batteries: null }), []);
   assert.deepEqual(homeSentences({ me: 'Ulrika', lightsOn: 2, lightsTotal: 5, tempAvg: null, people: [], internet: 'unknown', humidity: { measured: false, damp: [] }, batteries: null }), ['Hemma lyser två lampor.']);
@@ -167,6 +168,21 @@ test('rapport: hemmet (lampor, temperatur, vilka som är hemma, internet, fukt o
   assert.equal(parts[0], 'Hemma lyser tretton lampor och det är tjugotre grader i snitt.');
   assert.equal(parts.at(-2), 'Ikväll har Golf klockan sjutton trettio.');
   assert.equal(briefingParts({ home: base }, sectionsOn('kvall', { vader: false, tag: false, pendlar: false, bil: false, hemma: true })).length, 0);
+});
+
+test('rapport: status (internet, fukt, larm) med problemen först', () => {
+  const ok = { internet: 'ok' as const, humidity: { measured: true, damp: [] as string[] }, batteries: [] as string[] | null };
+  assert.deepEqual(statusSentences(ok), ['Allt fungerar som det ska: internet, fuktnivåerna och inga larm.']);
+  assert.deepEqual(statusSentences({ ...ok, batteries: ['din klocka'] }), ['Det är dåligt batteri i din klocka.', 'Internet och fuktnivåerna är ok.']);
+  assert.deepEqual(statusSentences({ ...ok, internet: 'down', humidity: { measured: true, damp: ['Badrum'] }, batteries: ['din klocka'] }),
+    ['Internet är nere, fuktnivåerna är höga i Badrum och det är dåligt batteri i din klocka.']);
+  assert.deepEqual(statusSentences({ ...ok, internet: 'slow' }), ['Internet är långsamt.', 'Fuktnivåerna är ok och inga larm.']);
+  // Delar utan data nämns inte.
+  assert.deepEqual(statusSentences({ ...ok, humidity: { measured: false, damp: [] } }), ['Internet fungerar och inga larm.']);
+  assert.deepEqual(statusSentences({ internet: 'ok', humidity: { measured: false, damp: [] }, batteries: null }), ['Internet fungerar.']);
+  assert.deepEqual(statusSentences({ internet: 'unknown', humidity: { measured: true, damp: [] }, batteries: null }), ['Fuktnivåerna är ok.']);
+  assert.deepEqual(statusSentences({ internet: null, humidity: { measured: false, damp: [] }, batteries: [] }), ['Inga larm.']);
+  assert.deepEqual(statusSentences({ internet: null, humidity: { measured: false, damp: [] }, batteries: null }), []);
 });
 
 test('rapport: nyckeln till textadressen jämförs exakt', () => {
