@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
+import { phonePos } from '@/lib/phone-pos';
 import { hhmm } from '@/lib/prices';
 import type { Train } from '@/lib/commute';
 import type { TransitTrip } from '@/lib/transit';
@@ -15,14 +16,6 @@ type Hinder = { type: string; road: string; place: string | null; tone: Tone; co
 type When = 'now' | 'dep' | 'arr';
 type Result = { from: From; to: To; when?: When; at?: number; fromName?: string; place?: string; fromAddr?: string | null; toAddr?: string | null; hinder?: Hinder[]; mode: Mode; start: 'phone' | 'life360' | To; here?: boolean; trips?: TransitTrip[]; trains?: Train[]; eta?: { minutes: number; trafficMin: number; km: number; arrive: number; depart?: number; live?: boolean } };
 
-/** Mobilens plats (första prio). Tom sträng om den nekas, saknas eller dröjer: servern tar då Life360. */
-const phonePos = () => new Promise<string>((done) => {
-  if (!navigator.geolocation) return done('');
-  navigator.geolocation.getCurrentPosition(
-    (p) => done(`&lat=${p.coords.latitude.toFixed(5)}&lon=${p.coords.longitude.toFixed(5)}&acc=${Math.round(p.coords.accuracy)}`),
-    () => done(''), { timeout: 4000, maximumAge: 60_000 },
-  );
-});
 const SRC = { phone: 'telefonens plats', life360: 'Life360-positionen' } as const;
 
 /** Ändpunkt: snabbval (Min plats, Hem, jobbet) eller valfri plats (fritext). */

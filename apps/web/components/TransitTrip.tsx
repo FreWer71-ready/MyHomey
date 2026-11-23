@@ -1,7 +1,8 @@
 import type { Train } from '@/lib/commute';
 import { TONE_COLOR } from '@/lib/commute';
 import { hhmm } from '@/lib/prices';
-import { fmtMeters, lineBadge, type Progress, type TransitLeg, type TransitTrip } from '@/lib/transit';
+import { fmtMeters, lineBadge } from '@/lib/transit-view';
+import type { Progress, TransitLeg, TransitTrip } from '@/lib/transit';
 import { LeaveIn } from './LeaveIn';
 
 const KIND: Record<TransitLeg['kind'], string> = { walk: 'Gå', train: 'Tåg', bus: 'Buss', metro: 'T-bana', tram: 'Spårv', other: 'Resa' };

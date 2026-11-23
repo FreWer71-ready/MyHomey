@@ -18,6 +18,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 
 ## Resor och pendling
 - Reseben visas som **starttid · symbol för färdsätt · text · sluttid**. Linjer visas som SL-bricka (nummer på linjens färg: tunnelbana röd/grön/blå, Tvärbanan, pendeltåg rosa, buss blå; `lineBadge`), gång som sträcka i meter (`meters`, annars minuter) och under rubriken "13:58 från Årstadal" (`DepartsFrom`). Nedräkningen "Gå om N min" tickar i klienten (`LeaveIn`) och blir "Gått kl hh:mm". Målets namn skickas till ResRobot (`toName`), HTML-koder i namn avkodas (`stopName`).
+- **Nästa händelse, kollektivt dörr till dörr:** kortet "Resa · plats" på Hem (kalenderhändelse med plats) har knappen "Åk kollektivt · dörr till dörr" (`EventTransit`). Planeringen görs först vid tryck (`/api/trip?to=place&when=arr`): framme senast start minus vald marginal, två resor ("Senast" och "Tidigare") med "gå om N min", avgångsrad och ben. Hemifrån räknas från hemmet, annars från mobilens plats (Life360 som reserv). Kräver ResRobot-nyckeln (`transitSearchable`).
 - **Position styr resplanen** (`progress` i `lib/transit.ts`): ✓ bara för sträckor som positionen bekräftar, "Du har inte gått än" (och omräkning till nästa tåg på Hem) när avgångstiden passerat men positionen är kvar vid start, ingen ✓ eller "Nu" utan färsk position (högst 10 min).
 - Ressätt: kollektivt (ResRobot) och bil (TomTom). Gång och cykel är inte infört.
 - Tåg sparas i `train_trips` när användaren bekräftar "Jag är på tåget" (`source = user`) och när tågläget hittat tåget via tågets GPS (`gps`) eller gissat ur positionen (`guess`). "Fel tåg ✕" döljer resan (`hidden`), så samma gissning sparas inte igen; bekräftas den visas den igen.
@@ -70,3 +71,4 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 
 ## Kod
 - Ren logik i `lib/*.ts` med tester (`node --test`). Hämtning och sparande i `*-source.ts` (`server-only`).
+- **Klientkomponenter importerar aldrig värden från `lib/transit.ts`** (den drar in `calendar.ts` och `node-ical`, som kräver `fs` och fäller bygget). Klientsäkra hjälpare ligger i `lib/transit-view.ts`; typer får importeras med `import type`. Ändrade importer i komponenter: kör `next build` före merge (PR #118 fällde bygget så).
