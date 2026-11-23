@@ -570,9 +570,9 @@ export default async function HomePage() {
 
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
-          {/* Kalenderfokus (HOME_FOCUS=calendar): kalendrarna direkt under klockan, på alla skärmstorlekar. */}
-          {calFocus && hasCal && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget collapsible={false} /></div>}
-          {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={false} compact /></div>}
+          {/* Kalenderfokus (HOME_FOCUS=calendar): kalendrarna direkt under klockan, på alla skärmstorlekar. På stor skärm har de minsta höjd för dagens poster (annars pressas de ihop av övriga kort och bara dagraden syns). */}
+          {calFocus && hasCal && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[16rem]"><CalendarWidget collapsible={false} /></div>}
+          {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[12rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={false} compact /></div>}
           <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
             label={`Ute ${outTemp != null ? fmtTemp(outTemp) : ''}${sky ? `, ${sky.label.toLowerCase()}` : ''}${hint ? `. ${hint.text}` : ''}. Visa väderprognosen.`} className="order-4 lg:order-none lg:shrink-0">
             <div className="flex items-center gap-3">
@@ -807,9 +807,9 @@ export default async function HomePage() {
             </Card>
           )}
           {hueMode && snabbval}
-          {!calFocus && hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget /></div>}
+          {!calFocus && hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[16rem]"><CalendarWidget /></div>}
           {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
-          {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" compact /></div>}
+          {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[12rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" compact /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}

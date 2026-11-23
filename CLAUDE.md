@@ -37,7 +37,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - Hemkomst sköts av Hues egen automation "Komma hem" (geofence i Hue-appen). Dashboardens egen variant är borttagen (kod och tabellen `arrival_lights`).
 
 ## Kalender
-- Egen kalender på Hem: idag + 14 dagar, högst 8 händelser per dag. Den speglade (den andres, `compact`): idag + 7 dagar, högst 4. "Månad" visar 30 dagar. Konstanter överst i `CalendarWidget`.
+- Egen kalender på Hem: idag + 14 dagar, högst 8 händelser per dag. Den speglade (den andres, `compact`): idag + 7 dagar, högst 4. "Månad" visar 30 dagar. Konstanter överst i `CalendarWidget`. På stor skärm (fast höjd) har kalenderkorten minsta höjd 16 rem (egen) och 12 rem (speglad), så att dagens poster alltid syns; annars pressas de ihop av övriga kort i kolumnen och bara dagraden ("Idag … 2") visas. Fler dagar skrollas i kortet.
 
 - Sidan **Kalender** (`/kalender`, fliken visas bara när en kalender är kopplad): Ulrikas och Fredriks händelser i två kolumner bredvid varandra, en rad per datum, innevarande och nästa månad (`monthsWindow`). Ulrika alltid till vänster, i båda dashboards. Egen kalender + den speglade (`CALENDAR_MIRROR_*`; mottagaren hämtar `…/api/calendar/share?range=months`). Helg och röda dagar markeras som i kalenderkortet, pågående händelse har den dova `.sel`-markeringen, sidan hoppar till idag. "Möten på jobbet" visar första start och sista slut (under varandra) och antal möten.
 
