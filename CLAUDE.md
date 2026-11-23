@@ -47,6 +47,9 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - `BIRTHDAYS="Förnamn=MM-DD,…"` i Vercel (t.ex. `Ulrika=11-23,Fredrik=03-14`), per dashboard. Upprepas varje år (29 feb firas 28 feb under icke-skottår). Flera på samma dag visas som "Ulrika & Fredrik". Ny variabel kräver ny deploy.
 - `BirthdayOverlay` (i layouten) visar "Grattis / på födelsedagen" med namnet i gult under, med fyrverkerier, konfetti, blommor och champagne i cirka 5 s (avslutas med ett finalsalvo av fyrverkerier) vid varje full omladdning under dagen, inte vid sidbyte eller automatisk uppdatering. Tryck stänger direkt. Utan `BIRTHDAYS` visas inget.
 
+## Version
+- Versionsnumret (`APP_VERSION` i `lib/version.ts`, nu **V0.9**) visas diskret ovanför huset i sidomenyn (stor skärm). Höj det där vid ny version.
+
 ## Prestanda
 - Klientcache 30 s (`staleTimes`), `loading.tsx` vid sidhopp. Ändra inte utan skäl.
 - Hämta data via de cachade `load*`-funktionerna i `lib/data.ts` (React `cache()`). Sekundär data strömmas i `Suspense`.

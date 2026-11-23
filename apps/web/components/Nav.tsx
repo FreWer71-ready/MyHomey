@@ -7,6 +7,7 @@ import { ModeButton } from './ModeButton';
 import { LegendButton } from './LegendButton';
 import { RefreshButton } from './RefreshButton';
 import { Icon, type IconName } from './Icon';
+import { APP_VERSION } from '@/lib/version';
 
 const ITEMS: { href: string; label: string; icon: IconName; ready: boolean }[] = [
   { href: '/', label: 'Hem', icon: 'home', ready: true },
@@ -49,6 +50,8 @@ export function Nav({ alarms = [] }: { alarms?: string[] }) {
       aria-label="Huvudmeny"
       className={`fixed inset-x-0 bottom-0 z-20 flex gap-1 border-t border-line bg-ground p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:top-0 md:h-dvh md:w-16 md:shrink-0 md:flex-col md:gap-1 md:overflow-y-auto md:border-t-0 md:border-r md:bg-transparent md:px-2 md:py-4`}
     >
+      {/* Versionsnummer, diskret ovanför huset i sidomenyn (inte i bottenraden på mobil). */}
+      <span title={`Version ${APP_VERSION.replace(/^V/, '')}`} className="hidden pt-1 pb-0.5 text-center text-[0.625rem] leading-none font-semibold tracking-wide text-mute md:block">{APP_VERSION}</span>
       {ITEMS.filter((it) => it.href !== '/pendling' || process.env.NEXT_PUBLIC_COMMUTE !== 'off')
         // Bara väg (utan tåg): sidan heter Trafik.
         .map((it) => (it.href === '/pendling' && process.env.NEXT_PUBLIC_COMMUTE === 'road' ? { ...it, label: 'Trafik', icon: 'road' as IconName } : it))
