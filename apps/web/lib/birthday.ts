@@ -14,10 +14,15 @@ export function parseBirthdays(raw: string | undefined): Birthday[] {
   });
 }
 
-/** Dagens födelsedagsbarn i tidszonen (standard Stockholm). 29 februari firas 28 februari under icke-skottår. */
-export function birthdayToday(list: Birthday[], now: Date = new Date(), tz = 'Europe/Stockholm'): Birthday | null {
+/** Dagens födelsedagsbarn (flera kan fira samma dag) i tidszonen, standard Stockholm. 29 februari firas 28 februari under icke-skottår. */
+export function birthdaysToday(list: Birthday[], now: Date = new Date(), tz = 'Europe/Stockholm'): Birthday[] {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' })
     .formatToParts(now).map((x) => [x.type, Number(x.value)]));
-  return list.find((b) => (b.month === p.month && b.day === p.day)
-    || (b.month === 2 && b.day === 29 && !leap(p.year) && p.month === 2 && p.day === 28)) ?? null;
+  return list.filter((b) => (b.month === p.month && b.day === p.day)
+    || (b.month === 2 && b.day === 29 && !leap(p.year) && p.month === 2 && p.day === 28));
+}
+
+/** Namnen som en rad: "Ulrika", "Ulrika & Fredrik", "Ulrika, Fredrik & Molly". */
+export function joinNames(names: string[]): string {
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}` : (names[0] ?? '');
 }
