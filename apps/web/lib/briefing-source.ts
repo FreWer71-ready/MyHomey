@@ -72,6 +72,9 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
   const locate = locSes ?? tok?.locate ?? { members: [], items: [] };
   const net = session ? netSes : tok?.net ?? null;
   const weather = weatherPhrase(w ? symbolInfo(w.current.symbol).label : null, h?.outdoorTemp ?? (w && Number.isFinite(w.current.temp) ? w.current.temp : null));
+  // Väder imorgon (SMHI:s dygnsprognos), sägs från klockan 20.
+  const tm = w?.days?.find((d) => d.date === addDays(dayOf(now), 1));
+  const tomorrow = tm ? { label: symbolInfo(tm.symbol).label, min: tm.min, max: tm.max } : null;
   const home = h ? homeInput(name, h, locate.members, net) : null;
   // Tåg: en arbetsdag för den som pendlar. Resplanen (när man ska gå) kräver föredragen väg (TRANSIT_VIA och TRANSIT_TRANSFER).
   const goal = transitConfigured() && commute?.trains && !isWeekend(now) && !dayInfo(dayOf(now), now).free ? transitGoal() : null;
@@ -109,7 +112,7 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
 
   return {
     name, weather: on.has('vader') ? weather : '',
-    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, nameDays, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
+    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, nameDays, tomorrow, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
   };
 }
 

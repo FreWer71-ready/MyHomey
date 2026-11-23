@@ -33,6 +33,14 @@ export function tempPhrase(t: number): string {
   const r = Math.round(t);
   return r === 0 ? 'noll grader' : r > 0 ? `${cnt(r)} plusgrad${r === 1 ? '' : 'er'}` : `${cnt(-r)} minusgrad${r === -1 ? '' : 'er'}`;
 }
+/** Temperaturspann i ord: "en och fyra plusgrader", "tre och fem minusgrader", "två minusgrader och fyra plusgrader"; lika värden ger en temperatur. */
+export function tempSpan(a: number, b: number): string {
+  const lo = Math.round(Math.min(a, b)), hi = Math.round(Math.max(a, b));
+  if (lo === hi) return tempPhrase(lo);
+  if (lo > 0) return `${cnt(lo)} och ${cnt(hi)} plusgrader`;
+  if (hi < 0) return `${cnt(-hi)} och ${cnt(-lo)} minusgrader`;
+  return `${tempPhrase(lo)} och ${tempPhrase(hi)}`;
+}
 /** "regn och en plusgrad" (eller bara det ena); tom sträng utan data. */
 export const weatherPhrase = (label?: string | null, temp?: number | null) =>
   [label?.trim().toLowerCase(), temp != null && Number.isFinite(temp) ? tempPhrase(temp) : null].filter(Boolean).join(' och ');
@@ -218,6 +226,7 @@ export type BriefingInput = {
   car?: { home: boolean; label: string; minutes: number; trafficMin: number; warnings: number } | null;
   evening?: { title: string; start: number }[];
   /** Dagens namnsdagar. */ nameDays?: string[];
+  /** Väder imorgon (text och lägsta/högsta temperatur); sägs från klockan 20 när delen vader är på. */ tomorrow?: { label: string; min: number; max: number } | null;
   home?: HomeInput | null;
   school?: SchoolKid[];
   /** Nu och egna avslutsord; utan `now` blir avslutet dagens. */ now?: number; closings?: Partial<Record<DayPart, string>>;
@@ -261,6 +270,10 @@ export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
     const games = i.evening.filter((e) => matchOf(e.title)), rest = i.evening.filter((e) => !matchOf(e.title));
     if (rest.length) out.push(`Ikväll har ${joinList(rest.map((e) => `${e.title} klockan ${spokenTime(e.start)}`))}.`);
     games.forEach((g, k) => { const [a, b] = matchOf(g.title)!; out.push(`${k === 0 && !rest.length ? 'Ikväll klockan' : 'Klockan'} ${spokenTime(g.start)} är det match mellan ${a} och ${b}.`); });
+  }
+  if (on.has('vader') && i.tomorrow && i.now != null && stockholm(i.now).hour >= 20) {
+    const { label, min, max } = i.tomorrow, l = label.trim().toLowerCase();
+    out.push(Math.round(min) === Math.round(max) ? `Imorgon blir det ${l} och ${tempSpan(min, max)}.` : `Imorgon blir det ${l}, mellan ${tempSpan(min, max)}.`);
   }
   if (on.has('avslut')) out.push(i.now == null ? (i.closings?.dag ?? CLOSING.dag) : closing(i.now, i.closings));
   return out;
