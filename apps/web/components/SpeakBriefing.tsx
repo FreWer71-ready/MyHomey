@@ -5,9 +5,10 @@ import { briefingText, pickVoice, speechChunks } from '@/lib/briefing';
 /**
  * "Läs upp rapport": webbläsarens svenska talsyntes (inga nycklar, ingen kostnad). Startar bara vid tryck (iPhone tillåter
  * inget annat), läser en mening i taget och byter till "Stoppa" medan den talar. Visas inte där talsyntes saknas.
- * Texten byggs vid tryck (rätt hälsning och datum även om sidan stått öppen länge); `parts` = meningar efter datumet.
+ * Texten byggs vid tryck (rätt hälsning och datum även om sidan stått öppen länge); `weather` = väderfras till första
+ * meningen, `parts` = övriga meningar (se lib/briefing-source.ts).
  */
-export function SpeakBriefing({ name, parts = [], className = '' }: { name?: string; parts?: string[]; className?: string }) {
+export function SpeakBriefing({ name, weather = '', parts = [], className = '' }: { name?: string; weather?: string; parts?: string[]; className?: string }) {
   const [supported, setSupported] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const run = useRef(0);
@@ -25,7 +26,7 @@ export function SpeakBriefing({ name, parts = [], className = '' }: { name?: str
     const synth = window.speechSynthesis;
     synth.cancel();
     const id = ++run.current;
-    const chunks = speechChunks(briefingText({ name, now: Date.now(), parts }));
+    const chunks = speechChunks(briefingText({ name, now: Date.now(), weather, parts }));
     const voice = pickVoice(synth.getVoices());
     setSpeaking(true);
     // Första yttrandet startas direkt i trycket (krav på iPhone); resten när föregående är klart.
