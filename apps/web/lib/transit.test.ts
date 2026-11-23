@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { bestTrips, parseTrips, stopName, withWalk, withWalkEnd } from './transit.ts';
+import { bestTrips, doneLegs, fastest, parseTrips, stopName, withWalk, withWalkEnd } from './transit.ts';
 
 test('kollektiv: ResRobot-resa tolkas till ben', () => {
   const raw = JSON.parse(readFileSync(new URL('./transit.fixture.json', import.meta.url), 'utf8'));
@@ -36,4 +36,23 @@ test('kollektiv: promenad hem läggs efter sista hållplatsen', () => {
   const w = withWalkEnd(t, 0.7);
   assert.equal(w.legs.at(-1)!.to, 'Hemma');
   assert.equal(w.arr, arr + 11 * 60_000);
+});
+
+test('kollektiv: avklarade sträckor utifrån positionen, tider bakåt om man hann före', () => {
+  const m = (h: number, mi = 0) => Date.UTC(2026, 10, 23, h, mi);
+  const C = { lat: 59.3303, lon: 18.0586 }, LH = { lat: 59.3112, lon: 18.0247 }, JOB = { lat: 59.3121, lon: 18.0151 };
+  const legs = [
+    { kind: 'metro' as const, from: 'T-Centralen', to: 'Liljeholmen', dep: m(8, 10), arr: m(8, 20), minutes: 10, label: 'Tunnelbana 14', num: '14', dir: null, track: null, fromAt: C, toAt: LH },
+    { kind: 'walk' as const, from: 'Liljeholmen', to: 'Jobbet', dep: m(8, 20), arr: m(8, 30), minutes: 10, label: null, num: null, dir: null, track: null, toAt: JOB },
+  ];
+  // Sågs vid Liljeholmen 08:14: tunnelbanan avklarad, tidigare än planen.
+  const d = doneLegs(legs, { at: { lat: 59.3114, lon: 18.0250 }, ts: m(8, 14) });
+  assert.equal(d.length, 1);
+  assert.equal(d[0].arr, m(8, 14));
+  assert.equal(d[0].dep, m(8, 4));
+  // Positionen vid ingen hållplats i planen: inget avklarat.
+  assert.equal(doneLegs(legs, { at: { lat: 59.32, lon: 18.07 }, ts: m(8, 14) }).length, 0);
+  // Snabbaste planen vinner.
+  const slow = [{ ...legs[1], arr: m(8, 40) }];
+  assert.equal(fastest([slow, legs, []]), legs);
 });

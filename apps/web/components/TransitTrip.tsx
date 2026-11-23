@@ -76,8 +76,10 @@ export function TransitLegs({ trip, trains, compact = false, now = Date.now() }:
               className={`flex min-w-0 items-center gap-2 ${live ? '-mx-1.5 rounded-lg bg-white/[0.14] px-1.5 py-0.5 ring-1 ring-sun/60' : ''} ${done && !live ? 'text-dim' : ''}`}>
               <span className={`w-12 shrink-0 ${compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
               {/* Färdsätt som symbol (skärmläsare får ordet); starttid före, sluttid efter. */}
-              <span role="img" aria-label={KIND[l.kind]} className={`flex shrink-0 items-center justify-center rounded-lg ${compact ? 'size-7' : 'size-8'} ${live ? 'bg-sun text-ink' : 'bg-white/[0.08]'}`}>
+              <span role="img" aria-label={`${KIND[l.kind]}${done && !live ? ', avklarad' : ''}`} className={`relative flex shrink-0 items-center justify-center rounded-lg ${compact ? 'size-7' : 'size-8'} ${live ? 'bg-sun text-ink' : 'bg-white/[0.08]'}`}>
                 <LegIcon kind={l.kind} size={compact ? 18 : 20} />
+                {/* Avklarad delsträcka: grön bock i hörnet. */}
+                {done && !live && <span aria-hidden className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-ok text-[0.5625rem] font-black leading-none text-ink">✓</span>}
               </span>
               <span className={`min-w-0 grow truncate ${compact ? 'text-[0.875rem]' : 'text-[0.9375rem]'}`}>
                 {l.kind === 'walk'
