@@ -4,6 +4,7 @@ import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { SceneButtons } from '@/components/SceneButtons';
 import { LightControl } from '@/components/LightControl';
 import { houseActions } from '@/lib/house-actions';
+import { fmtLux, luxLabel } from '@/lib/lux';
 import { TvRemote } from '@/components/TvRemote';
 import { TrendArrow } from '@/components/TrendArrow';
 import { loadFlows, loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
@@ -111,6 +112,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name={r.icon} size={22} /></span>
                 <h2 id={`rum-${r.id}`} className="min-w-[7rem] grow truncate text-[1.1875rem] font-bold">{r.name}</h2>
+                {r.lux != null && <span className="shrink-0 text-[0.9375rem] font-semibold text-dim tabular-nums" title={`Ljusnivå: ${luxLabel(r.lux)}`}>{fmtLux(r.lux)} lux</span>}
                 {r.temp != null && <span className="shrink-0 text-[1.125rem] font-semibold tabular-nums">{fmtTemp(r.temp)}<TrendArrow trend={r.tempTrend} /></span>}
                 {r.lights.length > 0 && (
                   <span className={`flex shrink-0 items-center gap-1 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.9375rem] font-semibold ${r.lightsOn ? 'text-sun' : 'text-dim'}`}>

@@ -40,6 +40,9 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 
 - **Fotboll (Forza):** `FORZA_TEAMS="11413"` (lag-id, kommaseparerade) i Vercel ger lagets matcher som en egen kalender, sist i listan så att övriga kalendrars färger inte ändras (`lib/forza.ts`, `lib/msgpack.ts`). API:t `https://api.forzafootball.net/v1/teams/<id>/matches` svarar i MessagePack (inget JSON-läge). Titel "Hemma – Borta", spelade matcher med resultat ("Hemma 4–1 Borta"), arena som plats, längd speltid + 25 min. Fredriks dashboard har `11413` (Hammarby IF). Matcherna följer med när kalendern delas till den andra dashboarden.
 
+## Ljusnivå (lux)
+- Från sensorernas `measure_luminance` (Hue-sensorn i hallen). Visas där den finns: KPI-raden **Ljusnivå** i Hemmet-kortet på Hem (ljusaste rummet, med ord: Mörkt < 5, Dunkelt < 50, Svagt ljus < 200, Normalt < 500, Ljust < 2 000, Dagsljus), per sensor på Temperatur, i rumskortets rubrik på Styrning, som mått på rumssidan och som fliken **Ljus** i Historik. `Room.lux` är den ljusaste sensorn i rummet. Format och ord: `lib/lux.ts`. Utan ljussensor visas ingenting (regeln om tomma avsnitt).
+
 ## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
 - **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.
 - **Villkora på datan, inte på inställningar:** `data.length > 0 && …`. När data kommer in visas avsnittet av sig självt vid nästa laddning, utan kodändring.

@@ -9,6 +9,7 @@ import { loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
 import { TvRemote } from '@/components/TvRemote';
 import { fmtPercent, fmtTemp } from '@/lib/scale';
 import { sameRoom } from '@/lib/home';
+import { fmtLux } from '@/lib/lux';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
           <p className="text-[1rem] text-dim">{room.deviceCount} enheter · {room.lights.length} lampor</p>
         </div>
         {room.temp != null && <Stat value={<>{fmtTemp(room.temp).replace('°', '')}<TrendArrow trend={room.tempTrend} /></>} unit="°C" color={hot} />}
+        {room.lux != null && <Stat value={fmtLux(room.lux)} unit="lux" />}
         {room.humidity != null && <Stat value={fmtPercent(room.humidity).replace(/\s?%/, '')} unit="% fukt" color={room.humidity >= 70 ? '#E3A008' : undefined} />}
         {room.lights.length > 0 && <Stat value={room.lightsOn} unit={`av ${room.lights.length} tända`} />}
       </header>
