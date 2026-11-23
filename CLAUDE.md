@@ -38,6 +38,8 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 
 - Sidan **Kalender** (`/kalender`, fliken visas bara när en kalender är kopplad): Ulrikas och Fredriks händelser i två kolumner bredvid varandra, en rad per datum, innevarande och nästa månad (`monthsWindow`). Ulrika alltid till vänster, i båda dashboards. Egen kalender + den speglade (`CALENDAR_MIRROR_*`; mottagaren hämtar `…/api/calendar/share?range=months`). Helg och röda dagar markeras som i kalenderkortet, pågående händelse har den dova `.sel`-markeringen, sidan hoppar till idag. "Möten på jobbet" visar första start och sista slut (under varandra) och antal möten.
 
+- **Fotboll (Forza):** `FORZA_TEAMS="11413"` (lag-id, kommaseparerade) i Vercel ger lagets matcher som en egen kalender, sist i listan så att övriga kalendrars färger inte ändras (`lib/forza.ts`, `lib/msgpack.ts`). API:t `https://api.forzafootball.net/v1/teams/<id>/matches` svarar i MessagePack (inget JSON-läge). Titel "Hemma – Borta", spelade matcher med resultat ("Hemma 4–1 Borta"), arena som plats, längd speltid + 25 min. Fredriks dashboard har `11413` (Hammarby IF). Matcherna följer med när kalendern delas till den andra dashboarden.
+
 ## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
 - **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.
 - **Villkora på datan, inte på inställningar:** `data.length > 0 && …`. När data kommer in visas avsnittet av sig självt vid nästa laddning, utan kodändring.
