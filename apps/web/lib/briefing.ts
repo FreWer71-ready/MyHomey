@@ -139,6 +139,31 @@ export function batteryLabel(deviceName: string, me: string, others: string[] = 
   return !owner ? 'en klocka' : owner.toLowerCase() === me.toLowerCase() ? 'din klocka' : `${owner.charAt(0).toUpperCase()}${owner.slice(1).toLowerCase()}s klocka`;
 }
 
+/**
+ * Internet, fukt och larm som tal: problemen först, sedan det lugnande. Allt bra: "Allt fungerar som det ska: internet,
+ * fuktnivåerna och inga larm." Ett fel: "Det är dåligt batteri i din klocka. Internet och fuktnivåerna är ok." Delar utan data nämns inte.
+ */
+export function statusSentences(i: Pick<HomeInput, 'internet' | 'humidity' | 'batteries'>): string[] {
+  const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+  const problems: string[] = [], okNames: string[] = [];
+  let noAlarms = false;
+  if (i.internet === 'ok') okNames.push('internet');
+  else if (i.internet === 'slow') problems.push('internet är långsamt');
+  else if (i.internet === 'down') problems.push('internet är nere');
+  if (i.humidity.measured) { if (i.humidity.damp.length) problems.push(`fuktnivåerna är höga i ${joinList(i.humidity.damp)}`); else okNames.push('fuktnivåerna'); }
+  if (i.batteries) {
+    if (i.batteries.length) problems.push(`det är dåligt batteri i ${i.batteries.length > 2 ? `${cnt(i.batteries.length)} enheter` : joinList(i.batteries)}`);
+    else noAlarms = true;
+  }
+  if (!problems.length) {
+    if (okNames.length === 2 && noAlarms) return ['Allt fungerar som det ska: internet, fuktnivåerna och inga larm.'];
+    const phrases = [...okNames.map((n) => (n === 'internet' ? 'internet fungerar' : 'fuktnivåerna är ok')), ...(noAlarms ? ['inga larm'] : [])];
+    return phrases.length ? [`${cap(joinList(phrases))}.`] : [];
+  }
+  const calm = [...(okNames.length ? [`${joinList(okNames)} är ok`] : []), ...(noAlarms ? ['inga larm'] : [])];
+  return [`${cap(joinList(problems))}.`, ...(calm.length ? [`${cap(calm.join(' och '))}.`] : [])];
+}
+
 /** Hemmet i korta meningar: lampor och snittemperatur, vilka som är hemma, och internet, fukt och larm. Delar utan data hoppas över. */
 export function homeSentences(i: HomeInput): string[] {
   const out: string[] = [];
@@ -152,12 +177,7 @@ export function homeSentences(i: HomeInput): string[] {
     const you = home.length > others.length;
     out.push(home.length ? `${joinList([...others, ...(you ? ['du'] : [])]).replace(/^du$/, 'Du')} är hemma.` : 'Ingen är hemma.');
   }
-  const status = [
-    i.internet === 'ok' ? 'Internet: check' : i.internet === 'slow' ? 'Internet: långsamt' : i.internet === 'down' ? 'Internet: nere' : null,
-    i.humidity.measured ? (i.humidity.damp.length ? `Fukt: hög fukt i ${joinList(i.humidity.damp)}` : 'Fukt: check') : null,
-    i.batteries ? (i.batteries.length === 0 ? 'Larm: check' : `Larm: dåligt batteri i ${i.batteries.length > 2 ? `${cnt(i.batteries.length)} enheter` : joinList(i.batteries)}`) : null,
-  ].filter(Boolean);
-  if (status.length) out.push(`${status.join(', ')}.`);
+  out.push(...statusSentences(i));
   return out;
 }
 
