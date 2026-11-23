@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { bearer, keyOk } from './briefing-auth.ts';
 import { briefingParts, briefingText, greeting, joinList, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
 
 // 23 nov 2026 är en måndag; Stockholm är UTC+1 då.
@@ -104,6 +105,19 @@ test('rapport: delas i meningar och långa meningar klipps vid komma eller mella
   assert.ok(parts.length > 3);
   assert.ok(parts.every((p) => p.length <= 60));
   assert.equal(parts.join(' ').replace(/\s+/g, ' '), long.replace(/\s+/g, ' '));
+});
+
+test('rapport: nyckeln till textadressen jämförs exakt', () => {
+  assert.equal(keyOk('hemlig-nyckel', 'hemlig-nyckel'), true);
+  assert.equal(keyOk('hemlig-nyckel', 'hemlig-nyckeL'), false);
+  assert.equal(keyOk('kort', 'hemlig-nyckel'), false);
+  assert.equal(keyOk('', 'hemlig-nyckel'), false);
+  assert.equal(keyOk(null, 'hemlig-nyckel'), false);
+  assert.equal(keyOk('x', undefined), false);
+  assert.equal(keyOk('', ''), false);
+  assert.equal(bearer('Bearer abc '), 'abc');
+  assert.equal(bearer('Basic abc'), null);
+  assert.equal(bearer(null), null);
 });
 
 test('rapport: bästa svenska rösten', () => {
