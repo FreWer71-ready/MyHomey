@@ -161,7 +161,7 @@ export default async function CommutePage() {
     : onTrain ? pickRun(pool, onTrain.train, nowMs) : null;
   const toWork = !!run && [...(c?.out ?? []), ...(c?.recent?.out ?? [])].some((t) => t.id === run.id);
   const rArr = run?.arr != null ? run.arr + (run.delay ?? 0) * 60_000 : null;
-  const onward = run && rArr && (toWork || [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === run.id)) ? await loadOnward(rArr, toWork, PLACE) : [];
+  const onward = run && rArr && (toWork || [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === run.id)) ? await loadOnward(rArr, toWork, PLACE, freshestPosition(locate.members, locate.items, me, nowMs)) : [];
   const tripLegs: TransitLeg[] = run && rArr ? [{
     kind: 'train', from: toWork ? 'Eskilstuna C' : 'Stockholm C', to: toWork ? 'Stockholm C' : 'Eskilstuna C',
     dep: run.est ?? run.dep, arr: rArr, minutes: Math.round((rArr - (run.est ?? run.dep)) / 60_000),

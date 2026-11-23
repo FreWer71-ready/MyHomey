@@ -1,5 +1,5 @@
 import 'server-only';
-import { bestTrips, parseTrips, withWalk, withWalkEnd, type TransitLeg, type TransitTrip } from './transit.ts';
+import { bestTrips, doneLegs, fastest, parseTrips, withWalk, withWalkEnd, type TransitLeg, type TransitTrip } from './transit.ts';
 import { km, type LatLon } from './trip.ts';
 import type { Start } from './startpoint.ts';
 
@@ -128,19 +128,43 @@ export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n =
 /**
  * Resten av resan efter tåget (tågläget): mot jobbet från TRANSIT_VIA (Stockholm C) via bytespunkten och sista biten;
  * hem från TRANSIT_ORIGIN_STOP (Eskilstuna C) till hemmet. `arr` = tågets beräknade ankomst. [] om inget hittas.
+ * `here`: senaste positionen (högst 10 min gammal). Är den från efter ankomsten räknas planen om därifrån, från när
+ * man sågs där: sträckor som redan är gjorda kommer först (avklarade), sedan snabbaste vägen vidare (tidigare
+ * tunnelbana, spårvagn eller gång). Positionen sparas inte.
  */
-export async function loadOnward(arr: number, toWork: boolean, home: LatLon): Promise<TransitLeg[]> {
+export async function loadOnward(arr: number, toWork: boolean, home: LatLon, here?: { at: LatLon; ts: number } | null): Promise<TransitLeg[]> {
   try {
+    const seen = here && here.ts >= arr - MIN ? here : null;
     const goal = transitGoal()?.at;
     const tr = transfer();
     if (toWork) {
       if (!goal || !tr || !process.env.TRANSIT_VIA) return [];
-      const first = bestTrips(await query({ id: process.env.TRANSIT_VIA }, { id: tr.id }, arr + 3 * MIN, { products: process.env.TRANSIT_PRODUCTS ?? '118', n: 2 }))[0];
-      if (!first) return [];
-      return [...first.legs, ...(await lastMile(tr, goal, first.arr, true))];
+      const products = process.env.TRANSIT_PRODUCTS ?? '118';
+      // Från Stockholm C: tidigast 3 min efter ankomsten, eller när man senast sågs där.
+      const fromVia = async (t: number) => {
+        const first = bestTrips(await query({ id: process.env.TRANSIT_VIA! }, { id: tr.id }, t, { products, n: 2 }))[0];
+        return first ? [...first.legs, ...(await lastMile(tr, goal, first.arr, true))] : [];
+      };
+      const plan = await fromVia(Math.max(arr + 3 * MIN, seen?.ts ?? 0));
+      if (!seen) return plan;
+      const station = plan[0]?.fromAt;
+      if (station && km(station, seen.at) <= 0.5) return plan;
+      // Vidare härifrån: avklarade sträckor ur planen, sedan det som är framme först.
+      const done = doneLegs(plan, seen);
+      const t = Math.max(seen.ts, done.at(-1)?.arr ?? 0);
+      const options: TransitLeg[][] = [];
+      if (km(tr.at, seen.at) <= 0.4) options.push(await lastMile(tr, goal, t, true));
+      else {
+        const found = await query({ at: seen.at }, { at: goal }, t, { products, n: 3 });
+        options.push(...found.filter((x) => x.dep >= t - 2 * MIN).map((x) => x.legs));
+      }
+      options.push([walkLeg('Din plats', 'Jobbet', t, walkMin(km(seen.at, goal)))]);
+      const next = fastest(options)?.map((l, i, a) => ({ ...l, from: i === 0 && l.from === 'Start' ? 'Din plats' : l.from, to: i === a.length - 1 && l.to === 'Start' ? 'Jobbet' : l.to }));
+      return next ? [...done, ...next] : plan;
     }
     // Hem från Eskilstuna C: promenad (buss sparar ingen tid och är inte aktuell), samma som dörr till dörr.
     if (!process.env.TRANSIT_ORIGIN_STOP) return [];
+    if (seen && km(STATION_ET, seen.at) > 0.3) return [walkLeg('Din plats', 'Hemma', seen.ts, walkMin(km(seen.at, home)))];
     return [walkLeg('Eskilstuna C', 'Hemma', arr, walkMin(km(STATION_ET, home)))];
   } catch (e) {
     console.error(`ResRobot: ${(e as Error)?.name ?? 'fel'}`);

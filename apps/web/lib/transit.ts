@@ -1,5 +1,6 @@
 // Kollektivresa (ResRobot v2.1, Trafiklab): gång, buss, tåg, SL. Ren tolkning här; hämtningen i transit-source.ts.
 import { zoned } from './calendar.ts';
+import { km as dist } from './trip.ts';
 
 export type LegKind = 'walk' | 'train' | 'bus' | 'metro' | 'tram' | 'other';
 export type TransitLeg = {
@@ -7,6 +8,7 @@ export type TransitLeg = {
   /** "Regionaltåg 914", "Pendeltåg 41", "Buss 3"; null för gång. */ label: string | null;
   /** Tåg-/linjenummer (matchas mot Trafikverkets realtid för tåg). */ num: string | null;
   dir: string | null; track: string | null;
+  /** Hållplatsernas läge (från ResRobot), för att se var man är under resan. */ fromAt?: { lat: number; lon: number } | null; toAt?: { lat: number; lon: number } | null;
 };
 export type TransitTrip = {
   dep: number; arr: number; legs: TransitLeg[];
@@ -41,6 +43,8 @@ function labelOf(name: string, kind: LegKind, sl: boolean): string {
   return fixed.charAt(0).toUpperCase() + fixed.slice(1);
 }
 
+const at = (s?: RawStop) => (s?.lat != null && s.lon != null ? { lat: s.lat, lon: s.lon } : null);
+
 export function parseTrips(raw: unknown): TransitTrip[] {
   const trips = (raw as { Trip?: { LegList?: { Leg?: RawLeg | RawLeg[] } }[] })?.Trip ?? [];
   return trips.flatMap((t) => {
@@ -58,10 +62,10 @@ export function parseTrips(raw: unknown): TransitTrip[] {
         kind, from: stopName(l.Origin.name), to: stopName(l.Destination.name), dep, arr, minutes: Math.round((arr - dep) / 60_000),
         label: walk ? null : labelOf(name, kind, sl), num: walk ? null : (p?.num ?? null),
         dir: l.direction ? stopName(l.direction) : null, track: l.Origin.rtTrack ?? l.Origin.track ?? null,
+        fromAt: at(l.Origin), toAt: at(l.Destination),
       }];
     });
     const o = list[0]?.Origin, e = list.at(-1)?.Destination;
-    const at = (s?: RawStop) => (s?.lat != null && s.lon != null ? { lat: s.lat, lon: s.lon } : null);
     return legs.length ? [{ dep: legs[0].dep, arr: legs.at(-1)!.arr, legs, startAt: at(o), endAt: at(e) }] : [];
   });
 }
@@ -100,4 +104,26 @@ export function withWalk(t: TransitTrip, km: number): TransitTrip {
   const first = t.legs[0];
   const walk: TransitLeg = { kind: 'walk', from: 'Hemma', to: first.from, dep: first.dep - (min + 2) * 60_000, arr: first.dep - 2 * 60_000, minutes: min, label: null, num: null, dir: null, track: null };
   return { ...t, dep: walk.dep, legs: [walk, ...t.legs] };
+}
+
+type Here = { at: { lat: number; lon: number }; ts: number };
+
+/**
+ * Avklarade delsträckor i en plan utifrån var man sågs senast: allt till och med den sista sträckan som slutar
+ * inom `near` km från positionen. Hann man före planen flyttas sträckans tider bakåt (framme senast när man sågs).
+ * Returnerar de avklarade benen (tom lista om positionen inte ligger vid någon hållplats i planen).
+ */
+export function doneLegs(legs: TransitLeg[], here: Here, near = 0.4): TransitLeg[] {
+  let i = -1;
+  legs.forEach((l, k) => { if (l.toAt && dist(l.toAt, here.at) <= near) i = k; });
+  return legs.slice(0, i + 1).map((l) => {
+    if (l.arr <= here.ts) return l;
+    const shift = l.arr - here.ts;
+    return { ...l, dep: l.dep - shift, arr: here.ts };
+  });
+}
+
+/** Snabbaste planen (först framme); vid lika den som avgår senast. Null om listan är tom. */
+export function fastest(plans: TransitLeg[][]): TransitLeg[] | null {
+  return plans.filter((p) => p.length).sort((a, b) => a.at(-1)!.arr - b.at(-1)!.arr || b[0].dep - a[0].dep)[0] ?? null;
 }

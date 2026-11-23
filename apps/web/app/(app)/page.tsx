@@ -334,7 +334,7 @@ export default async function HomePage() {
   const upcomingDir = trains.filter((t) => !t.canceled && (t.est ?? t.dep) > now && t.ident !== run?.ident);
   const nextHour = upcomingDir.filter((t) => (t.est ?? t.dep) <= now + 3600_000).length ? upcomingDir.filter((t) => (t.est ?? t.dep) <= now + 3600_000) : upcomingDir.slice(0, 1);
   const riddenArr = run?.arr != null ? run.arr + (run.delay ?? 0) * 60_000 : null;
-  const onward = run && riddenArr && (riddenToWork || [...(commute?.home ?? []), ...(commute?.recent?.home ?? [])].some((t) => t.id === run.id)) ? await loadOnward(riddenArr, riddenToWork, PLACE) : [];
+  const onward = run && riddenArr && (riddenToWork || [...(commute?.home ?? []), ...(commute?.recent?.home ?? [])].some((t) => t.id === run.id)) ? await loadOnward(riddenArr, riddenToWork, PLACE, freshestPosition(locate.members, locate.items, me, now)) : [];
   // Hela resan i tågläget: tågsträckan (pågår nu) och resten efter tåget.
   const tripLegs: TransitLeg[] = run && riddenArr ? [{
     kind: 'train', from: riddenToWork ? 'Eskilstuna C' : 'Stockholm C', to: riddenToWork ? 'Stockholm C' : 'Eskilstuna C',
