@@ -13,7 +13,7 @@ import { LightExtras, RoomDimmer, SensorRow } from '@/components/HueControls';
 
 export const dynamic = 'force-dynamic';
 
-// Favoriter och rum på en sida: Rutiner (flows och hela hemmet) överst, sedan ett kort per rum med
+// Styrning (adress /favoriter): favoriter och rum på en sida: Rutiner (flows och hela hemmet) överst, sedan ett kort per rum med
 // Ljust/Mys/Släck och rummets favoriter. Övriga scener, TV och lampor fälls ut under kortet vid tryck.
 
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
@@ -71,7 +71,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     <>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-3 text-[2rem] leading-tight font-bold tracking-tight">
-          <Icon name="star" size={32} /> {hueMode ? 'Styrning' : 'Favoriter'}
+          <Icon name="star" size={32} /> Styrning
         </h1>
         {!hueMode && allMoods.length > 0 && (
           <button type="button" popoverTarget="alla-moods" className="pill">

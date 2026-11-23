@@ -452,7 +452,7 @@ export default async function HomePage() {
       </div>
       {hueMode && quickList.length > 8 && (
         <Link href="/favoriter" className="flex min-h-11 items-center justify-between text-[1rem] font-semibold text-dim">
-          Fler på Favoriter<span aria-hidden="true">›</span>
+          Fler under Styrning<span aria-hidden="true">›</span>
         </Link>
       )}
     </Card>
