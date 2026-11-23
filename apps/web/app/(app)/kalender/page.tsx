@@ -2,6 +2,7 @@ import { Icon } from '@/components/Icon';
 import { ScrollToToday } from '@/components/ScrollToToday';
 import { calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
 import { loadMirrorServer, mirrorConfigured } from '@/lib/calendar-mirror';
+import { loadSchoolCalendars, skolschemaConfigured } from '@/lib/skolschema-source';
 import {
   CAL_COLORS, FREE_BG, FREE_CHIP, FREE_FG, TZ, addDays, dayInfo, dayOf, isOngoing, monthsWindow, shortTitle,
   type CalDay, type Calendar,
@@ -9,8 +10,9 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-// Kalender: Ulrikas och Fredriks händelser i två kolumner bredvid varandra, en rad per datum så att dagarna går att jämföra.
+// Kalender: Ulrikas och Fredriks händelser i kolumner bredvid varandra, en rad per datum så att dagarna går att jämföra.
 // Innevarande och nästa månad. Helg och röda dagar markeras som i kalenderkortet på Hem. Egen kalender + den speglade (CALENDAR_MIRROR_*).
+// Barnens skolscheman (SKOLSCHEMA, t.ex. Wilmer) kommer som egna kolumner efter Ulrika och Fredrik: en rad "Skola" per skoldag.
 
 const hm = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);
 const monthName = (date: string) => {
@@ -32,8 +34,8 @@ function Events({ day, now }: { day?: CalDay; now: number }) {
         const past = !live && e.end! <= now;
         const edge = e.src !== undefined ? `inset 3px 0 0 ${CAL_COLORS[e.src % CAL_COLORS.length]}` : undefined;
         const shadow = live ? (edge ? `${edge}, ${RING}` : undefined) : edge;
-        // "Möten på jobbet" är sammanslagna möten (id jobb@datum): första startar, sista slutar, plus antal möten.
-        const work = e.id.startsWith('jobb@');
+        // "Möten på jobbet" (id jobb@datum) och "Skola" (id skola@datum) är sammanslagna: första startar, sista slutar, plus antal.
+        const work = e.id.startsWith('jobb@') || e.id.startsWith('skola@');
         return (
           <div key={e.id} title={work ? `${shortTitle(e.title)}: första ${hm(e.start!)}, sista ${hm(e.end!)}${e.location ? ` (${e.location})` : ''}` : [shortTitle(e.title), e.location?.split(',')[0]].filter(Boolean).join(' · ')}
             className={`flex min-w-0 gap-1.5 rounded-[0.5rem] py-0.5 pr-1.5 pl-2 ${live ? 'sel' : ''} ${past ? 'text-dim' : ''}`}
@@ -59,14 +61,18 @@ export default async function CalendarPage() {
   const ownName = process.env.HOUSEHOLD === 'ulrika' ? 'Ulrika' : 'Fredrik';
   const otherName = ownName === 'Ulrika' ? 'Fredrik' : 'Ulrika';
   // undefined = ingen kalender kopplad (kolumnen visas inte), null = kopplad men gick inte att hämta.
-  const [own, other] = await Promise.all([
+  const [own, other, schools] = await Promise.all([
     calendarConfigured() ? loadCalendarServer({ back: w.back, days: w.ahead }).catch(() => null) : Promise.resolve(undefined),
     mirrorConfigured() ? loadMirrorServer(true) : Promise.resolve(undefined),
+    skolschemaConfigured() ? loadSchoolCalendars() : Promise.resolve([]),
   ]);
-  const cols: { name: string; cal: Calendar | null; days: Map<string, CalDay> }[] = ([{ name: ownName, cal: own }, { name: otherName, cal: other }] as { name: string; cal: Calendar | null | undefined }[])
+  const byDate = (cal: Calendar | null) => new Map((cal?.days ?? []).map((d) => [d.date, d]));
+  const people: { name: string; cal: Calendar | null; days: Map<string, CalDay> }[] = ([{ name: ownName, cal: own }, { name: otherName, cal: other }] as { name: string; cal: Calendar | null | undefined }[])
     .filter((c): c is { name: string; cal: Calendar | null } => c.cal !== undefined)
     .sort((a, b) => Number(a.name !== 'Ulrika') - Number(b.name !== 'Ulrika')) // Ulrika till vänster, Fredrik till höger, i båda dashboards
-    .map((c) => ({ ...c, days: new Map((c.cal?.days ?? []).map((d) => [d.date, d])) }));
+    .map((c) => ({ ...c, days: byDate(c.cal) }));
+  const kids = schools.map((c) => ({ ...c, days: byDate(c.cal) }));
+  const cols = [...people, ...kids];
 
   if (!cols.length) return <p className="rounded-[1.25rem] bg-card p-5 text-[1.0625rem] text-dim">Ingen kalender är kopplad.</p>;
 
@@ -74,13 +80,15 @@ export default async function CalendarPage() {
   const tpl = `2.5rem repeat(${cols.length}, minmax(0, 1fr))`;
   const dates: string[] = [];
   for (let d = w.start; d <= w.end; d = addDays(d, 1)) dates.push(d);
-  const failed = cols.filter((c) => !c.cal).map((c) => `${c.name}s`);
+  const failed = people.filter((c) => !c.cal).map((c) => `${c.name}s`);
+  const failedKids = kids.filter((c) => !c.cal).map((c) => `${c.name}s`);
 
   return (
     <>
       <ScrollToToday />
       <h1 className="flex items-center gap-3 text-[2rem] leading-tight font-bold tracking-tight"><Icon name="calendar" size={32} /> Kalender</h1>
       {failed.length > 0 && <p role="status" className="text-[1rem] text-dim">{failed.join(' och ')} kalender kunde inte hämtas just nu.</p>}
+      {failedKids.length > 0 && <p role="status" className="text-[1rem] text-dim">{failedKids.join(' och ')} schema kunde inte hämtas just nu (skolan kan ha låst det).</p>}
 
       {/* Kolumnrubriker följer med när man scrollar. */}
       <div className="sticky top-0 z-10 -mx-3 grid gap-x-2 border-b border-line bg-ground px-3 py-2 md:-mx-4 md:px-4" style={{ gridTemplateColumns: tpl }} aria-hidden="true">
