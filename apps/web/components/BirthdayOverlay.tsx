@@ -9,17 +9,21 @@ const PIECES = Array.from({ length: 56 }, (_, i) => ({
   left: (i * 37 + 11) % 100, delay: (i % 12) * 0.1, dur: 2.2 + (i % 5) * 0.3, color: COLORS[i % COLORS.length],
   w: 6 + (i % 3) * 3, h: 10 + (i % 4) * 3, drift: ((i * 53) % 61) - 30, spin: 360 + (i % 4) * 180,
 }));
-/** Fyrverkerier: en raket stiger från botten och brister i en ring av gnistor (två radier). Alla klara inom cirka 4 s. */
+/** Fyrverkerier: en raket stiger från botten och brister i en ring av gnistor (tre radier). Sist ett finalsalvo (fast) tätt efter varandra, så att det avslutas med fyrverkerier. */
 const BURSTS = [
   { x: 26, y: 20, delay: 0.2, color: '#F5B544' }, { x: 76, y: 14, delay: 0.6, color: '#E0577A' }, { x: 50, y: 9, delay: 1.1, color: '#4DA3FF' },
   { x: 16, y: 60, delay: 1.7, color: '#34C27A' }, { x: 84, y: 52, delay: 2.3, color: '#B07CFF' },
+  // Final: fem bristningar på rad, snabbare raketer och kortare gnistor.
+  { x: 34, y: 28, delay: 3.0, color: '#FF8A3D', fast: true }, { x: 66, y: 26, delay: 3.15, color: '#F5B544', fast: true },
+  { x: 50, y: 16, delay: 3.3, color: '#E0577A', fast: true }, { x: 22, y: 46, delay: 3.45, color: '#4DA3FF', fast: true },
+  { x: 78, y: 44, delay: 3.6, color: '#34C27A', fast: true },
 ];
 const SPARKS = Array.from({ length: 24 }, (_, i) => {
   const a = (i / 24) * Math.PI * 2, r = [78, 118, 158][i % 3];
   return { dx: Math.round(Math.cos(a) * r), dy: Math.round(Math.sin(a) * r) };
 });
 
-const SHOW_MS = 4200; // visas så här länge, sedan toning (0,6 s): totalt cirka 4,8 s.
+const SHOW_MS = 4400; // visas så här länge, sedan toning (0,6 s): totalt cirka 5 s.
 const FADE_MS = 600;
 
 /**
@@ -49,9 +53,9 @@ export function BirthdayOverlay({ entries }: { entries: Birthday[] }) {
     >
       {BURSTS.map((b, i) => (
         <div key={i} aria-hidden="true" className="pointer-events-none absolute" style={{ left: `${b.x}%`, top: `${b.y}%`, color: b.color }}>
-          <span className="grattis-rocket" style={{ '--from': `${100 - b.y}vh`, animationDelay: `${b.delay}s` } as React.CSSProperties} />
+          <span className="grattis-rocket" style={{ '--from': `${100 - b.y}vh`, animationDelay: `${b.delay}s`, ...(b.fast ? { animationDuration: '0.4s' } : {}) } as React.CSSProperties} />
           {SPARKS.map((s, j) => (
-            <span key={j} className="grattis-spark" style={{ '--dx': `${s.dx}px`, '--dy': `${s.dy}px`, animationDelay: `${b.delay + 0.5}s` } as React.CSSProperties} />
+            <span key={j} className="grattis-spark" style={{ '--dx': `${s.dx}px`, '--dy': `${s.dy}px`, animationDelay: `${b.delay + (b.fast ? 0.4 : 0.5)}s`, ...(b.fast ? { animationDuration: '1s' } : {}) } as React.CSSProperties} />
           ))}
         </div>
       ))}
