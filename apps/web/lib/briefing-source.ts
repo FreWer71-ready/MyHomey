@@ -16,11 +16,13 @@ import { symbolInfo } from './weather.ts';
  * meningen, `parts` övriga meningar. Delar utan data hoppas över; `BRIEFING` väljer delar (se `sectionsOn`).
  * Bara läsning, ingenting sparas.
  */
-export async function loadBriefing(now = Date.now()): Promise<{ name: string; weather: string; parts: string[] }> {
+export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean } = {}): Promise<{ name: string; weather: string; parts: string[] }> {
   const name = process.env.HOUSEHOLD ?? '';
+  // anonymous (adressen för genvägar, utan inloggning): inga hushållsdata (Hue, Life360). Temperaturen tas då från SMHI
+  // och bilresan räknas hemifrån.
   const [h, w, commute, locate] = await Promise.all([
-    loadHome().catch(() => null), loadWeather().catch(() => null), loadCommute().catch(() => null),
-    loadLocate().catch(() => ({ members: [], items: [] })),
+    opts.anonymous ? null : loadHome().catch(() => null), loadWeather().catch(() => null), loadCommute().catch(() => null),
+    opts.anonymous ? { members: [], items: [] } : loadLocate().catch(() => ({ members: [], items: [] })),
   ]);
   const weather = weatherPhrase(w ? symbolInfo(w.current.symbol).label : null, h?.outdoorTemp ?? (w && Number.isFinite(w.current.temp) ? w.current.temp : null));
   // Tåg: en arbetsdag för den som pendlar. Resplanen (när man ska gå) kräver föredragen väg (TRANSIT_VIA och TRANSIT_TRANSFER).
