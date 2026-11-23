@@ -26,10 +26,10 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 
 ## Hue (Ulrika)
 - Hallsensorns automation ligger i Hue-bryggan (behavior_instance "Sensor hall"): rörelse 08–22 tänder zonen "Alla rum" (scen "Ljust", allt utom "Använts ej"), 22–08 gör ingenting, ingen automatisk släckning. Ändras i Hue-appen eller via CLIP v2.
-- Sidan Favoriter har rubriken **Styrning** i Hue-hushåll (menyfliken heter fortfarande Favoriter). Favoriter: Rutiner i fyra kolumner (`ActionTiles` layout `tiles`) med plats för 8 rutiner för hela hemmet, "Mys i hela huset" och "Släck alla lampor" först. Fler fälls ut under "Fler rutiner".
-- Hem: Snabbval ligger under trafikkortet (Till jobbet), i fyra kolumner med 8 rutor: Ljust/Mys/Släck i hela huset, förvalen (`QUICK_SCENES`), favoriterna och hemmets scener (dubbletter på namn bort). Fler visas på Favoriter. Andra hushåll har Snabbval kvar i vänsterkolumnen.
-- **Städ i hela huset** (scen `stad` i Hue-funktionen, `roomScene`): alla lampor på, 100 % och kallaste vita ljuset (mirek 153). Knapp bland hela-huset-knapparna på Favoriter och i Snabbval på Hem. Funktionen `hue` måste vara deployad med scenen före frontend.
-- Rumsreglaget på Favoriter (`RoomDimmer`): släckt rum visar "Av" med nedtonat, låst reglage och grått handtag; tänt rum visar gult handtag och verklig ljusstyrka. Visa aldrig ett fyllt reglage med 100 % när lamporna är släckta.
+- Sidan på adressen `/favoriter` heter **Styrning** (rubrik och menyflik) i alla hushåll. Styrning: Rutiner i fyra kolumner (`ActionTiles` layout `tiles`) med plats för 8 rutiner för hela hemmet, "Mys i hela huset" och "Släck alla lampor" först. Fler fälls ut under "Fler rutiner".
+- Hem: Snabbval ligger under trafikkortet (Till jobbet), i fyra kolumner med 8 rutor: Ljust/Mys/Släck i hela huset, förvalen (`QUICK_SCENES`), favoriterna och hemmets scener (dubbletter på namn bort). Fler visas på Styrning. Andra hushåll har Snabbval kvar i vänsterkolumnen.
+- **Städ i hela huset** (scen `stad` i Hue-funktionen, `roomScene`): alla lampor på, 100 % och kallaste vita ljuset (mirek 153). Knapp bland hela-huset-knapparna på Styrning och i Snabbval på Hem. Funktionen `hue` måste vara deployad med scenen före frontend.
+- Rumsreglaget på Styrning (`RoomDimmer`): släckt rum visar "Av" med nedtonat, låst reglage och grått handtag; tänt rum visar gult handtag och verklig ljusstyrka. Visa aldrig ett fyllt reglage med 100 % när lamporna är släckta.
 - "Ringa mobilen" (`NTFY_TOPICS`) ligger i varningsraden på Hem, direkt under klockan. Lägg den inte i Snabbval: kortet klipper innehåll på stor skärm.
 - Hemkomst sköts av Hues egen automation "Komma hem" (geofence i Hue-appen). Dashboardens egen variant är borttagen (kod och tabellen `arrival_lights`).
 

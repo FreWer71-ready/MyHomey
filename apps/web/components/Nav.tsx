@@ -10,7 +10,7 @@ import { Icon, type IconName } from './Icon';
 
 const ITEMS: { href: string; label: string; icon: IconName; ready: boolean }[] = [
   { href: '/', label: 'Hem', icon: 'home', ready: true },
-  { href: '/favoriter', label: 'Favoriter', icon: 'star', ready: true },
+  { href: '/favoriter', label: 'Styrning', icon: 'star', ready: true },
   { href: '/energi', label: 'Energi', icon: 'bolt', ready: true },
   { href: '/pendling', label: 'Pendling', icon: 'train', ready: true },
   { href: '/historik', label: 'Historik', icon: 'chart', ready: true },
