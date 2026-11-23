@@ -157,11 +157,14 @@ export default async function HomePage() {
   // Hue-hushåll (Ulrika): Snabbval ligger under Till jobbet och fylls med hela huset (Ljust, Mys, Släck), förvalen,
   // favoriterna och hemmets scener. Dubbletter på namn tas bort, hela-huset-knapparna först.
   const hueMode = process.env.CONTROL === 'hue';
-  const quickList: Action[] = hueMode ? (() => {
+  const quickAll: Action[] = hueMode ? (() => {
     const seen = new Set<string>();
-    return [...houseActions(h.rooms, ['ljust', 'mys', 'slack', 'stad']), ...quick, ...h.homeMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const }))]
+    return [...houseActions(h.rooms, ['varmt', 'mys', 'slack', 'stad']), ...quick, ...h.homeMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const }))]
       .filter((a) => { const k = a.name.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
   })() : quick;
+  // QUICK_HIDE="Ljust;Namn": namn som inte ska visas i Snabbval (t.ex. en Hue-scen som dubblerar en hela-huset-knapp).
+  const hide = new Set((process.env.QUICK_HIDE ?? '').split(';').map((x) => x.trim().toLowerCase()).filter(Boolean));
+  const quickList = quickAll.filter((a) => !hide.has(a.name.trim().toLowerCase()));
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
   const tvRows = await loadTvStatuses().catch(() => []);
   const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
