@@ -71,7 +71,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     <>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-3 text-[2rem] leading-tight font-bold tracking-tight">
-          <Icon name="star" size={32} /> Favoriter
+          <Icon name="star" size={32} /> {hueMode ? 'Styrning' : 'Favoriter'}
         </h1>
         {!hueMode && allMoods.length > 0 && (
           <button type="button" popoverTarget="alla-moods" className="pill">
