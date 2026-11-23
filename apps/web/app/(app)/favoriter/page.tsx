@@ -3,6 +3,7 @@ import { Icon } from '@/components/Icon';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { SceneButtons } from '@/components/SceneButtons';
 import { LightControl } from '@/components/LightControl';
+import { houseActions } from '@/lib/house-actions';
 import { TvRemote } from '@/components/TvRemote';
 import { TrendArrow } from '@/components/TrendArrow';
 import { loadFlows, loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
@@ -28,11 +29,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     : h.favoriteMoods;
 
   // Hue-hushåll: Mys och Släck i alla rum med lampor, med ett tryck, först i Rutiner.
-  const houseZones = h.rooms.filter((r) => r.lights.length > 0).map((r) => r.id);
-  const house: Action[] = hueMode && houseZones.length > 0 ? [
-    { id: 'house-mys', name: 'Mys i hela huset', kind: 'room', zones: houseZones, scene: 'mys' },
-    { id: 'house-slack', name: 'Släck alla lampor', kind: 'room', zones: houseZones, scene: 'slack' },
-  ] : [];
+  const house: Action[] = hueMode ? houseActions(h.rooms) : [];
 
   const routines: Action[] = [
     ...flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' as const, advanced: f.advanced })),
