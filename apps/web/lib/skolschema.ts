@@ -1,3 +1,5 @@
+import type { Calendar, CalEvent } from './calendar-view.ts';
+
 // Skolschema från skolschema.se (klassens offentliga schema, hämtat ur skolans öppna schemavisning). Ren tolkning här;
 // hämtningen i skolschema-source.ts. Sidan bäddar in veckans lektioner i sin RSC-data ("lessons" per veckodag 1–5).
 
@@ -97,4 +99,24 @@ export function mergeSchoolDays(fetched: SchoolDay[] | null, manual: SchoolDay[]
   const by = new Map<string, SchoolDay>((fetched ?? []).map((d) => [d.date, d]));
   for (const d of manual) by.set(d.date, { date: d.date, start: d.start, end: d.end, slots: d.slots });
   return [...by.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Barnens skoldagar som poster i en kalender ("Wilmer i skolan", från första start till sista slut, med antal lektioner),
+ * för kalenderkortet på Hem. Bara dagar som finns i kalenderns fönster; poster utan plats (får inte ge reseförslag). Ändrar inte
+ * originalet.
+ */
+export function withSchoolDays(cal: Calendar, kids: { name: string; cal: Calendar | null }[]): Calendar {
+  const days = cal.days.map((d) => ({ ...d, timed: [...d.timed] }));
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  for (const kid of kids) {
+    for (const kd of kid.cal?.days ?? []) {
+      const e = kd.timed.find((t) => t.id.startsWith('skola@'));
+      const day = byDate.get(kd.date);
+      if (!e || !day) continue;
+      day.timed.push({ ...e, id: `skola@${kd.date}@${kid.name}`, title: `${kid.name} i skolan`, src: undefined } satisfies CalEvent);
+    }
+  }
+  for (const d of days) d.timed.sort((a, b) => a.start! - b.start!);
+  return { ...cal, days };
 }

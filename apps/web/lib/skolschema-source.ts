@@ -9,6 +9,9 @@ import { mergeSchoolDays, parseManualDays, parseSkolschema, parseSkolschemaConfi
 // vecka (från lördagen nästa). Inga personuppgifter skickas; bara en neutral klientrubrik.
 export const skolschemaConfigured = () => parseSkolschemaConfig(process.env.SKOLSCHEMA).length > 0 || parseManualDays(process.env.SKOLSCHEMA_MANUELLT).length > 0;
 
+/** Visa barnens skoldagar som poster i kalenderkortet på Hem (SKOLSCHEMA_KALENDER=1, t.ex. bara hos Ulrika). */
+export const skolschemaInCalendar = () => /^(1|true|ja)$/i.test(process.env.SKOLSCHEMA_KALENDER ?? '') && skolschemaConfigured();
+
 const at = (date: string, hhmm: string) => {
   const [y, m, d] = date.split('-').map(Number), [h, mi] = hhmm.split(':').map(Number);
   return zoned(y, m, d, h, mi, 0);
