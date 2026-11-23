@@ -1,4 +1,5 @@
 import 'server-only';
+import { FORZA_API, forzaIcsFromResponse, forzaTeams } from './forza';
 import { isBusyOnly, mergeCalendars, parseCalendar, summarizeBusy, withoutAllDay, type Calendar } from './calendar';
 
 // Hämtar och tolkar installationens kalendrar. Bara på servern.
@@ -12,7 +13,9 @@ export function calendarUrls(): string[] {
   const keys = Object.keys(process.env).filter((k) => /^(CALENDAR|ULRIKA)_ICAL_URL(_[A-Z0-9]+)?$/.test(k)).sort();
   const raw = keys.map((k) => process.env[k] ?? '');
   // Varje inställning kan ha flera adresser (mellanslag, komma eller radbrytning). webcal:// hämtas som https://.
-  return raw.join(' ').split(/[\s,]+/).filter(Boolean).map((u) => u.replace(/^webcal:\/\//i, 'https://'));
+  const ical = raw.join(' ').split(/[\s,]+/).filter(Boolean).map((u) => u.replace(/^webcal:\/\//i, 'https://'));
+  // Fotboll (Forza): FORZA_TEAMS="11413" ger lagets matcher som en egen kalender sist i listan (övriga kalendrars färger påverkas inte).
+  return [...ical, ...forzaTeams(process.env.FORZA_TEAMS).map((id) => `forza:${id}`)];
 }
 export const calendarConfigured = () => calendarUrls().length > 0;
 
@@ -29,8 +32,9 @@ export async function loadCalendarServer(range: { back: number; days: number } =
   const parsed = await Promise.all(urls.map(async (u, i) => {
     try {
       // Next cachar varje flöde i 10 min (delas mellan serverinstanser), minnet ovan sparar tolkningen.
-      const res = await fetch(u, { next: { revalidate: CAL_TTL }, signal: AbortSignal.timeout(10_000) });
-      const text = res.ok ? await res.text() : '';
+      const forza = u.startsWith('forza:');
+      const res = await fetch(forza ? `${FORZA_API}/${u.slice(6)}/matches` : u, { next: { revalidate: CAL_TTL }, signal: AbortSignal.timeout(10_000) });
+      const text = res.ok ? (forza ? await forzaIcsFromResponse(res) : await res.text()) : '';
       if (text.trimStart().startsWith('BEGIN:VCALENDAR')) {
         // Kalendrar som bara visar ledig/upptagen (t.ex. jobbets Outlook) slås ihop till "Möten på jobbet" per dag.
         const cal = parseCalendar(text, Date.now(), range.days, range.back);
