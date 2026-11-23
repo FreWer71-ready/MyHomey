@@ -36,6 +36,8 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 ## Kalender
 - Egen kalender på Hem: idag + 14 dagar, högst 8 händelser per dag. Den speglade (den andres, `compact`): idag + 7 dagar, högst 4. "Månad" visar 30 dagar. Konstanter överst i `CalendarWidget`.
 
+- Sidan **Kalender** (`/kalender`, fliken visas bara när en kalender är kopplad): Ulrikas och Fredriks händelser i två kolumner bredvid varandra, en rad per datum, innevarande och nästa månad (`monthsWindow`). Ulrika alltid till vänster, i båda dashboards. Egen kalender + den speglade (`CALENDAR_MIRROR_*`; mottagaren hämtar `…/api/calendar/share?range=months`). Helg och röda dagar markeras som i kalenderkortet, pågående händelse har den dova `.sel`-markeringen, sidan hoppar till idag.
+
 ## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
 - **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.
 - **Villkora på datan, inte på inställningar:** `data.length > 0 && …`. När data kommer in visas avsnittet av sig självt vid nästa laddning, utan kodändring.
