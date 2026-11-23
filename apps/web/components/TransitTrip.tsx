@@ -1,7 +1,8 @@
 import type { Train } from '@/lib/commute';
 import { TONE_COLOR } from '@/lib/commute';
 import { hhmm } from '@/lib/prices';
-import type { Progress, TransitLeg, TransitTrip } from '@/lib/transit';
+import { fmtMeters, lineBadge, type Progress, type TransitLeg, type TransitTrip } from '@/lib/transit';
+import { LeaveIn } from './LeaveIn';
 
 const KIND: Record<TransitLeg['kind'], string> = { walk: 'Gå', train: 'Tåg', bus: 'Buss', metro: 'T-bana', tram: 'Spårv', other: 'Resa' };
 /** Linjesymboler för färdsätt (följer textfärgen). */
@@ -35,12 +36,19 @@ export function tripDelay(trip: TransitTrip, trains: Train[]): { delay: number; 
   return { delay: Math.max(0, ...rts.map((r) => r.delay)), canceled: rts.some((r) => r.canceled) };
 }
 
+/** "13:58 från Årstadal": första fordonets avgång och hållplats, som i SL-appen. Inget om resan bara är gång. */
+export function DepartsFrom({ trip }: { trip: TransitTrip }) {
+  const ride = trip.legs.find((l) => l.kind !== 'walk');
+  if (!ride) return null;
+  return <p className="text-[0.9375rem] text-dim"><span className="font-semibold tabular-nums text-fg">{hhmm(ride.dep)}</span> från {ride.from}</p>;
+}
+
 /** En kollektivresa: avresa, ankomst och benen (gång, buss, tåg, SL) med spår och tågens realtid. */
 export function TransitTripCard({ trip, trains, first, home = false, ongoing = false, pos }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean; ongoing?: boolean; pos?: Progress }) {
   const { delay, canceled } = tripDelay(trip, trains);
   const total = Math.round((trip.arr - trip.dep) / 60_000);
-  // Serverrenderat per sidvisning (sidan är dynamisk), så "om X min" stämmer när sidan laddas.
-  const leaveIn = Math.round((trip.dep - Date.now()) / 60_000);
+  // Nedräkningen tickar i klienten (LeaveIn); serverns tid är startvärdet.
+  const serverNow = Date.now();
   return (
     <section className={`flex flex-col gap-2 rounded-2xl glass p-4 ${first ? '' : 'border border-line'}`}>
       <div className="flex flex-wrap items-baseline gap-x-3">
@@ -49,16 +57,14 @@ export function TransitTripCard({ trip, trains, first, home = false, ongoing = f
           : pos?.waiting
             // Positionen är kvar vid startpunkten fast avgångstiden passerat.
             ? <span className="text-[1.375rem] font-extrabold" style={{ color: TONE_COLOR.warn }}>Du har inte gått än</span>
-            : <>
-              <span className="text-[1.375rem] font-extrabold tabular-nums">{leaveIn <= 0 ? 'Gå nu' : `Gå om ${leaveIn} min`}</span>
-              <span className="text-[0.9375rem] text-dim tabular-nums">kl {hhmm(trip.dep)}</span>
-            </>}
+            : <LeaveIn dep={trip.dep} serverNow={serverNow} variant="card" />}
         <span className="text-[1.0625rem] font-semibold">
           {home ? 'hemma' : 'framme'} {delay ? <>ca <span style={{ color: TONE_COLOR.warn }}>{hhmm(trip.arr + delay * 60_000)}</span></> : hhmm(trip.arr)}
         </span>
         <span className="ml-auto text-[0.875rem] text-dim">{dur(total)}</span>
       </div>
       {canceled && <p className="text-[0.9375rem] font-bold" style={{ color: TONE_COLOR.bad }}>Ett tåg på resan är inställt – välj nästa resa.</p>}
+      <DepartsFrom trip={trip} />
       <TransitLegs trip={trip} trains={trains} pos={pos} />
     </section>
   );
@@ -78,6 +84,7 @@ export function TransitLegs({ trip, trains, compact = false, now = Date.now(), p
       <ol className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1'}`}>
         {trip.legs.map((l, i) => {
           const rt = legRealtime(l, trains);
+          const badge = lineBadge(l);
           const live = i === current;
           const done = byPos ? i < pos.done : l.arr <= now;
           return (
@@ -92,8 +99,11 @@ export function TransitLegs({ trip, trains, compact = false, now = Date.now(), p
               </span>
               <span className={`min-w-0 grow truncate ${compact ? 'text-[0.875rem]' : 'text-[0.9375rem]'}`}>
                 {l.kind === 'walk'
-                  ? <>{l.minutes} min → {l.to}</>
-                  : <><span className="font-semibold">{l.label}</span> → {l.to}{l.track && !done ? <span className="text-dim"> · spår {l.track}</span> : null}</>}
+                  // Sträckan i meter som i SL (tiderna på sidorna visar redan hur lång tid det tar).
+                  ? <><span title={`${l.minutes} min`}>{l.meters != null ? fmtMeters(l.meters) : `${l.minutes} min`}</span> → {l.to}</>
+                  : <>{badge
+                      ? <><span className="mr-0.5 inline-flex min-w-7 justify-center rounded-md px-1.5 align-middle text-[0.8125rem] leading-5 font-extrabold text-white" style={{ background: badge.color }} aria-hidden>{badge.text}</span><span className="sr-only">{l.label}</span></>
+                      : <span className="font-semibold">{l.label}</span>} → {l.to}{l.track && !done ? <span className="text-dim"> · spår {l.track}</span> : null}</>}
               </span>
               {!live && rt && (rt.canceled || rt.delay > 0) && (
                 <span className="shrink-0 text-[0.875rem] font-bold" style={{ color: rt.canceled ? TONE_COLOR.bad : TONE_COLOR.warn }}>

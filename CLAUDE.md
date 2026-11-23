@@ -17,7 +17,8 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - Positioner lagras inte. Noggrannhet sämre än 1 km används inte.
 
 ## Resor och pendling
-- Reseben visas som **starttid · symbol för färdsätt · text · sluttid**.
+- Reseben visas som **starttid · symbol för färdsätt · text · sluttid**. Linjer visas som SL-bricka (nummer på linjens färg: tunnelbana röd/grön/blå, Tvärbanan, pendeltåg rosa, buss blå; `lineBadge`), gång som sträcka i meter (`meters`, annars minuter) och under rubriken "13:58 från Årstadal" (`DepartsFrom`). Nedräkningen "Gå om N min" tickar i klienten (`LeaveIn`) och blir "Gått kl hh:mm". Målets namn skickas till ResRobot (`toName`), HTML-koder i namn avkodas (`stopName`).
+- **Position styr resplanen** (`progress` i `lib/transit.ts`): ✓ bara för sträckor som positionen bekräftar, "Du har inte gått än" (och omräkning till nästa tåg på Hem) när avgångstiden passerat men positionen är kvar vid start, ingen ✓ eller "Nu" utan färsk position (högst 10 min).
 - Ressätt: kollektivt (ResRobot) och bil (TomTom). Gång och cykel är inte infört.
 - Tåg sparas i `train_trips` när användaren bekräftar "Jag är på tåget" (`source = user`) och när tågläget hittat tåget via tågets GPS (`gps`) eller gissat ur positionen (`guess`). "Fel tåg ✕" döljer resan (`hidden`), så samma gissning sparas inte igen; bekräftas den visas den igen.
 - Ersättning enligt Mälardalstrafik (Movingo): 20–39 min 50 %, 40–59 min 75 %, 60+ min 100 % av snittpriset per resa (`MOVINGO_TYPE`, `MOVINGO_PRICE` i Vercel). Ingen automatisk ansökan – appen ger belopp, underlag och länk.

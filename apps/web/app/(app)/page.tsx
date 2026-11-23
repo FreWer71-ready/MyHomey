@@ -11,7 +11,8 @@ import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
 import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
-import { TransitLegs, tripDelay } from '@/components/TransitTrip';
+import { DepartsFrom, TransitLegs, tripDelay } from '@/components/TransitTrip';
+import { LeaveIn } from '@/components/LeaveIn';
 import { progress } from '@/lib/transit';
 import type { TransitLeg } from '@/lib/transit';
 import { HourStrip } from '@/components/HourStrip';
@@ -333,7 +334,7 @@ export default async function HomePage() {
       }
       if (j) nextTransit = { dep: j.leave, arr: j.arrive, legs: j.legs, startAt: null, endAt: null };
     } else {
-      if (!transitHome && !atGoal) nextTransit = (await loadTransit(o2.from, tg.at, now, 1, !o2.away))[0] ?? null;
+      if (!transitHome && !atGoal) nextTransit = (await loadTransit(o2.from, tg.at, now, 1, !o2.away, false, false, tg.label))[0] ?? null;
       if (transitHome && (o2.away || !o2.pos)) nextTransit = (await loadTransit(o2.away ? o2.pos! : tg.at, PLACE, now, 1, false, true))[0] ?? null;
     }
   }
@@ -674,7 +675,7 @@ export default async function HomePage() {
                 <p className="flex items-baseline gap-2 text-[1rem]">
                   <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
                   <span>
-                    <span className="font-semibold" style={leaveIn < -1 ? { color: C.warn } : undefined}>{leaveIn < -1 ? `sen ${-leaveIn} min – ta cykel eller taxi` : leaveIn <= 0 ? 'gå nu' : `gå om ${leaveIn} min`}</span>
+                    <LeaveIn dep={nextTransit.dep} serverNow={now} variant="line" />
                     {' · '}{transitHome ? 'hemma' : 'framme'} {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}
                   </span>
                   {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
@@ -684,6 +685,7 @@ export default async function HomePage() {
               {!ridden && nextTransit && (transitPos?.waiting || replanned) && (
                 <p className="text-[1rem] font-semibold" style={{ color: C.warn }}>Du har inte gått än{replanned ? ' – räknat om till nästa tåg' : ''}</p>
               )}
+              {!ridden && nextTransit && <DepartsFrom trip={nextTransit} />}
               {!ridden && nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact pos={transitPos} />}
               {ridden && sure ? (
                 // Säkert tågläge: måltiden stort (som utetemperaturen), var tåget är och resplanen.

@@ -9,6 +9,7 @@ export type TransitLeg = {
   /** Tåg-/linjenummer (matchas mot Trafikverkets realtid för tåg). */ num: string | null;
   dir: string | null; track: string | null;
   /** Hållplatsernas läge (från ResRobot), för att se var man är under resan. */ fromAt?: { lat: number; lon: number } | null; toAt?: { lat: number; lon: number } | null;
+  /** Gångsträckans längd i meter (om känd). */ meters?: number | null;
 };
 export type TransitTrip = {
   dep: number; arr: number; legs: TransitLeg[];
@@ -16,17 +17,44 @@ export type TransitTrip = {
 };
 
 type RawStop = { name: string; date: string; time: string; lat?: number; lon?: number; track?: string; rtTrack?: string; rtTime?: string; rtDate?: string };
-type RawLeg = { type: string; name?: string; direction?: string; Origin: RawStop; Destination: RawStop; Product?: { name?: string; num?: string; catOutL?: string } | { name?: string; num?: string; catOutL?: string }[] };
+type RawLeg = { type: string; name?: string; direction?: string; dist?: number; Origin: RawStop; Destination: RawStop; Product?: { name?: string; num?: string; catOutL?: string } | { name?: string; num?: string; catOutL?: string }[] };
 
 const ms = (s: RawStop, rt = true) => {
   const [y, m, d] = (rt && s.rtDate ? s.rtDate : s.date).split('-').map(Number);
   const [h, mi, se] = (rt && s.rtTime ? s.rtTime : s.time).split(':').map(Number);
   return zoned(y, m, d, h, mi, se || 0);
 };
+const ENTITY: Record<string, string> = { aring: 'å', auml: 'ä', ouml: 'ö', Aring: 'Å', Auml: 'Ä', Ouml: 'Ö', eacute: 'é', Eacute: 'É', egrave: 'è', uuml: 'ü', amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ' };
+/** ResRobot skickar tillbaka namn vi själva angett (t.ex. "Mål") HTML-kodade: "M&aring;l" → "Mål". */
+export const decodeEntities = (s: string) => s.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, d, h, name) =>
+  d ? String.fromCodePoint(Number(d)) : h ? String.fromCodePoint(parseInt(h, 16)) : (ENTITY[name] ?? m));
+
 /** Korta stoppnamn: "Årstaberg station (Stockholm kn)" → "Årstaberg", "Eskilstuna Centralstation" → "Eskilstuna C",
- *  "Fredsborgsgatan 24, Liljeholmen" → "Fredsborgsgatan 24"; koordinater → "Start". */
-export const stopName = (n: string) => (/^\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/.test(n) ? 'Start'
-  : n.replace(/\s*\([^)]*\bkn\)\s*$/, '').split(',')[0].replace(/\s+Centralstation$/i, ' C').replace(/\s+station$/i, '').replace(/\s+Spårv$/i, '').replace(/\s+T-bana$/i, '').trim());
+ *  "Fredsborgsgatan 24, Liljeholmen" → "Fredsborgsgatan 24"; koordinater → "Start". HTML-koder avkodas. */
+export const stopName = (raw: string) => {
+  const n = decodeEntities(raw);
+  return /^\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/.test(n) ? 'Start'
+    : n.replace(/\s*\([^)]*\bkn\)\s*$/, '').split(',')[0].replace(/\s+Centralstation$/i, ' C').replace(/\s+station$/i, '').replace(/\s+Spårv$/i, '').replace(/\s+T-bana$/i, '').trim();
+};
+
+/** Gångsträcka i meter (25 % omväg, avrundat till 10 m) och som text: "280 m", "1,2 km". */
+export const walkMeters = (km: number) => Math.round((km * 1.25 * 1000) / 10) * 10;
+export const fmtMeters = (m: number) => (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`);
+
+/**
+ * Linjebricka som i SL-appen: nummer på linjens färg (tunnelbana röd/grön/blå, Tvärbanan, pendeltåg rosa, buss blå).
+ * Null när linjen saknar nummer eller färg (då visas hela namnet, t.ex. "Regionaltåg 914").
+ */
+export function lineBadge(l: Pick<TransitLeg, 'kind' | 'label' | 'num'>): { text: string; color: string } | null {
+  const text = l.label?.match(/(\d+)\s*$/)?.[1] ?? (l.num && /^\d+$/.test(l.num) ? l.num : null);
+  if (!text || l.kind === 'walk') return null;
+  const n = Number(text);
+  if (l.kind === 'metro') return { text, color: n >= 17 ? '#1F7A33' : n >= 13 ? '#C8282A' : '#0B6BAE' };
+  if (l.kind === 'tram') return { text, color: n === 30 || n === 31 || n === 21 ? '#9A5B16' : n >= 25 && n <= 26 ? '#0E7F96' : n >= 27 && n <= 29 ? '#7B4A95' : '#5F7388' };
+  if (l.kind === 'train') return /^pendeltåg/i.test(l.label ?? '') ? { text, color: '#C93D7B' } : null;
+  if (l.kind === 'bus') return { text, color: '#2563A8' };
+  return null;
+}
 
 function kindOf(name: string): LegKind {
   const n = name.toLowerCase();
@@ -62,7 +90,7 @@ export function parseTrips(raw: unknown): TransitTrip[] {
         kind, from: stopName(l.Origin.name), to: stopName(l.Destination.name), dep, arr, minutes: Math.round((arr - dep) / 60_000),
         label: walk ? null : labelOf(name, kind, sl), num: walk ? null : (p?.num ?? null),
         dir: l.direction ? stopName(l.direction) : null, track: l.Origin.rtTrack ?? l.Origin.track ?? null,
-        fromAt: at(l.Origin), toAt: at(l.Destination),
+        fromAt: at(l.Origin), toAt: at(l.Destination), ...(walk && typeof l.dist === 'number' ? { meters: Math.round(l.dist) } : {}),
       }];
     });
     const o = list[0]?.Origin, e = list.at(-1)?.Destination;
@@ -94,7 +122,7 @@ const walkMin = (km: number) => Math.max(1, Math.ceil(((km * 1.25) / 4.8) * 60))
 export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma', toAt: { lat: number; lon: number } | null = null): TransitTrip {
   const last = t.legs.at(-1)!;
   const min = walkMin(km);
-  const walk: TransitLeg = { kind: 'walk', from: last.to, to, dep: last.arr, arr: last.arr + min * 60_000, minutes: min, label: null, num: null, dir: null, track: null, fromAt: last.toAt ?? null, toAt };
+  const walk: TransitLeg = { kind: 'walk', from: last.to, to, dep: last.arr, arr: last.arr + min * 60_000, minutes: min, label: null, num: null, dir: null, track: null, fromAt: last.toAt ?? null, toAt, meters: walkMeters(km) };
   return { ...t, arr: walk.arr, legs: [...t.legs, walk] };
 }
 
@@ -102,7 +130,7 @@ export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma', toAt: { la
 export function withWalk(t: TransitTrip, km: number): TransitTrip {
   const min = walkMin(km);
   const first = t.legs[0];
-  const walk: TransitLeg = { kind: 'walk', from: 'Hemma', to: first.from, dep: first.dep - (min + 2) * 60_000, arr: first.dep - 2 * 60_000, minutes: min, label: null, num: null, dir: null, track: null, toAt: first.fromAt ?? null };
+  const walk: TransitLeg = { kind: 'walk', from: 'Hemma', to: first.from, dep: first.dep - (min + 2) * 60_000, arr: first.dep - 2 * 60_000, minutes: min, label: null, num: null, dir: null, track: null, toAt: first.fromAt ?? null, meters: walkMeters(km) };
   return { ...t, dep: walk.dep, legs: [walk, ...t.legs] };
 }
 
