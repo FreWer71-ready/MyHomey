@@ -5,7 +5,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 ## Arbetssätt
 - **Korta, kärnfulla svar.** Håll tokenförbrukningen nere: läs bara det som behövs, undvik onödiga agenter och föreslå billigare alternativ när de finns.
 - **Mobile first.** Designa för mobil (390 px) först: knappar minst 44 px, inget sidledes sidscroll, kontrollera UI-ändringar på mobilbredd.
-- **Backlogg:** `BACKLOGG.md` (iPhone-ring, larmknapp 112). Ta inte upp den förrän det efterfrågas.
+- **Backlogg:** `BACKLOGG.md` (iPhone-ring, larmknapp 112, redigera kalenderhändelser med Google-synk). Ta inte upp den förrän det efterfrågas.
 - **Publicera direkt, utan att fråga,** när ändringen är byggd och testad (tsc, eslint, `npm test`), om användaren inte anger annat: commit → push → PR → merge (squash) → kontrollera att Vercel-bygget blir `READY` – alltid för **båda** dashboards (`myhomey` = Fredrik, `ulrikasdashboard` = Ulrika). Stanna och fråga bara om kontrollerna är röda, ett bygge fallerar eller användaren sagt "vänta" eller "merga inte". (Stående besked från användaren 2026-11-23.)
 - **Fråga före** databasändringar och åtgärder som är destruktiva eller svåra att backa (radera data eller miljövariabler, force-push).
 - Allt ska vara committat och pushat (stopp-hook). Utvecklingsgren: `claude/charming-dirac-60g8ft`. Har fjärrgrenen avvikande historik: cherry-picka, aldrig force-push.
