@@ -22,7 +22,8 @@ const monthName = (date: string) => {
 const weekdayShort = (date: string) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'UTC', weekday: 'short' }).format(Date.parse(`${date}T12:00:00Z`)).replace('.', '');
 const RING = 'inset 0 0 0 1.5px rgb(230 237 243 / 0.5)';
 
-function Events({ day, now }: { day?: CalDay; now: number }) {
+/** `narrow`: fyra kolumner eller fler på mobil, då står tiden över titeln så att titlarna får hela kolumnens bredd. */
+function Events({ day, now, narrow = false }: { day?: CalDay; now: number; narrow?: boolean }) {
   if (!day || day.allDay.length + day.timed.length === 0) return <div />;
   return (
     <div className="flex min-w-0 flex-col gap-1">
@@ -35,16 +36,19 @@ function Events({ day, now }: { day?: CalDay; now: number }) {
         const edge = e.src !== undefined ? `inset 3px 0 0 ${CAL_COLORS[e.src % CAL_COLORS.length]}` : undefined;
         const shadow = live ? (edge ? `${edge}, ${RING}` : undefined) : edge;
         // "Möten på jobbet" (id jobb@datum) och "Skola" (id skola@datum) är sammanslagna: första startar, sista slutar, plus antal.
-        const work = e.id.startsWith('jobb@') || e.id.startsWith('skola@');
+        const school = e.id.startsWith('skola@');
+        const work = e.id.startsWith('jobb@') || school;
         return (
           <div key={e.id} title={work ? `${shortTitle(e.title)}: första ${hm(e.start!)}, sista ${hm(e.end!)}${e.location ? ` (${e.location})` : ''}` : [shortTitle(e.title), e.location?.split(',')[0]].filter(Boolean).join(' · ')}
-            className={`flex min-w-0 gap-1.5 rounded-[0.5rem] py-0.5 pr-1.5 pl-2 ${live ? 'sel' : ''} ${past ? 'text-dim' : ''}`}
+            className={`flex min-w-0 gap-1.5 rounded-[0.5rem] py-0.5 pr-1.5 pl-2 ${narrow && !school ? 'max-md:flex-col max-md:gap-0' : ''} ${live ? 'sel' : ''} ${past ? 'text-dim' : ''}`}
             style={shadow ? { boxShadow: shadow } : undefined}>
-            <span className="flex w-[2.4rem] shrink-0 flex-col leading-snug tabular-nums">
+            <span className={`flex w-[2.4rem] shrink-0 flex-col leading-snug tabular-nums ${narrow && !school ? 'max-md:w-auto' : ''}`}>
               <span className="text-[0.8125rem] font-bold">{hm(e.start!)}</span>
               {work && <span className="text-[0.75rem] text-dim">{hm(e.end!)}</span>}
+              {/* Skola: smal kolumn på mobil (flera barn), så antal lektioner står under tiderna; ordet "Skola" först från bredare skärm. */}
+              {school && e.location && <span className="text-[0.6875rem] text-dim md:hidden">{e.location.replace('lektioner', 'lekt.')}</span>}
             </span>
-            <span className="flex min-w-0 flex-col leading-snug">
+            <span className={`min-w-0 flex-col leading-snug ${school ? 'hidden md:flex' : 'flex'}`}>
               <span className="text-[0.875rem] break-words hyphens-auto">{shortTitle(e.title)}</span>
               {work && e.location && <span className="text-[0.75rem] text-dim">{e.location}</span>}
             </span>
@@ -78,7 +82,9 @@ export default async function CalendarPage() {
   if (!cols.length) return <p className="rounded-[1.25rem] bg-card p-5 text-[1.0625rem] text-dim">Ingen kalender är kopplad.</p>;
 
   const today = dayOf(now);
-  const tpl = `2.5rem repeat(${cols.length}, minmax(0, 1fr))`;
+  // Barnens skolkolumner är smalare än Ulrikas och Fredriks (de visar bara tider); fyra kolumner eller fler på mobil ger stapling i Events.
+  const narrow = cols.length >= 4;
+  const tpl = `2.5rem ${cols.map((c) => (kids.includes(c as (typeof kids)[number]) ? 'minmax(0, 1fr)' : 'minmax(0, 1.7fr)')).join(' ')}`;
   const dates: string[] = [];
   for (let d = w.start; d <= w.end; d = addDays(d, 1)) dates.push(d);
   const failed = people.filter((c) => !c.cal).map((c) => `${c.name}s`);
@@ -94,7 +100,7 @@ export default async function CalendarPage() {
       {/* Kolumnrubriker följer med när man scrollar. */}
       <div className="sticky top-0 z-10 -mx-3 grid gap-x-2 border-b border-line bg-ground px-3 py-2 md:-mx-4 md:px-4" style={{ gridTemplateColumns: tpl }} aria-hidden="true">
         <span />
-        {cols.map((c) => <span key={c.name} className="truncate text-[1.0625rem] font-bold">{c.name}</span>)}
+        {cols.map((c) => <span key={c.name} className={`truncate text-[1.0625rem] font-bold ${narrow ? 'max-md:text-[0.9375rem]' : ''}`}>{c.name}</span>)}
       </div>
 
       <div className="flex flex-col">
@@ -117,7 +123,7 @@ export default async function CalendarPage() {
                     <span className={`text-[0.6875rem] font-semibold uppercase ${info.free ? '' : 'text-dim'}`}>{weekdayShort(date)}</span>
                     <span className={`text-[1.125rem] font-bold tabular-nums ${isToday ? 'text-sun' : ''}`}>{Number(date.slice(8))}</span>
                   </div>
-                  {cols.map((c) => <Events key={c.name} day={c.days.get(date)} now={now} />)}
+                  {cols.map((c) => <Events key={c.name} day={c.days.get(date)} now={now} narrow={narrow} />)}
                 </div>
               </div>
             </section>

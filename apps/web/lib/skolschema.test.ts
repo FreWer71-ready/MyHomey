@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isoWeekMonday, parseSkolschema, parseSkolschemaConfig, schoolDays } from './skolschema.ts';
+import { isoWeekMonday, mergeSchoolDays, parseManualDays, parseSkolschema, parseSkolschemaConfig, schoolDays } from './skolschema.ts';
 
 const lesson = (day: number, start: string, end: string, type: string, room = '4') => ({ dayOfWeekNumber: day, startStr: `${start}:00`, endStr: `${end}:00`, type, name: '', room });
 // Så som skolschema.se bäddar in veckan: RSC-data i self.__next_f.push, och "Vecka 48, 2026" i rubriken med taggar emellan.
@@ -46,4 +46,23 @@ test('skolschema: konfiguration med namn och adress (bara skolschema.se, utan fr
   assert.deepEqual(parseSkolschemaConfig('A=http://skolschema.se/a/b/c;B=https://example.com/a/b/c;C=https://skolschema.se/a/b;=https://skolschema.se/a/b/c;D=inte-en-adress;E'), []);
   assert.deepEqual(parseSkolschemaConfig('A=https://skolschema.se.evil.com/a/b/c'), []);
   assert.deepEqual(parseSkolschemaConfig(undefined), []);
+});
+
+test('skolschema: manuella skoldagar (namn|datum|start-slut|lektioner) och hur de slås ihop med hämtade', () => {
+  const raw = 'Molly|2026-11-23|08:30-15:45|4; Molly|2026-11-24|8:30-15:35|5;Molly|2026-11-30|09:10-15:40|5';
+  assert.deepEqual(parseManualDays(raw), [
+    { name: 'Molly', date: '2026-11-23', start: '08:30', end: '15:45', slots: 4 },
+    { name: 'Molly', date: '2026-11-24', start: '08:30', end: '15:35', slots: 5 },
+    { name: 'Molly', date: '2026-11-30', start: '09:10', end: '15:40', slots: 5 },
+  ]);
+  // Ogiltigt hoppas över: slut före start, 0 lektioner, fel datum, saknat namn, skräp.
+  assert.deepEqual(parseManualDays('A|2026-11-23|15:00-08:00|3;A|2026-11-23|08:00-15:00|0;A|2026-13-45|08:00-15:00|3;|2026-11-23|08:00-15:00|3;skräp;A|2026-11-23|08:00-15:00'), []);
+  assert.deepEqual(parseManualDays(undefined), []);
+  // Hämtat + manuellt: manuellt gäller på samma datum, sorterat; inget alls ger null; bara manuellt går bra.
+  const fetched = [{ date: '2026-11-23', start: '08:00', end: '14:55', slots: 7 }, { date: '2026-11-24', start: '08:10', end: '16:10', slots: 8 }];
+  const manual = [{ date: '2026-11-24', start: '09:00', end: '15:00', slots: 5 }, { date: '2026-11-25', start: '08:25', end: '15:25', slots: 6 }];
+  assert.deepEqual(mergeSchoolDays(fetched, manual)!.map((d) => `${d.date} ${d.start}-${d.end} ${d.slots}`), ['2026-11-23 08:00-14:55 7', '2026-11-24 09:00-15:00 5', '2026-11-25 08:25-15:25 6']);
+  assert.equal(mergeSchoolDays(null, []), null);
+  assert.equal(mergeSchoolDays(null, manual)?.length, 2);
+  assert.equal(mergeSchoolDays(fetched, [])?.length, 2);
 });
