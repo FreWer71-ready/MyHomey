@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isoWeekMonday, mergeSchoolDays, parseManualDays, parseSkolschema, parseSkolschemaConfig, schoolDays } from './skolschema.ts';
+import type { CalDay, CalEvent, Calendar } from './calendar-view.ts';
+import { isoWeekMonday, mergeSchoolDays, parseManualDays, parseSkolschema, parseSkolschemaConfig, schoolDays, withSchoolDays } from './skolschema.ts';
 
 const lesson = (day: number, start: string, end: string, type: string, room = '4') => ({ dayOfWeekNumber: day, startStr: `${start}:00`, endStr: `${end}:00`, type, name: '', room });
 // Så som skolschema.se bäddar in veckan: RSC-data i self.__next_f.push, och "Vecka 48, 2026" i rubriken med taggar emellan.
@@ -65,4 +66,17 @@ test('skolschema: manuella skoldagar (namn|datum|start-slut|lektioner) och hur d
   assert.equal(mergeSchoolDays(null, []), null);
   assert.equal(mergeSchoolDays(null, manual)?.length, 2);
   assert.equal(mergeSchoolDays(fetched, [])?.length, 2);
+});
+
+test('skolschema: barnens skoldagar som poster i en kalender (bara dagar i fönstret, sorterat, originalet orört)', () => {
+  const ev = (id: string, title: string, h: number, e = h + 1, extra: Partial<CalEvent> = {}): CalEvent => ({ id, title, location: null, start: Date.UTC(2026, 10, 23, h - 1), end: Date.UTC(2026, 10, 23, e - 1), allDay: false, firstDay: '2026-11-23', lastDay: '2026-11-23', ...extra });
+  const day = (date: string, timed: CalEvent[]): CalDay => ({ date, allDay: [], timed });
+  const cal: Calendar = { generated: 1, days: [day('2026-11-23', [ev('a', 'Pilates', 18)]), day('2026-11-24', [])] };
+  const school = (date: string, h: number) => ({ days: [day(date, [ev(`skola@${date}`, 'Skola', h, 15, { location: '7 lektioner', src: 2 })])], generated: 1 });
+  const merged = withSchoolDays(cal, [{ name: 'Wilmer', cal: school('2026-11-23', 8) }, { name: 'Molly', cal: school('2026-11-24', 9) }, { name: 'Fel', cal: null }]);
+  assert.deepEqual(merged.days[0].timed.map((e) => `${e.title}|${e.location}|${e.id}|${e.src}`), ['Wilmer i skolan|7 lektioner|skola@2026-11-23@Wilmer|undefined', 'Pilates|null|a|undefined']);
+  assert.deepEqual(merged.days[1].timed.map((e) => e.title), ['Molly i skolan']);
+  // Dagar utanför kalenderns fönster läggs inte till, och originalet ändras inte.
+  assert.equal(withSchoolDays(cal, [{ name: 'Wilmer', cal: school('2026-12-24', 8) }]).days.flatMap((d) => d.timed).length, 1);
+  assert.equal(cal.days[0].timed.length, 1);
 });

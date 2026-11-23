@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { Calendar } from '@/lib/calendar';
 import { CAL_TTL, calendarConfigured, loadCalendarServer } from '@/lib/calendar-source';
+import { withSchoolDays } from '@/lib/skolschema';
+import { loadSchoolCalendars, skolschemaInCalendar } from '@/lib/skolschema-source';
 
 // Google-kalender via hemlig iCal-adress per installation. Google blockerar anrop från webbläsaren,
 // så flödet hämtas på servern (lib/calendar-source.ts). Adressen får aldrig hamna i loggar, felmeddelanden eller svar.
@@ -22,7 +24,9 @@ export async function GET() {
   }
 
   const cal = await loadCalendarServer();
-  return cal ? ok(cal) : fail(502, 'Kalendern kunde inte hämtas just nu.');
+  if (!cal) return fail(502, 'Kalendern kunde inte hämtas just nu.');
+  // Barnens skoldagar som poster i kalenderkortet (bara visning; resor, rapport och Härnäst läser kalendern utan dem).
+  return ok(skolschemaInCalendar() ? withSchoolDays(cal, await loadSchoolCalendars()) : cal);
 }
 
 function ok(cal: Calendar) {

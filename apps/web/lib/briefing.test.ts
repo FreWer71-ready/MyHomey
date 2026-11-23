@@ -133,25 +133,29 @@ test('rapport: delas i meningar och långa meningar klipps vid komma eller mella
   assert.equal(parts.join(' ').replace(/\s+/g, ' '), long.replace(/\s+/g, ' '));
 });
 
-test('rapport: barnens skoldag (börjar, slutar, imorgon, samma tider ihop)', () => {
+test('rapport: barnens skolstart i en mening (idag/imorgon, sorterat, samma tid ihop)', () => {
   const day = (h1: number, m1: number, h2: number, m2: number) => ({ start: at(h1, m1), end: at(h2, m2) });
   const wilmer = { name: 'Wilmer', today: day(8, 0, 14, 55), tomorrow: day(8, 10, 16, 10) };
-  assert.deepEqual(schoolSentences([wilmer], at(6, 12)), ['Wilmer börjar klockan åtta och slutar klockan fjorton femtiofem.']);
+  const molly = { name: 'Molly', today: day(8, 30, 15, 45), tomorrow: day(9, 0, 15, 0) };
+  assert.deepEqual(schoolSentences([wilmer], at(6, 12)), ['Idag börjar Wilmer klockan åtta.']);
+  assert.deepEqual(schoolSentences([wilmer, molly], at(6, 12)), ['Idag börjar Wilmer klockan åtta och Molly klockan åtta trettio.']);
+  // Sorterat på starttid, även om Molly står först i listan. Samma start ihop.
+  assert.deepEqual(schoolSentences([molly, wilmer], at(6, 12)), ['Idag börjar Wilmer klockan åtta och Molly klockan åtta trettio.']);
+  assert.deepEqual(schoolSentences([wilmer, { ...molly, today: day(8, 0, 15, 45) }], at(6, 12)), ['Idag börjar Wilmer och Molly klockan åtta.']);
+  // Pågår: den som börjat slutar; den som inte börjat börjar.
   assert.deepEqual(schoolSentences([wilmer], at(10, 0)), ['Wilmer slutar klockan fjorton femtiofem.']);
-  // Skolan är slut: inget på dagen, imorgon från klockan 16.
+  assert.deepEqual(schoolSentences([wilmer, molly], at(8, 10)), ['Idag börjar Molly klockan åtta trettio.', 'Wilmer slutar klockan fjorton femtiofem.']);
+  assert.deepEqual(schoolSentences([wilmer, { ...molly, today: day(8, 0, 14, 55) }], at(10, 0)), ['Wilmer och Molly slutar klockan fjorton femtiofem.']);
+  // Skolan är slut: inget på dagen, imorgon från klockan 16 (och bara när alla är klara för dagen).
   assert.deepEqual(schoolSentences([wilmer], at(15, 30)), []);
-  assert.deepEqual(schoolSentences([wilmer], at(18, 0)), ['Imorgon börjar Wilmer klockan åtta tio.']);
+  assert.deepEqual(schoolSentences([wilmer, molly], at(19, 0)), ['Imorgon börjar Wilmer klockan åtta tio och Molly klockan nio.']);
+  assert.deepEqual(schoolSentences([wilmer, molly], at(16, 30)), ['Imorgon börjar Wilmer klockan åtta tio och Molly klockan nio.']);
+  assert.deepEqual(schoolSentences([wilmer, { ...molly, today: day(8, 30, 17, 30) }], at(16, 30)), ['Molly slutar klockan sjutton trettio.']);
   assert.deepEqual(schoolSentences([{ name: 'Wilmer', today: null, tomorrow: null }], at(18, 0)), []);
-  // Två barn: samma tider ihop, olika tider var för sig, och imorgon bara när alla är klara för dagen.
-  const molly = { name: 'Molly', today: day(8, 0, 14, 55), tomorrow: day(9, 0, 15, 0) };
-  assert.deepEqual(schoolSentences([wilmer, molly], at(6, 0)), ['Wilmer och Molly börjar klockan åtta och slutar klockan fjorton femtiofem.']);
-  assert.deepEqual(schoolSentences([wilmer, { ...molly, today: day(9, 0, 16, 0) }], at(6, 0)), ['Wilmer börjar klockan åtta och slutar klockan fjorton femtiofem.', 'Molly börjar klockan nio och slutar klockan sexton.']);
-  assert.deepEqual(schoolSentences([wilmer, { ...molly, today: day(9, 0, 17, 30) }], at(16, 30)), ['Molly slutar klockan sjutton trettio.']);
-  assert.deepEqual(schoolSentences([wilmer, molly], at(19, 0)), ['Imorgon börjar Wilmer klockan åtta tio.', 'Imorgon börjar Molly klockan nio.']);
   // I rapporten: skolan kommer efter bilen och före hemmet, och bara om delen är på.
   const on = sectionsOn(undefined, { vader: false, tag: false, pendlar: false, bil: false, hemma: true, skola: true });
   assert.deepEqual([...on], ['skola', 'hemma', 'kvall', 'avslut']);
-  assert.equal(briefingParts({ school: [wilmer], now: at(6, 12) }, on)[0], 'Wilmer börjar klockan åtta och slutar klockan fjorton femtiofem.');
+  assert.equal(briefingParts({ school: [wilmer], now: at(6, 12) }, on)[0], 'Idag börjar Wilmer klockan åtta.');
   assert.deepEqual(briefingParts({ school: [wilmer], now: at(6, 12) }, new Set(['kvall'])), []);
 });
 

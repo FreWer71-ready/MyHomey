@@ -184,20 +184,30 @@ export function homeSentences(i: HomeInput): string[] {
 // ---- Skolan ----
 export type SchoolKid = { name: string; today: { start: number; end: number } | null; tomorrow: { start: number; end: number } | null };
 /**
- * Barnens skoldag: "Wilmer börjar klockan åtta och slutar klockan fjorton femtiofem." (idag, före start), "Wilmer slutar klockan …"
- * (pågår) och när dagens skola är slut för alla, från klockan 16: "Imorgon börjar Wilmer klockan åtta." Barn med samma tider
- * slås ihop ("Wilmer och Molly börjar …"). Inget om skolan är slut och imorgon saknas.
+ * Barnens skolstart i en mening: "Idag börjar Wilmer klockan åtta och Molly klockan åtta trettio." (sorterat på start; samma
+ * start ihop: "Wilmer och Molly klockan åtta"). Har ett barn redan börjat: "Wilmer slutar klockan fjorton femtiofem." När dagens
+ * skola är slut för alla, från klockan 16: "Imorgon börjar Wilmer klockan åtta tio och Molly klockan åtta trettio." Inget om
+ * skolan är slut och imorgon saknas.
  */
 export function schoolSentences(kids: SchoolKid[], now: number): string[] {
-  const group = (items: { name: string; start: number; end: number }[]) => {
-    const by = new Map<string, { names: string[]; start: number; end: number }>();
-    for (const k of items) { const g = by.get(`${k.start}|${k.end}`) ?? { names: [], start: k.start, end: k.end }; g.names.push(k.name); by.set(`${k.start}|${k.end}`, g); }
-    return [...by.values()];
+  const starts = (items: { name: string; at: number }[]) => {
+    const by = new Map<number, string[]>();
+    for (const k of [...items].sort((x, y) => x.at - y.at)) by.set(k.at, [...(by.get(k.at) ?? []), k.name]);
+    return joinList([...by].map(([at, names]) => `${joinList(names)} klockan ${spokenTime(at)}`));
   };
-  const todays = group(kids.filter((k) => k.today && k.today.end > now).map((k) => ({ name: k.name, ...k.today! })));
-  if (todays.length) return todays.map((g) => (g.start > now ? `${joinList(g.names)} börjar klockan ${spokenTime(g.start)} och slutar klockan ${spokenTime(g.end)}.` : `${joinList(g.names)} slutar klockan ${spokenTime(g.end)}.`));
+  const todays = kids.filter((k) => k.today && k.today.end > now);
+  if (todays.length) {
+    const out: string[] = [];
+    const coming = todays.filter((k) => k.today!.start > now);
+    if (coming.length) out.push(`Idag börjar ${starts(coming.map((k) => ({ name: k.name, at: k.today!.start })))}.`);
+    const ends = new Map<number, string[]>();
+    for (const k of todays.filter((k) => k.today!.start <= now)) ends.set(k.today!.end, [...(ends.get(k.today!.end) ?? []), k.name]);
+    for (const [end, names] of ends) out.push(`${joinList(names)} slutar klockan ${spokenTime(end)}.`);
+    return out;
+  }
   if (stockholm(now).hour < 16) return [];
-  return group(kids.filter((k) => k.tomorrow).map((k) => ({ name: k.name, ...k.tomorrow! }))).map((g) => `Imorgon börjar ${joinList(g.names)} klockan ${spokenTime(g.start)}.`);
+  const tomorrow = kids.filter((k) => k.tomorrow).map((k) => ({ name: k.name, at: k.tomorrow!.start }));
+  return tomorrow.length ? [`Imorgon börjar ${starts(tomorrow)}.`] : [];
 }
 
 export type BriefingInput = {

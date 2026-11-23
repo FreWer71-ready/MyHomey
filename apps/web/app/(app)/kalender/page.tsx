@@ -84,6 +84,10 @@ export default async function CalendarPage() {
   const today = dayOf(now);
   // Barnens skolkolumner är smalare än Ulrikas och Fredriks (de visar bara tider); fyra kolumner eller fler på mobil ger stapling i Events.
   const narrow = cols.length >= 4;
+  // Stort läge (AA, data-mode="stor"): med tre kolumner eller fler fyller alla utom den sista (Fredrik) bredden, och den sista ligger till
+  // höger utanför skärmen (tabellen får en egen scrollruta, rubrikraden följer med). Övriga lägen oförändrade.
+  const focus = cols.length >= 3;
+  const tplBig = `2.5rem repeat(${cols.length}, minmax(0, 1fr))`; // stort läge: lika breda kolumner, så att alla utom den sista fyller bredden exakt
   const tpl = `2.5rem ${cols.map((c) => (kids.includes(c as (typeof kids)[number]) ? 'minmax(0, 1fr)' : 'minmax(0, 1.7fr)')).join(' ')}`;
   const dates: string[] = [];
   for (let d = w.start; d <= w.end; d = addDays(d, 1)) dates.push(d);
@@ -97,8 +101,10 @@ export default async function CalendarPage() {
       {failed.length > 0 && <p role="status" className="text-[1rem] text-dim">{failed.join(' och ')} kalender kunde inte hämtas just nu.</p>}
       {failedKids.length > 0 && <p role="status" className="text-[1rem] text-dim">{failedKids.join(' och ')} schema kunde inte hämtas just nu (skolan kan ha låst det).</p>}
 
+      <div className={focus ? 'big:max-h-[calc(100dvh-6rem)] big:overflow-auto' : undefined}>
+      <div className={focus ? 'big:w-(--kal-w)' : undefined} style={{ '--tpl': tpl, '--tpl-big': focus ? tplBig : tpl, ...(focus ? { '--kal-w': `calc((100% - 2.5rem) * ${cols.length} / ${cols.length - 1} + 2.5rem)` } : {}) } as React.CSSProperties}>
       {/* Kolumnrubriker följer med när man scrollar. */}
-      <div className="sticky top-0 z-10 -mx-3 grid gap-x-2 border-b border-line bg-ground px-3 py-2 md:-mx-4 md:px-4" style={{ gridTemplateColumns: tpl }} aria-hidden="true">
+      <div className="sticky top-0 z-10 -mx-3 grid gap-x-2 border-b border-line bg-ground px-3 py-2 [grid-template-columns:var(--tpl)] big:[grid-template-columns:var(--tpl-big)] md:-mx-4 md:px-4" aria-hidden="true">
         <span />
         {cols.map((c) => <span key={c.name} className={`truncate text-[1.0625rem] font-bold ${narrow ? 'max-md:text-[0.9375rem]' : ''}`}>{c.name}</span>)}
       </div>
@@ -118,8 +124,9 @@ export default async function CalendarPage() {
                 {info.holiday && (
                   <p className="mb-1 inline-block rounded-full px-2.5 py-0.5 text-[0.75rem] font-bold" style={{ background: FREE_CHIP, color: FREE_FG }}>{info.holiday}</p>
                 )}
-                <div className="grid items-start gap-x-2" style={{ gridTemplateColumns: tpl }}>
-                  <div className="flex flex-col leading-tight" style={info.free ? { color: FREE_FG } : undefined}>
+                <div className="grid items-start gap-x-2 [grid-template-columns:var(--tpl)] big:[grid-template-columns:var(--tpl-big)]">
+                  {/* Stort läge: datumet ligger kvar till vänster när man skrollar åt höger till den sista kolumnen. */}
+                  <div className={`flex flex-col leading-tight ${focus ? 'big:sticky big:left-0 big:z-[1] big:rounded-md big:bg-black/45 big:backdrop-blur-sm' : ''}`} style={info.free ? { color: FREE_FG } : undefined}>
                     <span className={`text-[0.6875rem] font-semibold uppercase ${info.free ? '' : 'text-dim'}`}>{weekdayShort(date)}</span>
                     <span className={`text-[1.125rem] font-bold tabular-nums ${isToday ? 'text-sun' : ''}`}>{Number(date.slice(8))}</span>
                   </div>
@@ -129,6 +136,8 @@ export default async function CalendarPage() {
             </section>
           );
         })}
+      </div>
+      </div>
       </div>
     </>
   );
