@@ -14,3 +14,16 @@ Skjutet på framtiden. Ta inte upp något härifrån förrän det efterfrågas.
 - **Förslag:** Röd knapp med `tel:112` som öppnar telefonens uppringare (bekräftas med ett tryck). Håll in i 2 sekunder mot misstryck.
 - **Samtidigt:** Brådskande larm till familjens telefoner (Pushover prio 2 eller ntfy) och blinka lamporna rött.
 - **Ordning:** Larmknappen först, sedan Pushover för iPhone.
+
+## 3. Redigera kalenderhändelser i appen med synk mot Google
+- **Läge:** Kalendrarna läses via hemliga iCal-länkar: skrivskyddat och utan händelse-ID:n. Jobbets Outlook ("Möten på jobbet") och Forza-matcherna är skrivskyddade och ska förbli det.
+- **Krav:** Google Calendar API med OAuth per konto (scope `calendar.events`, snävare scope finns). Läsningen av redigerbara kalendrar flyttas till API:t (ger id och etag). Tokens lagras som Hue-tokens (tabell med RLS, hemlig nyckel i Vault).
+- **Klurigt:**
+  1. Googles testläge: refresh-token går ut efter 7 dagar. Sätt appen i produktion (en overifierad app med varning går bra för två användare).
+  2. Återkommande händelser: bara denna, denna och följande, eller alla. Börja med enskilda händelser och en enskild förekomst.
+  3. Synk: Google är sanningen. Uppdatera direkt efter skrivning, läs om var 5–10:e minut, `etag`/If-Match mot krockar. Push (webhook) senare.
+  4. Rättigheter: bara kalendrar kontot får skriva i. Den andras kalender kräver delning med "Gör ändringar". Speglingen mellan dashboards förblir skrivskyddad.
+  5. Heldag, tidszon och sommartid, radering med bekräftelse, mobilark för titel, tid, plats och anteckning.
+- **Steg:** 1) Koppla Google-kontot (som Hue), läs egna kalendern via API, skapa/ändra/radera enskilda händelser (cirka 1–2 arbetspass). 2) Återkommande händelser. 3) Båda kalendrarna, ev. push.
+- **Billigare alternativ:** Knapp "Lägg till i Google Kalender" med förifylld mall (ingen inloggning, bara skapa).
+- **Behövs från Fredrik:** OAuth-klient i Google Cloud Console (jag guidar), vems kalender som ska kunna ändras, och om skapa/ändra/radera enskilda händelser räcker först.
