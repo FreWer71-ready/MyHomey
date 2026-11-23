@@ -176,16 +176,19 @@ function Row({ e, now }: { e: CalEvent; now: number }) {
   const past = !live && e.end! <= now;
   const own = isOwnTeam(e.title);
   const loc = e.location?.split(',')[0];
+  // Pågående: samma dova markering som aktiva knappar (t.ex. Auto På): ljus ram och svag fyllning (.sel), kalenderfärgen kvar till vänster.
+  const edge = bar(e)?.boxShadow;
+  const style = live ? { boxShadow: edge ? `${edge}, inset 0 0 0 1.5px rgb(230 237 243 / 0.5)` : undefined } : bar(e);
   return (
-    <div className={`flex min-w-0 gap-3 rounded-[0.75rem] py-1.5 pr-3 pl-3 ${live ? 'bg-[#E6EDF3] text-[#0B0F14]' : ''} ${past ? 'text-dim' : ''}`}
-      style={bar(e)}>
+    <div className={`flex min-w-0 gap-3 rounded-[0.75rem] py-1.5 pr-3 pl-3 ${live ? 'sel' : ''} ${past ? 'text-dim' : ''}`}
+      style={style}>
       <span className="flex w-[3.25rem] shrink-0 flex-col leading-tight tabular-nums">
         <span className="text-[1.0625rem] font-bold">{hm(e.start!)}</span>
-        <span className={`text-[0.875rem] ${live ? 'opacity-70' : 'text-dim'}`}>{hm(e.end!)}</span>
+        <span className="text-[0.875rem] text-dim">{hm(e.end!)}</span>
       </span>
       <span className="flex min-w-0 grow flex-col leading-tight">
         <span className={`line-clamp-2 text-[1.0625rem] break-words ${own ? 'font-bold' : 'font-semibold'}`}>{shortTitle(e.title)}</span>
-        {loc && <span className={`truncate text-[0.875rem] ${live ? 'opacity-70' : 'text-dim'}`}>{loc}</span>}
+        {loc && <span className="truncate text-[0.875rem] text-dim">{loc}</span>}
       </span>
       {live && <span className="shrink-0 self-center text-[0.875rem] font-bold">Pågår</span>}
     </div>
