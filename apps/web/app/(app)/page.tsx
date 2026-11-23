@@ -10,7 +10,8 @@ import { boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nextTrip, upcom
 import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
-import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal, transitSearchable } from '@/lib/transit-source';
+import { EventTransit } from '@/components/EventTransit';
 import { DepartsFrom, TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { LeaveIn } from '@/components/LeaveIn';
 import { progress } from '@/lib/transit';
@@ -622,6 +623,11 @@ export default async function HomePage() {
               </p>
               {tripLine}
               {!tripEta.fallback && tripEta.key && <TripMargin eventKey={tripEta.key} value={tripEta.own ?? null} auto={tripEta.eta.minutes >= 30 ? 15 : 5} />}
+              {/* Kollektivt dörr till dörr: planeras vid tryck, framme senast start minus marginalen. */}
+              {!tripEta.fallback && tripEta.trip.start != null && transitSearchable() && (
+                <EventTransit key={`${tripEta.key}|${tripEta.margin}`} place={tripEta.trip.location} start={tripEta.trip.start}
+                  arriveBy={tripEta.trip.start - tripEta.margin * 60_000} fromHere={tripEta.fromHere} />
+              )}
             </Card>
           )}
           {weekend && (
