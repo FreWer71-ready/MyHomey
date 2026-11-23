@@ -27,10 +27,20 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     ? [...h.homeMoods.map((m) => ({ ...m, room: null })), ...h.rooms.flatMap((r) => r.moods.map((m) => ({ ...m, room: r.name })))]
     : h.favoriteMoods;
 
+  // Hue-hushåll: Mys och Släck i alla rum med lampor, med ett tryck, först i Rutiner.
+  const houseZones = h.rooms.filter((r) => r.lights.length > 0).map((r) => r.id);
+  const house: Action[] = hueMode && houseZones.length > 0 ? [
+    { id: 'house-mys', name: 'Mys i hela huset', kind: 'room', zones: houseZones, scene: 'mys' },
+    { id: 'house-slack', name: 'Släck alla lampor', kind: 'room', zones: houseZones, scene: 'slack' },
+  ] : [];
+
   const routines: Action[] = [
-    ...flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' as const, advanced: f.advanced })),
-    ...favMoods.filter((m) => !m.room).map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
-  ].sort(byName);
+    ...house,
+    ...[
+      ...flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' as const, advanced: f.advanced })),
+      ...favMoods.filter((m) => !m.room).map((m) => ({ id: m.id, name: m.name, kind: 'mood' as const })),
+    ].sort(byName),
+  ];
 
   // Rumskorten visas som murverk (CSS-kolumner): de staplas tätt under varandra oavsett längd.
   // Rum: favoritmoods + Hue-scener (Homey-hushåll med anslutet Hue) i samma kort.
