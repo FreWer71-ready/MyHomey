@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bearer, keyOk } from './briefing-auth.ts';
-import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, parseClosings, schoolSentences, statusSentences, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
+import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, nameDaysFor, parseClosings, schoolSentences, statusSentences, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
 
 // 23 nov 2026 är en måndag; Stockholm är UTC+1 då.
 const at = (h: number, m = 0) => Date.UTC(2026, 10, 23, h - 1, m);
@@ -85,10 +85,11 @@ test('rapport: Ulrikas manus (bilresa med vägvarning, kvällens händelser, avs
 test('rapport: delar väljs av BRIEFING eller efter vad hushållet har', () => {
   const has = { vader: true, tag: true, pendlar: true, bil: false };
   assert.deepEqual([...sectionsOn('kvall, avslut ,okänd', has)], ['kvall', 'avslut']);
-  assert.deepEqual([...sectionsOn(undefined, has)], ['vader', 'tag', 'forsta', 'hemresa', 'kvall', 'avslut']);
-  assert.deepEqual([...sectionsOn('', { vader: false, tag: false, pendlar: false, bil: true })], ['bil', 'kvall', 'avslut']);
+  assert.deepEqual([...sectionsOn(undefined, has)], ['vader', 'namnsdag', 'tag', 'forsta', 'hemresa', 'kvall', 'avslut']);
+  assert.deepEqual([...sectionsOn('', { vader: false, tag: false, pendlar: false, bil: true })], ['namnsdag', 'bil', 'kvall', 'avslut']);
+  assert.deepEqual([...sectionsOn(undefined, { vader: false, tag: false, pendlar: false, bil: false })], ['namnsdag', 'kvall', 'avslut']);
   // Nästa händelse för alla med kalender (utan pendling), men hemresan bara för pendlare.
-  assert.deepEqual([...sectionsOn(undefined, { vader: true, tag: false, pendlar: false, bil: true, kalender: true })], ['vader', 'forsta', 'bil', 'kvall', 'avslut']);
+  assert.deepEqual([...sectionsOn(undefined, { vader: true, tag: false, pendlar: false, bil: true, kalender: true })], ['vader', 'namnsdag', 'forsta', 'bil', 'kvall', 'avslut']);
 });
 
 test('rapport: nästa händelse nämns inte två gånger när den är en av kvällens', () => {
@@ -164,7 +165,7 @@ test('rapport: barnens skolstart i en mening (idag/imorgon, sorterat, samma tid 
   assert.deepEqual(schoolSentences([{ name: 'Wilmer', today: null, tomorrow: null }], at(18, 0)), []);
   // I rapporten: skolan kommer efter bilen och före hemmet, och bara om delen är på.
   const on = sectionsOn(undefined, { vader: false, tag: false, pendlar: false, bil: false, hemma: true, skola: true });
-  assert.deepEqual([...on], ['skola', 'hemma', 'kvall', 'avslut']);
+  assert.deepEqual([...on], ['namnsdag', 'skola', 'hemma', 'kvall', 'avslut']);
   assert.equal(briefingParts({ school: [wilmer], now: at(6, 12) }, on)[0], 'Idag börjar Wilmer klockan åtta.');
   assert.deepEqual(briefingParts({ school: [wilmer], now: at(6, 12) }, new Set(['kvall'])), []);
 });
@@ -199,7 +200,7 @@ test('rapport: hemmet (lampor, temperatur, vilka som är hemma, internet, fukt o
   assert.equal(batteryLabel(' Dörrsensor hall ', 'Fredrik'), 'Dörrsensor hall');
   // I rapporten: hemmet kommer före kvällen och bara om delen är på.
   const on = sectionsOn(undefined, { vader: false, tag: false, pendlar: false, bil: false, hemma: true });
-  assert.deepEqual([...on], ['hemma', 'kvall', 'avslut']);
+  assert.deepEqual([...on], ['namnsdag', 'hemma', 'kvall', 'avslut']);
   const parts = briefingParts({ home: base, evening: [{ title: 'Golf', start: at(17, 30) }] }, on);
   assert.equal(parts[0], 'Hemma lyser tretton lampor och det är tjugotre grader i snitt.');
   assert.equal(parts.at(-2), 'Ikväll har Golf klockan sjutton trettio.');
@@ -242,4 +243,23 @@ test('rapport: bästa svenska rösten', () => {
   assert.equal(pickVoice([v('Samantha', 'en-US'), v('Klara', 'sv-SE')])?.name, 'Klara');
   assert.equal(pickVoice([v('Samantha', 'en-US')]), null);
   assert.equal(pickVoice([]), null);
+});
+
+test('rapport: namnsdagen kommer först bland meningarna och hoppas över utan namn', () => {
+  const on = sectionsOn(undefined, { vader: true, tag: true, pendlar: true, bil: false });
+  const train = { dep: at(6, 57), delay: 0, leave: at(6, 43) };
+  assert.deepEqual(briefingParts({ nameDays: ['Mårten'], train }, on).slice(0, 2), ['Mårten har namnsdag.', 'Tåget sex femtiosju går i tid, så du bör gå sex fyrtiotre.']);
+  assert.equal(briefingParts({ nameDays: ['Anna', 'Hanna', 'Ada'] }, on)[0], 'Anna, Hanna och Ada har namnsdag.');
+  assert.ok(!briefingParts({ nameDays: [] }, on).some((p) => /namnsdag/.test(p)));
+  assert.ok(!briefingParts({ nameDays: ['Mårten'] }, sectionsOn('kvall', { vader: true, tag: true, pendlar: true, bil: false })).some((p) => /namnsdag/.test(p)));
+});
+
+test('rapport: namnsdagar ur Svenska dagars årsdata', () => {
+  const year = { dagar: [{ datum: '2026-11-22', namnsdag: ['Cecilia'] }, { datum: '2026-11-23', namnsdag: ['Klemens', ' Klementine '] }, { datum: '2026-11-24', namnsdag: [] }, { datum: '2026-11-25' }] };
+  assert.deepEqual(nameDaysFor(year, '2026-11-23'), ['Klemens', 'Klementine']);
+  assert.deepEqual(nameDaysFor(year, '2026-11-24'), []);
+  assert.deepEqual(nameDaysFor(year, '2026-11-25'), []);
+  assert.deepEqual(nameDaysFor(year, '2027-01-01'), []);
+  assert.deepEqual(nameDaysFor(null, '2026-11-23'), []);
+  assert.deepEqual(nameDaysFor({ dagar: 'fel' }, '2026-11-23'), []);
 });

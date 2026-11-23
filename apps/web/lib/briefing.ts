@@ -88,7 +88,7 @@ export const spokenTitle = (t: string) => { const m = matchOf(t); return m ? `ma
 export const joinList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} och ${xs.at(-1)}`);
 
 // ---- Delar ----
-export const SECTIONS = ['vader', 'tag', 'forsta', 'hemresa', 'bil', 'skola', 'hemma', 'kvall', 'avslut'] as const;
+export const SECTIONS = ['vader', 'namnsdag', 'tag', 'forsta', 'hemresa', 'bil', 'skola', 'hemma', 'kvall', 'avslut'] as const;
 export type Section = (typeof SECTIONS)[number];
 
 /**
@@ -99,7 +99,7 @@ export type Section = (typeof SECTIONS)[number];
 export function sectionsOn(raw: string | undefined, has: { vader: boolean; tag: boolean; pendlar: boolean; bil: boolean; hemma?: boolean; skola?: boolean; kalender?: boolean }): Set<Section> {
   const listed = (raw ?? '').split(',').map((s) => s.trim().toLowerCase()).filter((s): s is Section => (SECTIONS as readonly string[]).includes(s));
   if (listed.length) return new Set(listed);
-  return new Set<Section>([...(has.vader ? ['vader' as const] : []), ...(has.tag ? ['tag' as const] : []),
+  return new Set<Section>([...(has.vader ? ['vader' as const] : []), 'namnsdag', ...(has.tag ? ['tag' as const] : []),
     ...(has.pendlar || has.kalender ? ['forsta' as const] : []), ...(has.pendlar ? ['hemresa' as const] : []), ...(has.bil ? ['bil' as const] : []), ...(has.skola ? ['skola' as const] : []), ...(has.hemma ? ['hemma' as const] : []), 'kvall', 'avslut']);
 }
 
@@ -217,14 +217,23 @@ export type BriefingInput = {
   /** Hemresan efter sista mötet: tågets avgång (om tåg ingår) och när man är hemma. */ homePlan?: { trainDep: number | null; home: number } | null;
   car?: { home: boolean; label: string; minutes: number; trafficMin: number; warnings: number } | null;
   evening?: { title: string; start: number }[];
+  /** Dagens namnsdagar. */ nameDays?: string[];
   home?: HomeInput | null;
   school?: SchoolKid[];
   /** Nu och egna avslutsord; utan `now` blir avslutet dagens. */ now?: number; closings?: Partial<Record<DayPart, string>>;
 };
 
+/** Dagens namnsdagar (`namnsdag`-listan) ur Svenska dagars årsdata (sholiday.faboul.se: `{ dagar: [{ datum, namnsdag? }] }`) för `date` (YYYY-MM-DD). */
+export function nameDaysFor(data: unknown, date: string): string[] {
+  const days = (data as { dagar?: { datum?: unknown; namnsdag?: unknown }[] } | null)?.dagar;
+  const names = Array.isArray(days) ? days.find((d) => d?.datum === date)?.namnsdag : null;
+  return Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string' && n.trim() !== '').map((n) => n.trim()) : [];
+}
+
 /** Rapportens meningar efter första meningen, i fast ordning; delar utan data hoppas över. */
 export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
   const out: string[] = [];
+  if (on.has('namnsdag') && i.nameDays?.length) out.push(`${joinList(i.nameDays)} har namnsdag.`);
   if (on.has('tag') && i.train) {
     const t = spokenTime(i.train.dep), go = spokenTime(i.train.leave);
     out.push(i.train.delay >= 1 ? `Tåget ${t} är ${minutes(i.train.delay)} försenat, så du bör gå ${go} för att hinna i tid.` : `Tåget ${t} går i tid, så du bör gå ${go}.`);
