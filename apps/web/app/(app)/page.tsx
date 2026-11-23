@@ -14,7 +14,8 @@ import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal, tr
 import { EventTransit } from '@/components/EventTransit';
 import { DepartsFrom, TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { LeaveIn } from '@/components/LeaveIn';
-import { SpeakBriefing } from '@/components/SpeakBriefing';
+import { Briefing } from '@/components/Briefing';
+import { Suspense } from 'react';
 import { progress } from '@/lib/transit';
 import type { TransitLeg } from '@/lib/transit';
 import { HourStrip } from '@/components/HourStrip';
@@ -531,7 +532,7 @@ export default async function HomePage() {
           {/* Läs upp rapport (webbläsarens röst, startar vid tryck) i samma rad. Raden döljs när den är tom (ingen talsyntes). */}
           <div className="flex flex-wrap gap-2 empty:hidden">
             {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 flex-1 basis-36 justify-center" />)}
-            <SpeakBriefing name={me} className="min-w-0 flex-1 basis-36 justify-center" />
+            <Suspense fallback={null}><Briefing className="min-w-0 flex-1 basis-36 justify-center" /></Suspense>
           </div>
         </section>
 
