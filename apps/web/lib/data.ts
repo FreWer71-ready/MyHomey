@@ -330,7 +330,7 @@ async function loadHistoryAvailFresh(): Promise<HistoryAvail> {
   const sb = await createClient();
   const [caps, trips, road] = await Promise.all([
     sb.from('capability_state').select('capability_id'),
-    sb.from('train_trips').select('id', { count: 'exact', head: true }).eq('hidden', false),
+    sb.from('train_trips').select('ident', { count: 'exact', head: true }).eq('hidden', false), // tabellen har ingen kolumn id (nyckel: household_id, ident, dep)
     loadRoadHistory('429', '24h').catch(() => []),
   ]);
   return { caps: new Set((caps.data ?? []).map((c) => c.capability_id as string)), trips: (trips.count ?? 0) > 0, road: road.length > 0 };
