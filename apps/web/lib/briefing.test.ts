@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bearer, keyOk } from './briefing-auth.ts';
-import { batteryLabel, briefingParts, briefingText, greeting, homeSentences, joinList, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
+import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, parseClosings, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
 
 // 23 nov 2026 är en måndag; Stockholm är UTC+1 då.
 const at = (h: number, m = 0) => Date.UTC(2026, 10, 23, h - 1, m);
@@ -102,6 +102,25 @@ test('rapport: dagens läge ur kalendern', () => {
   assert.equal(todayPlan(day, at(16)).lastEnd, null);
   assert.equal(todayPlan(day, at(20)).first, null);
   assert.deepEqual(todayPlan([], at(6)), { first: null, lastEnd: null, evening: [] });
+});
+
+test('rapport: avslutet följer tiden på dygnet, med egna ord som val', () => {
+  assert.deepEqual([at(4), at(7), at(17, 59), at(18), at(21, 59), at(22), at(2)].map(dayPart), ['dag', 'dag', 'dag', 'kvall', 'kvall', 'natt', 'natt']);
+  assert.equal(closing(at(8)), 'Ha en trevlig dag.');
+  assert.equal(closing(at(19)), 'Ha en bra kväll.');
+  assert.equal(closing(at(23, 30)), 'Sov gott.');
+  const own = parseClosings('dag=Ha en fin dag; kväll = Ha en härlig kväll ;natt=Sov gott och drömmer sött;okänd=x;dag2=;');
+  assert.deepEqual(own, { dag: 'Ha en fin dag.', kvall: 'Ha en härlig kväll.', natt: 'Sov gott och drömmer sött.' });
+  assert.equal(closing(at(19), own), 'Ha en härlig kväll.');
+  assert.equal(closing(at(10), { kvall: 'x.' }), 'Ha en trevlig dag.');
+  assert.deepEqual(parseClosings(undefined), {});
+  assert.deepEqual(parseClosings('natt=Godnatt!'), { natt: 'Godnatt!' });
+  // I rapporten: avslutet efter tid, och utan tid (som tidigare) dagens.
+  const on = new Set(['avslut' as const]);
+  assert.deepEqual(briefingParts({ now: at(20) }, on), ['Ha en bra kväll.']);
+  assert.deepEqual(briefingParts({ now: at(23) }, on), ['Sov gott.']);
+  assert.deepEqual(briefingParts({ now: at(23), closings: { natt: 'Godnatt.' } }, on), ['Godnatt.']);
+  assert.deepEqual(briefingParts({}, on), ['Ha en trevlig dag.']);
 });
 
 test('rapport: delas i meningar och långa meningar klipps vid komma eller mellanslag', () => {

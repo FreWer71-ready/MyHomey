@@ -1,6 +1,6 @@
 import 'server-only';
 import { humidityWarnings } from './alerts.ts';
-import { batteryLabel, briefingParts, sectionsOn, todayPlan, weatherPhrase, type HomeInput } from './briefing.ts';
+import { batteryLabel, briefingParts, parseClosings, sectionsOn, todayPlan, weatherPhrase, type HomeInput } from './briefing.ts';
 import { calendarConfigured, loadCalendarServer } from './calendar-source.ts';
 import { dayInfo, dayOf } from './calendar-view.ts';
 import { direction, groupRoad } from './commute.ts';
@@ -90,7 +90,7 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
 
   return {
     name, weather: on.has('vader') ? weather : '',
-    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, home }, on),
+    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, home, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
   };
 }
 
