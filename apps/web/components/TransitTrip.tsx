@@ -45,7 +45,7 @@ export function DepartsFrom({ trip }: { trip: TransitTrip }) {
 }
 
 /** En kollektivresa: avresa, ankomst och benen (gång, buss, tåg, SL) med spår och tågens realtid. */
-export function TransitTripCard({ trip, trains, first, home = false, ongoing = false, pos }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean; ongoing?: boolean; pos?: Progress }) {
+export function TransitTripCard({ trip, trains, first, home = false, pos }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean; pos?: Progress }) {
   const { delay, canceled } = tripDelay(trip, trains);
   const total = Math.round((trip.arr - trip.dep) / 60_000);
   // Nedräkningen tickar i klienten (LeaveIn); serverns tid är startvärdet.
@@ -53,12 +53,10 @@ export function TransitTripCard({ trip, trains, first, home = false, ongoing = f
   return (
     <section className={`flex flex-col gap-2 rounded-2xl glass p-4 ${first ? '' : 'border border-line'}`}>
       <div className="flex flex-wrap items-baseline gap-x-3">
-        {ongoing
-          ? <span className="text-[1.375rem] font-extrabold">Pågående resa</span>
-          : pos?.waiting
-            // Positionen är kvar vid startpunkten fast avgångstiden passerat.
-            ? <span className="text-[1.375rem] font-extrabold" style={{ color: TONE_COLOR.warn }}>Du har inte gått än</span>
-            : <LeaveIn dep={trip.dep} serverNow={serverNow} variant="card" />}
+        {pos?.waiting
+          // Positionen är kvar vid startpunkten fast avgångstiden passerat.
+          ? <span className="text-[1.375rem] font-extrabold" style={{ color: TONE_COLOR.warn }}>Du har inte gått än</span>
+          : <LeaveIn dep={trip.dep} serverNow={serverNow} variant="card" />}
         <span className="text-[1.0625rem] font-semibold">
           {home ? 'hemma' : 'framme'} {delay ? <>ca <span style={{ color: TONE_COLOR.warn }}>{hhmm(trip.arr + delay * 60_000)}</span></> : hhmm(trip.arr)}
         </span>
