@@ -111,3 +111,12 @@ test('withoutAllDay tar bort heldag och midnatt–midnatt men behåller vanliga'
   assert.deepEqual(d.allDay, []);
   assert.deepEqual(d.timed.map((e) => e.title), ['Möte']);
 });
+
+test('kalender: back tar med dagar före idag (innevarande månad)', () => {
+  const m = parseCalendar(ICS, now, 7, 12); // 2026-11-01 … 2026-11-20
+  assert.equal(m.days.length, 20);
+  assert.equal(m.days[0].date, '2026-11-01');
+  assert.equal(m.days.find((x) => x.date === '2026-11-05')!.timed.some((e) => e.title === 'Förra veckan'), true);
+  assert.equal(cal.days.find((x) => x.date === '2026-11-05'), undefined); // utan back: inte med
+  assert.deepEqual(m.days.find((x) => x.date === '2026-11-13')!.timed.map((e) => e.title), ['Promenad', 'Tandläkare']);
+});

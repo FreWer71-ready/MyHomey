@@ -44,6 +44,19 @@ export function dayLabel(date: string, now = Date.now()): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'short' }).format(ms).replace('.', '');
 }
 
+/**
+ * Fönstret för månadsvyn: från den 1:a i innevarande månad till sista dagen i nästa månad.
+ * back = dagar före idag, ahead = dagar efter idag.
+ */
+export function monthsWindow(now = Date.now(), tz = TZ): { start: string; end: string; back: number; ahead: number } {
+  const today = dayOf(now, tz);
+  const [y, m] = today.split('-').map(Number);
+  const start = `${y}-${String(m).padStart(2, '0')}-01`;
+  const end = new Date(Date.UTC(y, m + 1, 0)).toISOString().slice(0, 10); // dag 0 i månaden efter nästa = sista dagen i nästa
+  const diff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400_000);
+  return { start, end, back: diff(start, today), ahead: diff(today, end) };
+}
+
 /** Färg per kalender (prick vid händelsen). */
 export const CAL_COLORS = ['#8B5CF6', '#34C27A', '#4FA3FF', '#FF8A3D', '#F0503C', '#FFC21A'];
 
