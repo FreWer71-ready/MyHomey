@@ -37,7 +37,8 @@ export function SpeakBriefing({ name, weather = '', parts = [], className = '' }
       u.lang = 'sv-SE';
       if (voice) u.voice = voice;
       u.rate = 0.95;
-      u.onend = () => next(i + 1);
+      // Kort paus efter hälsningen (första yttrandet), sedan direkt vidare.
+      u.onend = () => (i === 0 ? setTimeout(() => next(1), 700) : next(i + 1));
       u.onerror = () => { if (id === run.current) setSpeaking(false); };
       synth.speak(u);
     };

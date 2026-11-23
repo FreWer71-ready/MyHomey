@@ -31,9 +31,9 @@ test('rapport: hälsning och första meningen', () => {
   assert.equal(greeting(at(7, 12)), 'Godmorgon');
   assert.equal(greeting(at(10)), 'Hej');
   assert.equal(greeting(at(2)), 'Hej');
-  assert.equal(briefingText({ name: 'fredrik', now: at(7, 12), weather: 'regn och en plusgrad' }), 'Godmorgon Fredrik, idag är det tjugotredje november och det är regn och en plusgrad ute.');
-  assert.equal(briefingText({ name: 'Ulrika', now: at(14), parts: ['Ha en trevlig dag.', ' '] }), 'Hej Ulrika, idag är det tjugotredje november. Ha en trevlig dag.');
-  assert.equal(briefingText({ now: at(14) }), 'Hej, idag är det tjugotredje november.');
+  assert.equal(briefingText({ name: 'fredrik', now: at(7, 12), weather: 'regn och en plusgrad' }), 'Godmorgon Fredrik.\n\nIdag är det tjugotredje november och det är regn och en plusgrad ute.');
+  assert.equal(briefingText({ name: 'Ulrika', now: at(14), parts: ['Ha en trevlig dag.', ' '] }), 'Hej Ulrika.\n\nIdag är det tjugotredje november. Ha en trevlig dag.');
+  assert.equal(briefingText({ now: at(14) }), 'Hej.\n\nIdag är det tjugotredje november.');
 });
 
 test('rapport: Fredriks manus (tåg, första händelse, sista möte och hemresa)', () => {

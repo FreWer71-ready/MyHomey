@@ -43,11 +43,15 @@ export function greeting(now: number): string {
   return h >= 4 && h < 10 ? 'Godmorgon' : 'Hej';
 }
 
-/** Rapportens första mening: hälsning, namn, datum och vädret. `parts` = övriga meningar (se `briefingParts`). */
+/**
+ * Rapportens text. Hälsningen står för sig ("Hej Fredrik.") och följs av ett stycke, så att rösten gör en tydlig paus
+ * (Siri och andra röster gör längre uppehåll vid styckebrytning än vid kommatecken). Sedan datum, väder och `parts`
+ * (övriga meningar, se `briefingParts`) i ett stycke.
+ */
 export function briefingText({ name, now, weather = '', parts = [] }: { name?: string; now: number; weather?: string; parts?: string[] }): string {
   const who = name?.trim() ? ` ${name.trim().charAt(0).toUpperCase()}${name.trim().slice(1)}` : '';
-  const first = `${greeting(now)}${who}, idag är det ${spokenDate(now)}${weather ? ` och det är ${weather} ute` : ''}.`;
-  return [first, ...parts.map((p) => p.trim()).filter(Boolean)].join(' ');
+  const first = `Idag är det ${spokenDate(now)}${weather ? ` och det är ${weather} ute` : ''}.`;
+  return `${greeting(now)}${who}.\n\n${[first, ...parts.map((p) => p.trim()).filter(Boolean)].join(' ')}`;
 }
 
 /** Titel för tal: tankstreck mellan lag ("Hammarby IF – IFK Göteborg") blir "mot" (annars läser vissa röster "minus"). */
