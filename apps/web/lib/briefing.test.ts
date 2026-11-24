@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bearer, keyOk } from './briefing-auth.ts';
-import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, nameDaysFor, parseClosings, tempSpan, schoolSentences, statusSentences, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
+import { batteryLabel, briefingParts, briefingText, closing, dayPart, greeting, homeSentences, joinList, nameDaysFor, parseClosings, parseTrainTimes, pickTrains, tempSpan, schoolSentences, statusSentences, numWords, pickVoice, sectionsOn, speechChunks, spokenDate, spokenTime, tempPhrase, todayPlan, weatherPhrase } from './briefing.ts';
 
 // 23 nov 2026 är en måndag; Stockholm är UTC+1 då.
 const at = (h: number, m = 0) => Date.UTC(2026, 10, 23, h - 1, m);
@@ -282,4 +282,31 @@ test('rapport: väder imorgon från klockan 20 (spann, lika värden, bara med de
   // Efter kvällens händelser, före avslutet.
   const evening = [{ title: 'Wilmer golf', start: at(22, 0) }];
   assert.deepEqual(briefingParts({ tomorrow, evening, now: at(20, 30) }, on).slice(-3), ['Ikväll har Wilmer golf klockan tjugotvå.', 'Imorgon blir det lätt regn, mellan en och fyra plusgrader.', 'Ha en bra kväll.']);
+});
+
+test('rapport: valda tåg (BRIEFING_TAG): tider, urval och meningar', () => {
+  assert.deepEqual(parseTrainTimes('06:57, 7:04;07.34 25:00 abc 7:5'), ['06:57', '07:04', '07:34']);
+  assert.deepEqual(parseTrainTimes(undefined), []);
+  const tr = (h: number, m: number, extra: Record<string, unknown> = {}) => ({ dep: at(h, m), est: null as number | null, delay: 0, canceled: false, ...extra });
+  const list = [tr(6, 40), tr(6, 57, { est: at(6, 59), delay: 2 }), tr(7, 4), tr(7, 34, { canceled: true }), tr(8, 4)];
+  const times = ['06:57', '07:04', '07:34'];
+  // Före 6:57: alla tre. Efter 6:57 (beräknad avgång 6:59 ännu ej gången): 6:57 kvar till 6:59. Efter det: de som är kvar. Efter 7:34: inga.
+  assert.deepEqual(pickTrains(list, times, at(6, 30)).map((t) => t.dep), [at(6, 57), at(7, 4), at(7, 34)]);
+  assert.deepEqual(pickTrains(list, times, at(6, 58)).map((t) => t.dep), [at(6, 57), at(7, 4), at(7, 34)]);
+  assert.deepEqual(pickTrains(list, times, at(7, 0)).map((t) => t.dep), [at(7, 4), at(7, 34)]);
+  assert.deepEqual(pickTrains(list, times, at(7, 40)), []);
+  // Samma klockslag imorgon räknas inte.
+  assert.deepEqual(pickTrains([{ dep: at(6, 57) + 86400_000, est: null }], times, at(6, 30)), []);
+
+  const on = sectionsOn(undefined, { vader: false, tag: true, pendlar: true, bil: false });
+  const trains = [{ dep: at(6, 57), delay: 2, leave: at(6, 43) }, { dep: at(7, 4), delay: 0, leave: at(6, 50) }, { dep: at(7, 34), delay: 0, canceled: true, leave: null }];
+  assert.deepEqual(briefingParts({ trains }, on).slice(0, 3), [
+    'Tåget sex femtiosju är två minuter försenat, så du bör gå sex fyrtiotre för att hinna i tid.',
+    'Tåget sju noll fyra går i tid, så du bör gå sex femtio.',
+    'Tåget sju trettiofyra är inställt.',
+  ]);
+  // Utan gå-tid sägs bara läget; valda tåg går före enskilt nästa tåg.
+  assert.deepEqual(briefingParts({ trains: [{ dep: at(6, 57), delay: 2, leave: null }, { dep: at(7, 4), delay: 0, leave: null }], train: { dep: at(9, 0), delay: 0, leave: at(8, 40) } }, on).slice(0, 2),
+    ['Tåget sex femtiosju är två minuter försenat.', 'Tåget sju noll fyra går i tid.']);
+  assert.deepEqual(briefingParts({ trains: [], train: { dep: at(9, 0), delay: 0, leave: at(8, 40) } }, on).slice(0, 1), ['Tåget nio går i tid, så du bör gå åtta fyrtio.']);
 });

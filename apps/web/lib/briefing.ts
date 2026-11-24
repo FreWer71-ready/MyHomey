@@ -218,8 +218,35 @@ export function schoolSentences(kids: SchoolKid[], now: number): string[] {
   return tomorrow.length ? [`Imorgon börjar ${starts(tomorrow)}.`] : [];
 }
 
+export type TrainInfo = { dep: number; delay: number; canceled?: boolean; leave: number | null };
+
+/** Tågtider ur BRIEFING_TAG="06:57,7:04,07:34" som "HH:MM" (ogiltiga hoppas över). */
+export function parseTrainTimes(raw: string | undefined): string[] {
+  return (raw ?? '').split(/[,;\s]+/).flatMap((s) => {
+    const m = s.match(/^(\d{1,2})[:.](\d{2})$/);
+    return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? [`${m[1].padStart(2, '0')}:${m[2]}`] : [];
+  });
+}
+
+/** Tågen i `list` vars planerade avgång (Stockholm) är en av `times`, idag och som inte hunnit gå (beräknad avgång efter `now`). */
+export function pickTrains<T extends { dep: number; est: number | null }>(list: T[], times: string[], now: number): T[] {
+  const hm = (ms: number) => { const p = stockholm(ms); return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`; };
+  const day = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(ms);
+  return list.filter((t) => times.includes(hm(t.dep)) && day(t.dep) === day(now) && (t.est ?? t.dep) > now).sort((a, b) => a.dep - b.dep);
+}
+
+/** En mening om ett tåg: inställt, försenat eller i tid, med när man bör gå om det går att säga. */
+function trainSentence(t: TrainInfo): string {
+  const at = spokenTime(t.dep);
+  if (t.canceled) return `Tåget ${at} är inställt.`;
+  const go = t.leave != null ? spokenTime(t.leave) : null;
+  if (t.delay >= 1) return `Tåget ${at} är ${minutes(t.delay)} försenat${go ? `, så du bör gå ${go} för att hinna i tid` : ''}.`;
+  return go ? `Tåget ${at} går i tid, så du bör gå ${go}.` : `Tåget ${at} går i tid.`;
+}
+
 export type BriefingInput = {
   /** Nästa tåg: planerad avgång, förseningen i minuter och när man behöver gå. */ train?: { dep: number; delay: number; leave: number } | null;
+  /** Valda tåg (BRIEFING_TAG), i tidsordning; `leave` null när gå-tiden passerat eller saknas. Går före `train`. */ trains?: TrainInfo[];
   first?: { title: string; start: number; next: boolean; meetings: boolean } | null;
   /** Sista mötet slutar. */ lastEnd?: number | null;
   /** Hemresan efter sista mötet: tågets avgång (om tåg ingår) och när man är hemma. */ homePlan?: { trainDep: number | null; home: number } | null;
@@ -243,10 +270,7 @@ export function nameDaysFor(data: unknown, date: string): string[] {
 export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
   const out: string[] = [];
   if (on.has('namnsdag') && i.nameDays?.length) out.push(`${joinList(i.nameDays)} har namnsdag.`);
-  if (on.has('tag') && i.train) {
-    const t = spokenTime(i.train.dep), go = spokenTime(i.train.leave);
-    out.push(i.train.delay >= 1 ? `Tåget ${t} är ${minutes(i.train.delay)} försenat, så du bör gå ${go} för att hinna i tid.` : `Tåget ${t} går i tid, så du bör gå ${go}.`);
-  }
+  if (on.has('tag')) for (const t of i.trains?.length ? i.trains : i.train ? [i.train] : []) out.push(trainSentence(t));
   // Är nästa händelse en av kvällens sägs den bara i kvällsmeningen ("Ikväll har …"), inte två gånger.
   const inEvening = on.has('kvall') && !!i.first && !!i.evening?.some((e) => e.start === i.first!.start && e.title === i.first!.title);
   if (on.has('forsta') && i.first && !inEvening) {
