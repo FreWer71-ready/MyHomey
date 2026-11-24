@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Nav } from '@/components/Nav';
 import { LiveRefresh } from '@/components/LiveRefresh';
 import { SparadSida } from '@/components/SparadSida';
+import { APP_VERSION } from '@/lib/version';
 import { BirthdayOverlay } from '@/components/BirthdayOverlay';
 import { parseBirthdays } from '@/lib/birthday';
 import { alarmKeys } from '@/lib/alerts';
@@ -25,7 +26,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <LiveRefresh />
       <SparadSida />
       <BirthdayOverlay entries={parseBirthdays(process.env.BIRTHDAYS)} />
-      <main className="flex min-w-0 grow flex-col gap-3 p-3 pb-28 md:p-4">{children}</main>
+      <main className="flex min-w-0 grow flex-col gap-3 p-3 pb-28 md:p-4">
+        {children}
+        {/* Versionen längst ned på alla sidor i mobilen (på större skärm ligger den i sidomenyn). */}
+        <p className="mt-1 text-center text-[0.75rem] font-semibold tracking-wide text-mute md:hidden" title={`Version ${APP_VERSION.replace(/^V/, '')}`}>MyHomey {APP_VERSION}</p>
+      </main>
     </div>
   );
 }
