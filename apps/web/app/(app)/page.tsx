@@ -79,7 +79,7 @@ const COMMUTE_H = 'lg:max-h-[calc(50%-0.75rem)]';
 function Card({ title, icon, href, label, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; label?: string; className?: string; children: React.ReactNode }) {
   const Box = href ? Link : 'section';
   return (
-    <Box href={href!} aria-label={href ? label : undefined} className={`flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:p-6 ${className}`}>
+    <Box href={href!} aria-label={href ? label : undefined} data-live="" className={`relative flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:p-6 ${className}`}>
       {title && (
         <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
           {icon && <Icon name={icon} size={22} />}
@@ -88,6 +88,8 @@ function Card({ title, icon, href, label, className = '', children }: { title?: 
         </h2>
       )}
       {children}
+      {/* "Laddar" medan sidan uppdateras från en sparad version (SparadSida). */}
+      <span aria-hidden="true" className="laddar-chip">Laddar</span>
     </Box>
   );
 }
