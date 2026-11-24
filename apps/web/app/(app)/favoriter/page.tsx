@@ -3,6 +3,8 @@ import { Icon } from '@/components/Icon';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
 import { SceneButtons } from '@/components/SceneButtons';
 import { LightControl } from '@/components/LightControl';
+import { houseActions } from '@/lib/house-actions';
+import { fmtLux, luxLabel } from '@/lib/lux';
 import { TvRemote } from '@/components/TvRemote';
 import { SpotifyCard } from '@/components/SpotifyCard';
 import { TrendArrow } from '@/components/TrendArrow';
@@ -13,7 +15,7 @@ import { LightExtras, RoomDimmer, SensorRow } from '@/components/HueControls';
 
 export const dynamic = 'force-dynamic';
 
-// Favoriter och rum på en sida: Rutiner (flows och hela hemmet) överst, sedan ett kort per rum med
+// Styrning (adress /favoriter): favoriter och rum på en sida: Rutiner (flows och hela hemmet) överst, sedan ett kort per rum med
 // Ljust/Mys/Släck och rummets favoriter. Övriga scener, TV och lampor fälls ut under kortet vid tryck.
 
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
@@ -29,11 +31,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     : h.favoriteMoods;
 
   // Hue-hushåll: Mys och Släck i alla rum med lampor, med ett tryck, först i Rutiner.
-  const houseZones = h.rooms.filter((r) => r.lights.length > 0).map((r) => r.id);
-  const house: Action[] = hueMode && houseZones.length > 0 ? [
-    { id: 'house-mys', name: 'Mys i hela huset', kind: 'room', zones: houseZones, scene: 'mys' },
-    { id: 'house-slack', name: 'Släck alla lampor', kind: 'room', zones: houseZones, scene: 'slack' },
-  ] : [];
+  const house: Action[] = hueMode ? houseActions(h.rooms, ['mys', 'slack', 'stad']) : [];
 
   const routines: Action[] = [
     ...flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' as const, advanced: f.advanced })),
@@ -75,7 +73,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
     <>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-3 text-[2rem] leading-tight font-bold tracking-tight">
-          <Icon name="star" size={32} /> Favoriter
+          <Icon name="star" size={32} /> Styrning
         </h1>
         {!hueMode && allMoods.length > 0 && (
           <button type="button" popoverTarget="alla-moods" className="pill">
@@ -118,6 +116,7 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name={r.icon} size={22} /></span>
                 <h2 id={`rum-${r.id}`} className="min-w-[7rem] grow truncate text-[1.1875rem] font-bold">{r.name}</h2>
+                {r.lux != null && <span className="shrink-0 text-[0.9375rem] font-semibold text-dim tabular-nums" title={`Ljusnivå: ${luxLabel(r.lux)}`}>{fmtLux(r.lux)} lux</span>}
                 {r.temp != null && <span className="shrink-0 text-[1.125rem] font-semibold tabular-nums">{fmtTemp(r.temp)}<TrendArrow trend={r.tempTrend} /></span>}
                 {r.lights.length > 0 && (
                   <span className={`flex shrink-0 items-center gap-1 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.9375rem] font-semibold ${r.lightsOn ? 'text-sun' : 'text-dim'}`}>

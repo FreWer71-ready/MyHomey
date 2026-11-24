@@ -1,7 +1,7 @@
 // Historik: mått, perioder och omvandling av databasrader till diagramserier. Ren logik.
 import type { Device, Zone } from './home';
 
-export type MetricKey = 'temp' | 'hum' | 'power' | 'energy';
+export type MetricKey = 'temp' | 'hum' | 'power' | 'energy' | 'lux';
 export type PeriodKey = '4h' | '12h' | '24h' | '7d' | '30d';
 
 export const METRICS: Record<MetricKey, {
@@ -15,6 +15,7 @@ export const METRICS: Record<MetricKey, {
   hum: { label: 'Luftfuktighet', cap: 'measure_humidity', unit: ' %', decimals: 0, classes: [] },
   power: { label: 'Effekt', cap: 'measure_power', unit: ' W', decimals: 1, classes: [] },
   energy: { label: 'Energi', cap: 'meter_power', unit: ' kWh', decimals: 2, classes: [], delta: true },
+  lux: { label: 'Ljus', cap: 'measure_luminance', unit: ' lux', decimals: 0, classes: ['sensor'] },
 };
 
 export const PERIODS: Record<PeriodKey, { label: string; hours: number; bucket: string; barBucket: string }> = {

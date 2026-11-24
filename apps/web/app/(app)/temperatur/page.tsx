@@ -1,6 +1,7 @@
 import { Icon } from '@/components/Icon';
 import { TrendArrow } from '@/components/TrendArrow';
 import { loadCommute, loadHistory, loadHome, loadWeather } from '@/lib/data';
+import { fmtLux } from '@/lib/lux';
 import type { Series } from '@/lib/history';
 import { compass } from '@/lib/home';
 import { fmtTemp } from '@/lib/scale';
@@ -28,7 +29,7 @@ function Curve({ points, color = '#8B98A5', className = 'h-9 w-24' }: { points: 
 }
 
 /** En givare: namn, 24 h min–max och fukt, kurva, värdet högerställt. */
-function SensorRow({ s, hum }: { s: Series; hum: number | null }) {
+function SensorRow({ s, hum, lux }: { s: Series; hum: number | null; lux: number | null }) {
   const c = tone(s.latest);
   return (
     <li className="flex min-h-[4rem] items-center gap-3 border-b border-line py-2 last:border-b-0">
@@ -42,17 +43,19 @@ function SensorRow({ s, hum }: { s: Series; hum: number | null }) {
       <span className="flex w-[4.75rem] shrink-0 flex-col items-end leading-none">
         <span className="text-[1.75rem] font-bold tracking-tight tabular-nums" style={{ color: c }}>{s.latest != null ? `${n1(s.latest)}°` : '–'}</span>
         {hum != null && <span className="mt-1 text-[0.875rem] text-dim tabular-nums">{Math.round(hum)} % fukt</span>}
+        {lux != null && <span className="mt-1 text-[0.875rem] text-dim tabular-nums">{fmtLux(lux)} lux</span>}
       </span>
     </li>
   );
 }
 
 export default async function TemperaturePage() {
-  const [h, weather, commute, temps, hums] = await Promise.all([
+  const [h, weather, commute, temps, hums, luxs] = await Promise.all([
     loadHome(), loadWeather(), loadCommute().catch(() => null),
-    loadHistory('temp', '24h').catch(() => [] as Series[]), loadHistory('hum', '24h').catch(() => [] as Series[]),
+    loadHistory('temp', '24h').catch(() => [] as Series[]), loadHistory('hum', '24h').catch(() => [] as Series[]), loadHistory('lux', '24h').catch(() => [] as Series[]),
   ]);
   const humOf = new Map(hums.map((x) => [x.id, x.latest]));
+  const luxOf = new Map(luxs.map((x) => [x.id, x.latest]));
 
   // Ute: Trafikverkets API direkt (färskast), annars stationen via Homey-appen, annars SMHI (samma ordning som Hem).
   const tvs = commute?.station ?? null;
@@ -99,7 +102,7 @@ export default async function TemperaturePage() {
         </h2>
         {inside.length ? (
           <ul className="flex flex-col">
-            {inside.map((s) => <SensorRow key={s.id} s={s} hum={humOf.get(s.id) ?? null} />)}
+            {inside.map((s) => <SensorRow key={s.id} s={s} hum={humOf.get(s.id) ?? null} lux={luxOf.get(s.id) ?? null} />)}
           </ul>
         ) : null}
         {dead.length > 0 && (

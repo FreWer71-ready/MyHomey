@@ -19,4 +19,5 @@ cat "$ROOT/supabase/tests/stub.sql" $(ls "$ROOT"/supabase/migrations/*.sql | gre
 "${P[@]}" -f "$ROOT/supabase/tests/ingest.test.sql" >/dev/null
 "${P[@]}" -c "truncate public.readings, public.capability_state, public.devices, public.zones cascade" >/dev/null
 "${P[@]}" -f "$ROOT/supabase/tests/rls.test.sql"
+"${P[@]}" -f "$ROOT/supabase/tests/briefing.test.sql"
 echo "Alla databastester OK"

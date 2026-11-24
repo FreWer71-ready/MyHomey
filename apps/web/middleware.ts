@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { BASE_PATH, publicUrl } from './lib/paths';
 import { COOKIE_OPTIONS } from './lib/supabase/cookie';
 
-// /api/calendar/share skyddas av sin egen nyckel (server till server, utan inloggning).
-const PUBLIC = ['/login', '/auth', '/api/calendar/share'];
+// /api/calendar/share och /api/briefing skyddas av egna nycklar (server till server, utan inloggning).
+const PUBLIC = ['/login', '/auth', '/api/calendar/share', '/api/briefing'];
 // Hushållskontrollen sparas 10 min i en kaka (per användare och hushåll) i stället för ett databasanrop vid varje sidhopp.
 const HH_COOKIE = `hh-ok-${BASE_PATH.replace(/\W/g, '')}`;
 

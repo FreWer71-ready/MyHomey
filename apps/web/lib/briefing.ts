@@ -1,0 +1,330 @@
+// Rapport som läses upp ("Hej Fredrik, idag är det tjugotredje november och det är regn …"). Ren logik, klientsäker
+// (inga serverberoenden). Siffror skrivs som ord så att alla röster läser klockslag och tal likadant.
+const TZ = 'Europe/Stockholm';
+
+const ONES = ['noll', 'ett', 'två', 'tre', 'fyra', 'fem', 'sex', 'sju', 'åtta', 'nio', 'tio', 'elva', 'tolv', 'tretton', 'fjorton', 'femton', 'sexton', 'sjutton', 'arton', 'nitton'];
+const TENS = ['', '', 'tjugo', 'trettio', 'fyrtio', 'femtio', 'sextio', 'sjuttio', 'åttio', 'nittio'];
+/** 0–99 som ord: 57 → "femtiosju", 21 → "tjugoett". */
+export const numWords = (n: number) => (n < 20 ? ONES[n] : `${TENS[Math.floor(n / 10)]}${n % 10 ? ONES[n % 10] : ''}`);
+/** Antal i löpande text: 1 → "en", annars ord (tal över 99 som siffror). */
+const cnt = (n: number) => (n === 1 ? 'en' : n < 100 ? numWords(n) : String(n));
+const minutes = (n: number) => `${cnt(n)} ${n === 1 ? 'minut' : 'minuter'}`;
+
+const ORDINAL = ['', 'första', 'andra', 'tredje', 'fjärde', 'femte', 'sjätte', 'sjunde', 'åttonde', 'nionde', 'tionde', 'elfte', 'tolfte', 'trettonde', 'fjortonde', 'femtonde', 'sextonde', 'sjuttonde', 'artonde', 'nittonde', 'tjugonde',
+  'tjugoförsta', 'tjugoandra', 'tjugotredje', 'tjugofjärde', 'tjugofemte', 'tjugosjätte', 'tjugosjunde', 'tjugoåttonde', 'tjugonionde', 'trettionde', 'trettioförsta'];
+
+const stockholm = (ms: number) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hourCycle: 'h23', day: 'numeric', hour: '2-digit', minute: '2-digit' }).formatToParts(ms).map((x) => [x.type, x.value]));
+  return { day: Number(p.day), hour: Number(p.hour), minute: Number(p.minute) };
+};
+/** Klockslag som ord: 6:57 → "sex femtiosju", 9:00 → "nio", 7:05 → "sju noll fem", 16:04 → "sexton noll fyra". */
+export function spokenTime(ms: number): string {
+  const { hour, minute } = stockholm(ms);
+  return minute === 0 ? numWords(hour) : minute < 10 ? `${numWords(hour)} noll ${numWords(minute)}` : `${numWords(hour)} ${numWords(minute)}`;
+}
+/** Dagens datum som ord: "tjugotredje november". */
+export function spokenDate(ms: number): string {
+  const month = new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, month: 'long' }).format(ms);
+  return `${ORDINAL[stockholm(ms).day]} ${month}`;
+}
+
+/** Temperatur i tal: 1 → "en plusgrad", 2 → "två plusgrader", -3 → "tre minusgrader", 0 → "noll grader". */
+export function tempPhrase(t: number): string {
+  const r = Math.round(t);
+  return r === 0 ? 'noll grader' : r > 0 ? `${cnt(r)} plusgrad${r === 1 ? '' : 'er'}` : `${cnt(-r)} minusgrad${r === -1 ? '' : 'er'}`;
+}
+/** Temperaturspann i ord: "en och fyra plusgrader", "tre och fem minusgrader", "två minusgrader och fyra plusgrader"; lika värden ger en temperatur. */
+export function tempSpan(a: number, b: number): string {
+  const lo = Math.round(Math.min(a, b)), hi = Math.round(Math.max(a, b));
+  if (lo === hi) return tempPhrase(lo);
+  if (lo > 0) return `${cnt(lo)} och ${cnt(hi)} plusgrader`;
+  if (hi < 0) return `${cnt(-hi)} och ${cnt(-lo)} minusgrader`;
+  return `${tempPhrase(lo)} och ${tempPhrase(hi)}`;
+}
+/** "regn och en plusgrad" (eller bara det ena); tom sträng utan data. */
+export const weatherPhrase = (label?: string | null, temp?: number | null) =>
+  [label?.trim().toLowerCase(), temp != null && Number.isFinite(temp) ? tempPhrase(temp) : null].filter(Boolean).join(' och ');
+
+/** Hälsning: Godmorgon 04–09, annars Hej. */
+export function greeting(now: number): string {
+  const h = stockholm(now).hour;
+  return h >= 4 && h < 10 ? 'Godmorgon' : 'Hej';
+}
+
+/** Tid på dygnet för avslutet: dag 04–17, kväll 18–21, natt 22–03 (Stockholm). */
+export type DayPart = 'dag' | 'kvall' | 'natt';
+export function dayPart(now: number): DayPart {
+  const h = stockholm(now).hour;
+  return h >= 4 && h < 18 ? 'dag' : h >= 18 && h < 22 ? 'kvall' : 'natt';
+}
+const CLOSING: Record<DayPart, string> = { dag: 'Ha en trevlig dag.', kvall: 'Ha en bra kväll.', natt: 'Sov gott.' };
+
+/** Egna avslutsord ur `BRIEFING_AVSLUT="dag=Ha en fin dag;kväll=Ha en härlig kväll;natt=Sov gott"` (semikolonseparerat). Okända nycklar och tomma texter hoppas över. */
+export function parseClosings(raw: string | undefined): Partial<Record<DayPart, string>> {
+  const out: Partial<Record<DayPart, string>> = {};
+  for (const part of (raw ?? '').split(';')) {
+    const [k, ...rest] = part.split('=');
+    const key = k?.trim().toLowerCase().replace('ä', 'a');
+    const text = rest.join('=').trim().slice(0, 120);
+    if ((key === 'dag' || key === 'kvall' || key === 'natt') && text) out[key] = /[.!?]$/.test(text) ? text : `${text}.`;
+  }
+  return out;
+}
+/** Avslutet efter klockan: "Ha en trevlig dag." / "Ha en bra kväll." / "Sov gott.", eller egna ord. */
+export const closing = (now: number, custom: Partial<Record<DayPart, string>> = {}) => { const d = dayPart(now); return custom[d] ?? CLOSING[d]; };
+
+/**
+ * Rapportens text. Hälsningen står för sig ("Hej Fredrik.") och följs av ett stycke, så att rösten gör en tydlig paus
+ * (Siri och andra röster gör längre uppehåll vid styckebrytning än vid kommatecken). Sedan datum, väder och `parts`
+ * (övriga meningar, se `briefingParts`) i ett stycke.
+ */
+export function briefingText({ name, now, weather = '', parts = [] }: { name?: string; now: number; weather?: string; parts?: string[] }): string {
+  const who = name?.trim() ? ` ${name.trim().charAt(0).toUpperCase()}${name.trim().slice(1)}` : '';
+  const first = `Idag är det ${spokenDate(now)}${weather ? ` och det är ${weather} ute` : ''}.`;
+  return `${greeting(now)}${who}.\n\n${[first, ...parts.map((p) => p.trim()).filter(Boolean)].join(' ')}`;
+}
+
+/** Match ur Forza-titeln "Hemma – Borta" (tankstreck med mellanslag runt); null för andra titlar. */
+export const matchOf = (title: string): [string, string] | null => {
+  const m = title.trim().match(/^(.+?)\s[–—]\s(.+)$/);
+  return m ? [m[1].trim(), m[2].trim()] : null;
+};
+/** Titel för tal: en match blir "match mellan Hammarby IF och IFK Göteborg", andra titlar som de är. */
+export const spokenTitle = (t: string) => { const m = matchOf(t); return m ? `match mellan ${m[0]} och ${m[1]}` : t; };
+
+/** "A", "A och B", "A, B och C". */
+export const joinList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} och ${xs.at(-1)}`);
+
+// ---- Delar ----
+export const SECTIONS = ['vader', 'namnsdag', 'tag', 'forsta', 'hemresa', 'bil', 'skola', 'hemma', 'kvall', 'avslut'] as const;
+export type Section = (typeof SECTIONS)[number];
+
+/**
+ * Vilka delar rapporten har. `BRIEFING="vader,tag,forsta,hemresa,bil,skola,hemma,kvall,avslut"` (valfri delmängd, i den ordningen
+ * delarna alltid läses) styr; utan värdet väljs delar efter vad hushållet har: väder, tåg/hemresa för den som pendlar
+ * med tåg, första/nästa händelse för alla med kalender, bil för den som kör, skolan när barnens scheman finns, hemmet, kvällens händelser och avslut för alla.
+ */
+export function sectionsOn(raw: string | undefined, has: { vader: boolean; tag: boolean; pendlar: boolean; bil: boolean; hemma?: boolean; skola?: boolean; kalender?: boolean }): Set<Section> {
+  const listed = (raw ?? '').split(',').map((s) => s.trim().toLowerCase()).filter((s): s is Section => (SECTIONS as readonly string[]).includes(s));
+  if (listed.length) return new Set(listed);
+  return new Set<Section>([...(has.vader ? ['vader' as const] : []), 'namnsdag', ...(has.tag ? ['tag' as const] : []),
+    ...(has.pendlar || has.kalender ? ['forsta' as const] : []), ...(has.pendlar ? ['hemresa' as const] : []), ...(has.bil ? ['bil' as const] : []), ...(has.skola ? ['skola' as const] : []), ...(has.hemma ? ['hemma' as const] : []), 'kvall', 'avslut']);
+}
+
+type Ev = { id: string; title: string; start: number | null; end: number | null };
+/**
+ * Dagens läge ur kalendern (idag, tidsatta händelser): första kommande händelsen ("första" om inget redan börjat, annars
+ * "nästa"; "Möten på jobbet" heter möte), när sista mötet slutar (om det är kvar) och kvällens händelser (från 16, inte
+ * jobbmötena).
+ */
+export function todayPlan(events: Ev[], now: number): { first: { title: string; start: number; next: boolean; meetings: boolean } | null; lastEnd: number | null; evening: { title: string; start: number }[] } {
+  const timed = events.filter((e): e is Ev & { start: number } => e.start != null).sort((a, b) => a.start - b.start);
+  const upcoming = timed.find((e) => e.start > now);
+  const meetings = timed.find((e) => e.id.startsWith('jobb@'));
+  return {
+    first: upcoming ? { title: upcoming.title, start: upcoming.start, next: timed[0] !== upcoming, meetings: upcoming.id.startsWith('jobb@') } : null,
+    lastEnd: meetings?.end != null && meetings.end > now ? meetings.end : null,
+    evening: timed.filter((e) => e.start > now && stockholm(e.start).hour >= 16 && !e.id.startsWith('jobb@')).map((e) => ({ title: e.title, start: e.start })),
+  };
+}
+
+
+// ---- Hemmet ----
+export type HomeInput = {
+  /** Dashboardens person (förnamn): "du" i texten. */ me: string;
+  lightsOn: number; lightsTotal: number; tempAvg: number | null;
+  /** Förnamn och om personen är hemma. */ people: { name: string; present: boolean }[];
+  internet: 'ok' | 'slow' | 'down' | 'unknown' | null;
+  /** Finns fuktsensorer, och vilka rum som har hög fukt. */ humidity: { measured: boolean; damp: string[] };
+  /** Enheter med lågt batteri (färdiga namn); null = inga batterienheter finns. */ batteries: string[] | null;
+};
+
+/** Vem en klocka tillhör: "din klocka", "Ulrikas klocka"; andra enheter med sitt namn. */
+export function batteryLabel(deviceName: string, me: string, others: string[] = []): string {
+  const name = deviceName.trim();
+  if (!/apple watch|klocka|\bwatch\b/i.test(name)) return name;
+  const owner = [me, ...others].find((n) => n && name.toLowerCase().includes(n.toLowerCase()));
+  return !owner ? 'en klocka' : owner.toLowerCase() === me.toLowerCase() ? 'din klocka' : `${owner.charAt(0).toUpperCase()}${owner.slice(1).toLowerCase()}s klocka`;
+}
+
+/**
+ * Internet, fukt och larm som tal: problemen först, sedan det lugnande. Allt bra: "Allt fungerar som det ska: internet,
+ * fuktnivåerna och inga larm." Ett fel: "Det är dåligt batteri i din klocka. Internet och fuktnivåerna är ok." Delar utan data nämns inte.
+ */
+export function statusSentences(i: Pick<HomeInput, 'internet' | 'humidity' | 'batteries'>): string[] {
+  const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+  const problems: string[] = [], okNames: string[] = [];
+  let noAlarms = false;
+  if (i.internet === 'ok') okNames.push('internet');
+  else if (i.internet === 'slow') problems.push('internet är långsamt');
+  else if (i.internet === 'down') problems.push('internet är nere');
+  if (i.humidity.measured) { if (i.humidity.damp.length) problems.push(`fuktnivåerna är höga i ${joinList(i.humidity.damp)}`); else okNames.push('fuktnivåerna'); }
+  if (i.batteries) {
+    if (i.batteries.length) problems.push(`det är dåligt batteri i ${i.batteries.length > 2 ? `${cnt(i.batteries.length)} enheter` : joinList(i.batteries)}`);
+    else noAlarms = true;
+  }
+  if (!problems.length) {
+    if (okNames.length === 2 && noAlarms) return ['Allt fungerar som det ska: internet, fuktnivåerna och inga larm.'];
+    const phrases = [...okNames.map((n) => (n === 'internet' ? 'internet fungerar' : 'fuktnivåerna är ok')), ...(noAlarms ? ['inga larm'] : [])];
+    return phrases.length ? [`${cap(joinList(phrases))}.`] : [];
+  }
+  const calm = [...(okNames.length ? [`${joinList(okNames)} är ok`] : []), ...(noAlarms ? ['inga larm'] : [])];
+  return [`${cap(joinList(problems))}.`, ...(calm.length ? [`${cap(calm.join(' och '))}.`] : [])];
+}
+
+/** Hemmet i korta meningar: lampor och snittemperatur, vilka som är hemma, och internet, fukt och larm. Delar utan data hoppas över. */
+export function homeSentences(i: HomeInput): string[] {
+  const out: string[] = [];
+  const lamps = i.lightsTotal > 0 ? (i.lightsOn === 0 ? 'är alla lampor släckta' : `lyser ${i.lightsOn === 1 ? 'en lampa' : `${cnt(i.lightsOn)} lampor`}`) : null;
+  const t = i.tempAvg != null ? Math.round(i.tempAvg) : null;
+  const deg = t != null ? `${cnt(t)} ${t === 1 ? 'grad' : 'grader'} i snitt` : null;
+  if (lamps || deg) out.push(`Hemma ${lamps ?? ''}${lamps && deg ? ' och det är ' : deg ? 'är det ' : ''}${deg ?? ''}.`.replace(/\s+/g, ' ').replace(' .', '.'));
+  if (i.people.length) {
+    const home = i.people.filter((p) => p.present).map((p) => p.name);
+    const others = home.filter((n) => n.toLowerCase() !== i.me.toLowerCase());
+    const you = home.length > others.length;
+    out.push(home.length ? `${joinList([...others, ...(you ? ['du'] : [])]).replace(/^du$/, 'Du')} är hemma.` : 'Ingen är hemma.');
+  }
+  out.push(...statusSentences(i));
+  return out;
+}
+
+// ---- Skolan ----
+export type SchoolKid = { name: string; today: { start: number; end: number } | null; tomorrow: { start: number; end: number } | null };
+/**
+ * Barnens skolstart i en mening: "Idag börjar Wilmer klockan åtta och Molly klockan åtta trettio." (sorterat på start; samma
+ * start ihop: "Wilmer och Molly klockan åtta"). Har ett barn redan börjat: "Wilmer slutar klockan fjorton femtiofem." När dagens
+ * skola är slut för alla, från klockan 16: "Imorgon börjar Wilmer klockan åtta tio och Molly klockan åtta trettio." Inget om
+ * skolan är slut och imorgon saknas.
+ */
+export function schoolSentences(kids: SchoolKid[], now: number): string[] {
+  const starts = (items: { name: string; at: number }[]) => {
+    const by = new Map<number, string[]>();
+    for (const k of [...items].sort((x, y) => x.at - y.at)) by.set(k.at, [...(by.get(k.at) ?? []), k.name]);
+    return joinList([...by].map(([at, names]) => `${joinList(names)} klockan ${spokenTime(at)}`));
+  };
+  const todays = kids.filter((k) => k.today && k.today.end > now);
+  if (todays.length) {
+    const out: string[] = [];
+    const coming = todays.filter((k) => k.today!.start > now);
+    if (coming.length) out.push(`Idag börjar ${starts(coming.map((k) => ({ name: k.name, at: k.today!.start })))}.`);
+    const ends = new Map<number, string[]>();
+    for (const k of todays.filter((k) => k.today!.start <= now)) ends.set(k.today!.end, [...(ends.get(k.today!.end) ?? []), k.name]);
+    for (const [end, names] of ends) out.push(`${joinList(names)} slutar klockan ${spokenTime(end)}.`);
+    return out;
+  }
+  if (stockholm(now).hour < 16) return [];
+  const tomorrow = kids.filter((k) => k.tomorrow).map((k) => ({ name: k.name, at: k.tomorrow!.start }));
+  return tomorrow.length ? [`Imorgon börjar ${starts(tomorrow)}.`] : [];
+}
+
+export type TrainInfo = { dep: number; delay: number; canceled?: boolean; leave: number | null };
+
+/** Tågtider ur BRIEFING_TAG="06:57,7:04,07:34" som "HH:MM" (ogiltiga hoppas över). */
+export function parseTrainTimes(raw: string | undefined): string[] {
+  return (raw ?? '').split(/[,;\s]+/).flatMap((s) => {
+    const m = s.match(/^(\d{1,2})[:.](\d{2})$/);
+    return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? [`${m[1].padStart(2, '0')}:${m[2]}`] : [];
+  });
+}
+
+/** Tågen i `list` vars planerade avgång (Stockholm) är en av `times`, idag och som inte hunnit gå (beräknad avgång efter `now`). */
+export function pickTrains<T extends { dep: number; est: number | null }>(list: T[], times: string[], now: number): T[] {
+  const hm = (ms: number) => { const p = stockholm(ms); return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`; };
+  const day = (ms: number) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(ms);
+  return list.filter((t) => times.includes(hm(t.dep)) && day(t.dep) === day(now) && (t.est ?? t.dep) > now).sort((a, b) => a.dep - b.dep);
+}
+
+/** En mening om ett tåg: inställt, försenat eller i tid, med när man bör gå om det går att säga. */
+function trainSentence(t: TrainInfo): string {
+  const at = spokenTime(t.dep);
+  if (t.canceled) return `Tåget ${at} är inställt.`;
+  const go = t.leave != null ? spokenTime(t.leave) : null;
+  if (t.delay >= 1) return `Tåget ${at} är ${minutes(t.delay)} försenat${go ? `, så du bör gå ${go} för att hinna i tid` : ''}.`;
+  return go ? `Tåget ${at} går i tid, så du bör gå ${go}.` : `Tåget ${at} går i tid.`;
+}
+
+export type BriefingInput = {
+  /** Nästa tåg: planerad avgång, förseningen i minuter och när man behöver gå. */ train?: { dep: number; delay: number; leave: number } | null;
+  /** Valda tåg (BRIEFING_TAG), i tidsordning; `leave` null när gå-tiden passerat eller saknas. Går före `train`. */ trains?: TrainInfo[];
+  first?: { title: string; start: number; next: boolean; meetings: boolean } | null;
+  /** Sista mötet slutar. */ lastEnd?: number | null;
+  /** Hemresan efter sista mötet: tågets avgång (om tåg ingår) och när man är hemma. */ homePlan?: { trainDep: number | null; home: number } | null;
+  car?: { home: boolean; label: string; minutes: number; trafficMin: number; warnings: number } | null;
+  evening?: { title: string; start: number }[];
+  /** Dagens namnsdagar. */ nameDays?: string[];
+  /** Väder imorgon (text och lägsta/högsta temperatur); sägs från klockan 20 när delen vader är på. */ tomorrow?: { label: string; min: number; max: number } | null;
+  home?: HomeInput | null;
+  school?: SchoolKid[];
+  /** Nu och egna avslutsord; utan `now` blir avslutet dagens. */ now?: number; closings?: Partial<Record<DayPart, string>>;
+};
+
+/** Dagens namnsdagar (`namnsdag`-listan) ur Svenska dagars årsdata (sholiday.faboul.se: `{ dagar: [{ datum, namnsdag? }] }`) för `date` (YYYY-MM-DD). */
+export function nameDaysFor(data: unknown, date: string): string[] {
+  const days = (data as { dagar?: { datum?: unknown; namnsdag?: unknown }[] } | null)?.dagar;
+  const names = Array.isArray(days) ? days.find((d) => d?.datum === date)?.namnsdag : null;
+  return Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string' && n.trim() !== '').map((n) => n.trim()) : [];
+}
+
+/** Rapportens meningar efter första meningen, i fast ordning; delar utan data hoppas över. */
+export function briefingParts(i: BriefingInput, on: Set<Section>): string[] {
+  const out: string[] = [];
+  if (on.has('namnsdag') && i.nameDays?.length) out.push(`${joinList(i.nameDays)} har namnsdag.`);
+  if (on.has('tag')) for (const t of i.trains?.length ? i.trains : i.train ? [i.train] : []) out.push(trainSentence(t));
+  // Är nästa händelse en av kvällens sägs den bara i kvällsmeningen ("Ikväll har …"), inte två gånger.
+  const inEvening = on.has('kvall') && !!i.first && !!i.evening?.some((e) => e.start === i.first!.start && e.title === i.first!.title);
+  if (on.has('forsta') && i.first && !inEvening) {
+    out.push(`${i.first.next ? 'Din nästa' : 'Din första'} kalenderhändelse är ${i.first.meetings ? 'möte' : spokenTitle(i.first.title)} klockan ${spokenTime(i.first.start)}.`);
+  }
+  if (on.has('hemresa') && i.lastEnd != null) {
+    const home = i.homePlan;
+    out.push(`Ditt sista möte för dagen slutar ${spokenTime(i.lastEnd)}${home ? `${home.trainDep != null ? `, så du borde hinna med tåget ${spokenTime(home.trainDep)}` : ''}, då är du hemma ${spokenTime(home.home)}` : ''}.`);
+  }
+  if (on.has('bil') && i.car) {
+    const c = i.car, w = c.warnings;
+    const where = c.home ? 'hem' : `till ${c.label === 'Jobbet' ? 'jobbet' : c.label}`;
+    const warn = w > 0 ? `, det finns ${w === 1 ? 'en vägvarning' : `${cnt(w)} vägvarningar`} för resan` : '';
+    const delay = c.trafficMin > 0 ? (w > 0 ? `, ${w === 1 ? 'den' : 'de'} påverkar restiden med ${minutes(c.trafficMin)}` : `, trafiken ger ${minutes(c.trafficMin)} längre restid`) : '';
+    out.push(`Resan ${where} ser ut att ta ${minutes(c.minutes)}${warn}${delay}.`);
+  }
+  if (on.has('skola') && i.school?.length) out.push(...schoolSentences(i.school, i.now ?? Date.now()));
+  if (on.has('hemma') && i.home) out.push(...homeSentences(i.home));
+  if (on.has('kvall') && i.evening?.length) {
+    // Matcher får egna meningar: "Ikväll klockan nitton är det match mellan A och B." Övriga i en lista: "Ikväll har X klockan …".
+    const games = i.evening.filter((e) => matchOf(e.title)), rest = i.evening.filter((e) => !matchOf(e.title));
+    if (rest.length) out.push(`Ikväll har ${joinList(rest.map((e) => `${e.title} klockan ${spokenTime(e.start)}`))}.`);
+    games.forEach((g, k) => { const [a, b] = matchOf(g.title)!; out.push(`${k === 0 && !rest.length ? 'Ikväll klockan' : 'Klockan'} ${spokenTime(g.start)} är det match mellan ${a} och ${b}.`); });
+  }
+  if (on.has('vader') && i.tomorrow && i.now != null && stockholm(i.now).hour >= 20) {
+    const { label, min, max } = i.tomorrow, l = label.trim().toLowerCase();
+    out.push(Math.round(min) === Math.round(max) ? `Imorgon blir det ${l} och ${tempSpan(min, max)}.` : `Imorgon blir det ${l}, mellan ${tempSpan(min, max)}.`);
+  }
+  if (on.has('avslut')) out.push(i.now == null ? (i.closings?.dag ?? CLOSING.dag) : closing(i.now, i.closings));
+  return out;
+}
+
+/**
+ * Delar texten i meningar (högst `max` tecken, annars delat vid komma eller mellanslag). Långa yttranden klipps av
+ * efter cirka 15 sekunder i flera webbläsare, så de läses upp ett i taget.
+ */
+export function speechChunks(text: string, max = 200): string[] {
+  const out: string[] = [];
+  for (const s of text.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean)) {
+    let rest = s;
+    while (rest.length > max) {
+      const cut = Math.max(rest.lastIndexOf(', ', max), rest.lastIndexOf(' ', max));
+      const at = cut > max / 2 ? cut + 1 : max;
+      out.push(rest.slice(0, at).trim());
+      rest = rest.slice(at).trim();
+    }
+    if (rest) out.push(rest);
+  }
+  return out;
+}
+
+type VoiceInfo = { name: string; lang: string };
+/** Bästa svenska rösten: förbättrad/neural/premium först, sedan någon svensk. Null om ingen svensk röst finns (webbläsaren väljer då själv utifrån sv-SE). */
+export function pickVoice<T extends VoiceInfo>(voices: T[]): T | null {
+  const sv = voices.filter((v) => /^sv([-_]|$)/i.test(v.lang));
+  return sv.find((v) => /premium|enhanced|förbättrad|neural|natural|online|siri/i.test(v.name)) ?? sv[0] ?? null;
+}

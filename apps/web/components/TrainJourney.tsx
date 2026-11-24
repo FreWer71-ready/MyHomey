@@ -3,16 +3,17 @@ import { useState } from 'react';
 import { BASE_PATH } from '@/lib/paths';
 import { hhmm } from '@/lib/prices';
 import type { TransitLeg } from '@/lib/transit';
+import { useUppdatera } from '@/lib/uppdatera';
 import { TransitLegs } from './TransitTrip';
 
 type Journey = { legs: TransitLeg[]; leave: number; arrive: number; start?: 'phone' | 'life360' | 'home' };
 
 /** Mobilens plats (första prio, frågas först vid tryck). Null om den nekas, saknas eller dröjer: servern tar då Life360. */
-const phonePos = () => new Promise<string>((done) => {
+const phonePos = (fresh = false) => new Promise<string>((done) => {
   if (!navigator.geolocation) return done('');
   navigator.geolocation.getCurrentPosition(
     (p) => done(`?lat=${p.coords.latitude.toFixed(5)}&lon=${p.coords.longitude.toFixed(5)}&acc=${Math.round(p.coords.accuracy)}`),
-    () => done(''), { timeout: 4000, maximumAge: 120_000 },
+    () => done(''), { timeout: fresh ? 6000 : 4000, maximumAge: fresh ? 0 : 120_000 },
   );
 });
 const SRC = { phone: 'telefonens plats', life360: 'Life360-positionen' } as const;
@@ -25,14 +26,20 @@ export function TrainJourney({ ident, toWork, before }: { ident: string; toWork:
   const [open, setOpen] = useState(false);
   const [j, setJ] = useState<Journey | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [again, setAgain] = useState<'busy' | 'fail' | null>(null);
+  // Hämtar resan (med mobilens plats). `fresh`: ny platsavläsning och ny resa vid Uppdatera; den gamla visas tills den nya kommer.
+  const load = (fresh = false) => phonePos(fresh).then((qs) => fetch(`${BASE_PATH}/api/journey/${ident}${qs}`)).then(async (r) => {
+    const d = await r.json().catch(() => null);
+    if (r.ok && d?.legs) { setJ(d); setErr(null); setAgain(null); }
+    else if (fresh) setAgain('fail'); else setErr(d?.error ?? 'Resan kunde inte räknas fram');
+  }).catch(() => (fresh ? setAgain('fail') : setErr('Resan kunde inte räknas fram')));
   const toggle = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     setOpen((o) => !o);
-    if (!j) phonePos().then((qs) => fetch(`${BASE_PATH}/api/journey/${ident}${qs}`)).then(async (r) => {
-      const d = await r.json().catch(() => null);
-      if (r.ok && d?.legs) setJ(d); else setErr(d?.error ?? 'Resan kunde inte räknas fram');
-    }).catch(() => setErr('Resan kunde inte räknas fram'));
+    if (!j) load();
   };
+  // "Uppdatera": är resan öppen hämtas ny plats och resan räknas om.
+  useUppdatera(() => { if (open && j) { setAgain('busy'); load(true); } });
   const now = Date.now();
   const train = j?.legs.find((l) => l.num === ident);
   const lateMin = j && now > j.leave ? Math.round((now - j.leave) / 60_000) : 0;
@@ -49,6 +56,7 @@ export function TrainJourney({ ident, toWork, before }: { ident: string; toWork:
         <p className={`text-[0.9375rem] ${err ? 'text-danger' : 'animate-pulse text-dim'}`}>{err ?? 'Räknar fram resan …'}</p>
       ) : (
         <div className="flex flex-col gap-1.5 rounded-xl bg-black/20 p-2.5">
+          {again && <p role={again === 'fail' ? 'alert' : undefined} className={`text-[0.875rem] ${again === 'fail' ? 'font-semibold text-warn' : 'animate-pulse text-dim'}`}>{again === 'busy' ? 'Uppdaterar plats och resa …' : 'Kunde inte uppdatera, visar förra resan'}</p>}
           <p className="text-[1rem]">
             <span className="font-semibold">{lateMin > 0 ? 'Du är sen' : `Gå ${hhmm(j.leave)}`}</span>
             {' · '}{toWork ? 'framme' : 'hemma'} {hhmm(j.arrive)}

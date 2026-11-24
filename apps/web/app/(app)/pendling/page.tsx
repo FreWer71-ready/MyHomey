@@ -6,6 +6,8 @@ import { loadOnward, loadTransit, transitConfigured, transitGoal, transitSearcha
 import { allPositions, earliestAt, freshestPosition, inferTrain, pickRun, positionDevices, TERMINALS } from '@/lib/onboard';
 import { detectTrain, loadConfirmed, positionHistory } from '@/lib/onboard-source';
 import { TransitTripCard } from '@/components/TransitTrip';
+import { OngoingTrip } from '@/components/OngoingTrip';
+import { progress } from '@/lib/transit';
 import type { TransitLeg } from '@/lib/transit';
 import { RoadImpact } from '@/components/RoadImpact';
 import { km } from '@/lib/trip';
@@ -144,7 +146,7 @@ export default async function CommutePage() {
   const elsewhere = o.away && !(o.pos && km(o.pos, tg?.at ?? PLACE) <= 1);
   const transit = !tg || (perTrain && !elsewhere) ? []
     : direction() === 'home' ? (goingHome ? await loadTransit(o.away ? o.pos! : tg.at, PLACE, Date.now(), 2, false, true) : [])
-    : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away) : [];
+    : !(o.pos && km(o.pos, tg.at) <= 1) ? await loadTransit(o.from, tg.at, Date.now(), 2, !o.away, false, false, tg.label) : [];
   const rtTrains = c ? [...c.out, ...c.home, ...c.all] : [];
   // Tågläge: på ett tåg i pendlingen visas bara det tåget och resten av resan.
   const me = process.env.HOUSEHOLD ?? '', nowMs = Date.now(), d0 = direction();
@@ -186,7 +188,7 @@ export default async function CommutePage() {
       <h1 className="flex items-baseline justify-between gap-3 text-2xl font-extrabold">
         {c && !c.trains ? 'Trafik' : 'Pendling'}
         <span className="flex items-center gap-3">
-          {c?.skipped ? <UnskipButton count={c.skipped} /> : null}
+          {c?.skipped && !ridden ? <UnskipButton count={c.skipped} /> : null}
           {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
         </span>
       </h1>
@@ -195,17 +197,20 @@ export default async function CommutePage() {
       )}
       {ridden && (
         <section aria-label="Tåget du är på" className="flex flex-col gap-3">
-          {onward.length > 0 && (
-            <TransitTripCard trip={{ dep: tripLegs[0].dep, arr: tripLegs.at(-1)!.arr, legs: tripLegs, startAt: null, endAt: null }} trains={rtTrains} first home={!toWork} ongoing />
+          {/* Med resplan efter tåget: en enda ruta (måltid, var tåget är, planen, knappar). Utan: bara tåget. */}
+          {onward.length > 0 ? (
+            <OngoingTrip run={ridden} legs={tripLegs} toWork={toWork} goalTime={onward.at(-1)!.arr} now={nowMs} arrived={arrived}
+              confirmed={!!confirmed} guessed={!!guessed} trains={rtTrains} />
+          ) : !arrived && (
+            <section className="flex flex-col gap-2 rounded-[1.5rem] glass p-3 ring-2 ring-sun/60">
+              <h2 className="text-xl font-extrabold">Du är {guessed ? 'troligen ' : ''}på tåget</h2>
+              <RiddenTrain t={ridden} guessed={!!guessed} confirmed={!!confirmed} />
+            </section>
           )}
-          {!arrived && <section className="flex flex-col gap-2 rounded-[1.5rem] glass p-3 ring-2 ring-sun/60">
-            <h2 className="text-xl font-extrabold">Du är {guessed ? 'troligen ' : ''}på tåget</h2>
-            <RiddenTrain t={ridden} guessed={!!guessed} confirmed={!!confirmed} />
-          </section>}
           {/* Om tågläget har fel: avgångarna i aktuell riktning inom en timme (minst nästa). */}
           {/* Gissat tåg: alla avgångar ±20 min att bekräfta; annars kommande avgångar inom en timme. */}
           {c && guessed && !arrived && <NearDepartures trains={nearDepartures([c.recent?.[d0] ?? [], d0 === 'out' ? c.out : c.home], nowMs)} now={nowMs} guessed={ridden.ident} className="rounded-[1.5rem] glass p-3" />}
-          {c && !guessed && !arrived && (() => {
+          {c && !guessed && !arrived && !confirmed && (() => {
             const list = (d0 === 'out' ? c.out : c.home).filter((t) => t.ident !== ridden.ident && (t.est ?? t.dep) > nowMs);
             const hour = list.filter((t) => (t.est ?? t.dep) <= nowMs + 3600_000);
             const show = hour.length ? hour : list.slice(0, 1);
@@ -241,7 +246,7 @@ export default async function CommutePage() {
         <section aria-label={goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`} className="flex flex-col gap-2">
           <h2 className="text-[1.125rem] font-bold">{goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`}{o.away ? ' · härifrån' : ''}</h2>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {transit.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={rtTrains} first={i === 0} home={goingHome} />)}
+            {transit.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={rtTrains} first={i === 0} home={goingHome} pos={progress(t.legs, here, goingHome ? (o.away ? o.pos : tg.at) : o.from, nowMs)} />)}
           </div>
         </section>
       )}

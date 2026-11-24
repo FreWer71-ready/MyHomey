@@ -42,11 +42,13 @@ const zoneOf = (e: VEvent) => {
 };
 
 /** Händelser idag och kommande `days` dagar (Stockholm), sorterade per dag. */
-export function parseCalendar(ics: string, now = Date.now(), days = 7): Calendar {
+/** `back`: antal dagar före idag som tas med (t.ex. hela innevarande månad). */
+export function parseCalendar(ics: string, now = Date.now(), days = 7, back = 0): Calendar {
   const data = ical.sync.parseICS(ics) as unknown as Record<string, VEvent>;
   const today = dayOf(now);
   const lastDay = addDays(today, days);
-  const from = zoned(...(today.split('-').map(Number) as [number, number, number]), 0, 0, 0);
+  const startDay = addDays(today, -back);
+  const from = zoned(...(startDay.split('-').map(Number) as [number, number, number]), 0, 0, 0);
   const to = zoned(...(addDays(lastDay, 1).split('-').map(Number) as [number, number, number]), 0, 0, 0);
   const out: CalEvent[] = [];
 
@@ -58,7 +60,7 @@ export function parseCalendar(ics: string, now = Date.now(), days = 7): Calendar
       const first = dateOnly(start);
       const endDay = end ? addDays(dateOnly(end), -1) : first; // DTEND är exklusivt
       const last = endDay < first ? first : endDay;
-      if (last < today || first > lastDay) return;
+      if (last < startDay || first > lastDay) return;
       out.push({ id: key, title, location, start: null, end: null, allDay: true, firstDay: first, lastDay: last });
     } else {
       const s = start.getTime();
@@ -113,7 +115,7 @@ export function parseCalendar(ics: string, now = Date.now(), days = 7): Calendar
 
   // Dela upp per dag: tidsatta på varje dag de berör (från idag), heldag likaså.
   const result: CalDay[] = [];
-  for (let i = 0; i <= days; i++) {
+  for (let i = -back; i <= days; i++) {
     const date = addDays(today, i);
     const on = out.filter((x) => x.firstDay <= date && x.lastDay >= date);
     result.push({

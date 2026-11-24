@@ -9,6 +9,7 @@ export type TransitLeg = {
   /** Tåg-/linjenummer (matchas mot Trafikverkets realtid för tåg). */ num: string | null;
   dir: string | null; track: string | null;
   /** Hållplatsernas läge (från ResRobot), för att se var man är under resan. */ fromAt?: { lat: number; lon: number } | null; toAt?: { lat: number; lon: number } | null;
+  /** Gångsträckans längd i meter (om känd). */ meters?: number | null;
 };
 export type TransitTrip = {
   dep: number; arr: number; legs: TransitLeg[];
@@ -16,17 +17,29 @@ export type TransitTrip = {
 };
 
 type RawStop = { name: string; date: string; time: string; lat?: number; lon?: number; track?: string; rtTrack?: string; rtTime?: string; rtDate?: string };
-type RawLeg = { type: string; name?: string; direction?: string; Origin: RawStop; Destination: RawStop; Product?: { name?: string; num?: string; catOutL?: string } | { name?: string; num?: string; catOutL?: string }[] };
+type RawLeg = { type: string; name?: string; direction?: string; dist?: number; Origin: RawStop; Destination: RawStop; Product?: { name?: string; num?: string; catOutL?: string } | { name?: string; num?: string; catOutL?: string }[] };
 
 const ms = (s: RawStop, rt = true) => {
   const [y, m, d] = (rt && s.rtDate ? s.rtDate : s.date).split('-').map(Number);
   const [h, mi, se] = (rt && s.rtTime ? s.rtTime : s.time).split(':').map(Number);
   return zoned(y, m, d, h, mi, se || 0);
 };
+const ENTITY: Record<string, string> = { aring: 'å', auml: 'ä', ouml: 'ö', Aring: 'Å', Auml: 'Ä', Ouml: 'Ö', eacute: 'é', Eacute: 'É', egrave: 'è', uuml: 'ü', amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ' };
+/** ResRobot skickar tillbaka namn vi själva angett (t.ex. "Mål") HTML-kodade: "M&aring;l" → "Mål". */
+export const decodeEntities = (s: string) => s.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, d, h, name) =>
+  d ? String.fromCodePoint(Number(d)) : h ? String.fromCodePoint(parseInt(h, 16)) : (ENTITY[name] ?? m));
+
 /** Korta stoppnamn: "Årstaberg station (Stockholm kn)" → "Årstaberg", "Eskilstuna Centralstation" → "Eskilstuna C",
- *  "Fredsborgsgatan 24, Liljeholmen" → "Fredsborgsgatan 24"; koordinater → "Start". */
-export const stopName = (n: string) => (/^\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/.test(n) ? 'Start'
-  : n.replace(/\s*\([^)]*\bkn\)\s*$/, '').split(',')[0].replace(/\s+Centralstation$/i, ' C').replace(/\s+station$/i, '').replace(/\s+Spårv$/i, '').replace(/\s+T-bana$/i, '').trim());
+ *  "Fredsborgsgatan 24, Liljeholmen" → "Fredsborgsgatan 24"; koordinater → "Start". HTML-koder avkodas. */
+export const stopName = (raw: string) => {
+  const n = decodeEntities(raw);
+  return /^\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/.test(n) ? 'Start'
+    : n.replace(/\s*\([^)]*\bkn\)\s*$/, '').split(',')[0].replace(/\s+Centralstation$/i, ' C').replace(/\s+station$/i, '').replace(/\s+Spårv$/i, '').replace(/\s+T-bana$/i, '').trim();
+};
+
+/** Gångsträcka i meter (25 % omväg, avrundat till 10 m). Visning och linjebrickor: transit-view.ts (klientsäkert). */
+export const walkMeters = (km: number) => Math.round((km * 1.25 * 1000) / 10) * 10;
+export { fmtMeters, lineBadge } from './transit-view.ts';
 
 function kindOf(name: string): LegKind {
   const n = name.toLowerCase();
@@ -62,7 +75,7 @@ export function parseTrips(raw: unknown): TransitTrip[] {
         kind, from: stopName(l.Origin.name), to: stopName(l.Destination.name), dep, arr, minutes: Math.round((arr - dep) / 60_000),
         label: walk ? null : labelOf(name, kind, sl), num: walk ? null : (p?.num ?? null),
         dir: l.direction ? stopName(l.direction) : null, track: l.Origin.rtTrack ?? l.Origin.track ?? null,
-        fromAt: at(l.Origin), toAt: at(l.Destination),
+        fromAt: at(l.Origin), toAt: at(l.Destination), ...(walk && typeof l.dist === 'number' ? { meters: Math.round(l.dist) } : {}),
       }];
     });
     const o = list[0]?.Origin, e = list.at(-1)?.Destination;
@@ -90,11 +103,11 @@ export function bestTrips(trips: TransitTrip[]): TransitTrip[] {
 
 const walkMin = (km: number) => Math.max(1, Math.ceil(((km * 1.25) / 4.8) * 60));
 
-/** Lägger till promenaden från sista hållplatsen till målet (t.ex. hem från Eskilstuna C). */
-export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma'): TransitTrip {
+/** Lägger till promenaden från sista hållplatsen till målet (t.ex. hem från Eskilstuna C). `toAt` = målets läge (bekräftar sträckan). */
+export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma', toAt: { lat: number; lon: number } | null = null): TransitTrip {
   const last = t.legs.at(-1)!;
   const min = walkMin(km);
-  const walk: TransitLeg = { kind: 'walk', from: last.to, to, dep: last.arr, arr: last.arr + min * 60_000, minutes: min, label: null, num: null, dir: null, track: null };
+  const walk: TransitLeg = { kind: 'walk', from: last.to, to, dep: last.arr, arr: last.arr + min * 60_000, minutes: min, label: null, num: null, dir: null, track: null, fromAt: last.toAt ?? null, toAt, meters: walkMeters(km) };
   return { ...t, arr: walk.arr, legs: [...t.legs, walk] };
 }
 
@@ -102,11 +115,24 @@ export function withWalkEnd(t: TransitTrip, km: number, to = 'Hemma'): TransitTr
 export function withWalk(t: TransitTrip, km: number): TransitTrip {
   const min = walkMin(km);
   const first = t.legs[0];
-  const walk: TransitLeg = { kind: 'walk', from: 'Hemma', to: first.from, dep: first.dep - (min + 2) * 60_000, arr: first.dep - 2 * 60_000, minutes: min, label: null, num: null, dir: null, track: null };
+  const walk: TransitLeg = { kind: 'walk', from: 'Hemma', to: first.from, dep: first.dep - (min + 2) * 60_000, arr: first.dep - 2 * 60_000, minutes: min, label: null, num: null, dir: null, track: null, toAt: first.fromAt ?? null, meters: walkMeters(km) };
   return { ...t, dep: walk.dep, legs: [walk, ...t.legs] };
 }
 
-type Here = { at: { lat: number; lon: number }; ts: number };
+export type Here = { at: { lat: number; lon: number }; ts: number };
+
+/**
+ * Hur långt man kommit i en plan, enligt positionen och inte klockan:
+ * `known` = färsk position finns (annars visas ingen markering alls), `done` = antal avklarade sträckor (bekräftade av
+ * positionen), `waiting` = planens första avgång har passerat men positionen är kvar vid startpunkten (man har inte gått än).
+ */
+export type Progress = { known: boolean; done: number; waiting: boolean };
+export function progress(legs: TransitLeg[], here: Here | null, start: { lat: number; lon: number } | null, now: number, near = 0.4): Progress {
+  if (!here || !legs.length) return { known: false, done: 0, waiting: false };
+  const done = doneLegs(legs, here, near).length;
+  const waiting = done === 0 && legs[0].dep < now - 60_000 && !!start && dist(start, here.at) <= near;
+  return { known: true, done, waiting };
+}
 
 /**
  * Avklarade delsträckor i en plan utifrån var man sågs senast: allt till och med den sista sträckan som slutar

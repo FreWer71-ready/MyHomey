@@ -19,20 +19,25 @@ export const mirrorConfigured = () => !!process.env.CALENDAR_MIRROR_URL && !!pro
 export const mirrorTitle = () => process.env.CALENDAR_MIRROR_TITLE || 'Delad kalender';
 
 /** Den speglade kalendern, eller null om den inte gick att hämta. */
-let memo: { at: number; cal: Calendar } | null = null;
+const memo = new Map<string, { at: number; cal: Calendar }>();
 
-export async function loadMirrorServer(): Promise<Calendar | null> {
+/** `months`: innevarande och nästa månad (range=months), annars standardfönstret. */
+export async function loadMirrorServer(months = false): Promise<Calendar | null> {
   if (!mirrorConfigured()) return null;
-  if (memo && Date.now() - memo.at < CAL_TTL * 1000) return memo.cal;
+  const key = months ? 'months' : 'std';
+  const hit = memo.get(key);
+  if (hit && Date.now() - hit.at < CAL_TTL * 1000) return hit.cal;
   try {
     // Ingen Next-cache och inga omdirigeringar: ett felsvar (t.ex. inloggningssidan) får inte sparas som kalendern.
-    const res = await fetch(process.env.CALENDAR_MIRROR_URL!, {
+    const url = new URL(process.env.CALENDAR_MIRROR_URL!);
+    if (months) url.searchParams.set('range', 'months');
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${process.env.CALENDAR_MIRROR_TOKEN}`, Accept: 'application/json' },
       cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(10_000),
     });
     const text = await res.text();
     const body = res.ok ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
-    if (body?.days) { memo = { at: Date.now(), cal: body as Calendar }; return memo.cal; }
+    if (body?.days) { memo.set(key, { at: Date.now(), cal: body as Calendar }); return body as Calendar; }
     // Typ och början av svaret (aldrig adressen eller nyckeln) för felsökning.
     console.error(`Speglad kalender: oväntat svar (status ${res.status}, ${res.headers.get('content-type') ?? '?'}): ${text.slice(0, 80).replace(/\s+/g, ' ')}`);
   } catch (e) {

@@ -4,12 +4,19 @@ import { Clock } from '@/components/Clock';
 import { Icon, type IconName } from '@/components/Icon';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { ActionTiles, type Action } from '@/components/ActionTiles';
+import { houseActions } from '@/lib/house-actions';
+import { fmtLux, luxLabel } from '@/lib/lux';
 import { boxFor, isWeekend, km, placeLabel, stockholm, nearHome, nextTrip, upcoming, type Trip, onRoute } from '@/lib/trip';
 import { guessPlace } from '@/lib/place-guess';
 import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
-import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal } from '@/lib/transit-source';
+import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal, transitSearchable } from '@/lib/transit-source';
+import { EventTransit } from '@/components/EventTransit';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
+import { LeaveIn } from '@/components/LeaveIn';
+import { Briefing } from '@/components/Briefing';
+import { Suspense } from 'react';
+import { progress } from '@/lib/transit';
 import type { TransitLeg } from '@/lib/transit';
 import { HourStrip } from '@/components/HourStrip';
 import { PingPhoneButton } from '@/components/PingPhoneButton';
@@ -22,7 +29,7 @@ import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
-import { OnTrainButton } from '@/components/OnTrainButton';
+import { JustLeftAsk, OnTrainButton } from '@/components/OnTrainButton';
 import { TripMargin } from '@/components/TripMargin';
 import { cookies } from 'next/headers';
 import { NearDepartures, nearDepartures } from '@/components/NearDepartures';
@@ -35,6 +42,7 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
+import { stopwatch } from '@/lib/timing';
 import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, loadVariables, PLACE, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
@@ -71,7 +79,7 @@ const COMMUTE_H = 'lg:max-h-[calc(50%-0.75rem)]';
 function Card({ title, icon, href, label, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; label?: string; className?: string; children: React.ReactNode }) {
   const Box = href ? Link : 'section';
   return (
-    <Box href={href!} aria-label={href ? label : undefined} className={`flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:p-6 ${className}`}>
+    <Box href={href!} aria-label={href ? label : undefined} data-live="" className={`relative flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:p-6 ${className}`}>
       {title && (
         <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
           {icon && <Icon name={icon} size={22} />}
@@ -80,6 +88,8 @@ function Card({ title, icon, href, label, className = '', children }: { title?: 
         </h2>
       )}
       {children}
+      {/* "Laddar" medan sidan uppdateras från en sparad version (SparadSida). */}
+      <span aria-hidden="true" className="laddar-chip">Laddar</span>
     </Box>
   );
 }
@@ -124,12 +134,27 @@ function Sparkline({ points }: { points: [number, number][] }) {
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, nameDay, castPlaying, net, wine, commute, powerHist, energyHist] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
-    loadHistory('power', '12h').catch(() => []), loadHistory('energy', '24h').catch(() => []),
+  // Allt hämtas samtidigt (inga steg efter varandra). Loggraden "Hem hem=… totalt=…" visar när varje del blev klar (ms).
+  const sw = stopwatch();
+  // Det som inte beror på annat startas här, samtidigt med första omgången, och avvaktas där det används längre ned
+  // (annars väntar de i kö efter varandra). Stegen loggas som "Hem steg=ms … totalt=ms".
+  const calP = calendarConfigured() ? sw.lap('kalender', loadCalendarServer().catch(() => null)) : Promise.resolve(null);
+  const pingableP = sw.lap('ping', pingableNames());
+  const tvP = sw.lap('tv', loadTvStatuses().catch(() => []));
+  const locateP = sw.lap('plats', loadLocate().catch(() => ({ members: [], items: [] })));
+  const policeP = sw.lap('polis', loadPolice().catch(() => []));
+  const muniP = sw.lap('kommun', loadMunicipal().catch(() => []));
+  const wxP = sw.lap('varningar', loadWeather().then((w) => loadWarnings(w)));
+  const confirmedP = sw.lap('bekraftad', loadConfirmed().catch(() => null));
+  const positionP = sw.lap('positioner', locateP.then((l) => positionHistory(positionDevices(l.members, l.items, process.env.HOUSEHOLD ?? ''), Date.now() - 2 * 3600_000)).catch(() => []));
+  const [h, prices, weather, nameDay, castPlaying, net, wine, commute, powerHist, energyHist, flows, vars] = await Promise.all([
+    sw.lap('hem', loadHome()), sw.lap('priser', loadPrices()), sw.lap('vader', loadWeather()), sw.lap('namnsdag', loadNameDay()), sw.lap('spelas', loadNowPlaying()),
+    sw.lap('nat', loadNet()), sw.lap('vin', loadWine()), sw.lap('pendling', loadCommute()),
+    sw.lap('effekt', loadHistory('power', '12h').catch(() => [])), sw.lap('energi', loadHistory('energy', '24h').catch(() => [])),
+    // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), i bokstavsordning.
+    sw.lap('floden', loadFlows().catch(() => [])), sw.lap('variabler', loadVariables().catch(() => ({} as Record<string, unknown>))),
   ]);
-  // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), i bokstavsordning.
-  const [flows, vars] = await Promise.all([loadFlows().catch(() => []), loadVariables().catch(() => ({} as Record<string, unknown>))]);
+  sw.mark('data1');
   // Av/på-flöden visar läget från en Homey-variabel: QUICK_TOGGLES="Flöde=Variabel;…" (standard Auto On/Off=Auto På).
   const toggles = new Map((process.env.QUICK_TOGGLES ?? 'Auto On/Off=Auto På').split(';').flatMap((e) => {
     const [f, v] = e.split('=').map((x) => x.trim());
@@ -139,7 +164,7 @@ export default async function HomePage() {
     const v = toggles.get(name.toLowerCase());
     return v && v in vars ? { toggle: true, active: vars[v] === true || vars[v] === 'Ja' } : {};
   };
-  const pingable = await pingableNames();
+  const pingable = await pingableP;
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
   const quick: Action[] = [
     ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced, ...toggleOf(f.name.trim()) })),
@@ -153,13 +178,24 @@ export default async function HomePage() {
     const zones = m[2] === '*' ? h.rooms.map((r) => r.id) : h.rooms.filter((r) => r.name.toLowerCase() === m[2].toLowerCase()).map((r) => r.id);
     return zones.length ? [{ id: `preset-${i}`, name: m[1], kind: 'room', zones, scene: m[3] }] : [];
   }));
+  // Hue-hushåll (Ulrika): Snabbval ligger under Till jobbet och fylls med hela huset (Ljust, Mys, Släck), förvalen,
+  // favoriterna och hemmets scener. Dubbletter på namn tas bort, hela-huset-knapparna först.
+  const hueMode = process.env.CONTROL === 'hue';
+  const quickAll: Action[] = hueMode ? (() => {
+    const seen = new Set<string>();
+    return [...houseActions(h.rooms, ['varmt', 'mys', 'slack', 'stad']), ...quick, ...h.homeMoods.map((m) => ({ id: m.id, name: m.name.trim(), kind: 'mood' as const }))]
+      .filter((a) => { const k = a.name.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  })() : quick;
+  // QUICK_HIDE="Ljust;Namn": namn som inte ska visas i Snabbval (t.ex. en Hue-scen som dubblerar en hela-huset-knapp).
+  const hide = new Set((process.env.QUICK_HIDE ?? '').split(';').map((x) => x.trim().toLowerCase()).filter(Boolean));
+  const quickList = quickAll.filter((a) => !hide.has(a.name.trim().toLowerCase()));
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
-  const tvRows = await loadTvStatuses().catch(() => []);
+  const tvRows = await tvP;
   const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
   // Råa appnamn översätts (t.ex. Playplus → Telia Play).
   const tvs2 = tvRaw ? { ...tvRaw, app_name: tvAppLabel(tvRaw.app_name) } : null;
   const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
-  const [wx, police, locate, muni] = await Promise.all([loadWarnings(weather), loadPolice().catch(() => []), loadLocate().catch(() => ({ members: [], items: [] })), loadMunicipal().catch(() => [])]);
+  const [wx, police, locate, muni] = await Promise.all([wxP, policeP, locateP, muniP]);
   // Life360 berikar närvaron: var den som är borta befinner sig (plats, "kör 70 km/h" eller gatan).
   // Avstånd hemifrån (fågelväg) för den som är borta enligt Life360; under 1 km visas inte.
   const awayKm = (m: { lat: number | null; lon: number | null }) => {
@@ -237,8 +273,9 @@ export default async function HomePage() {
   // Ulrika: kalendern i fokus under klockan, utetemperaturen stort uppe till höger.
   const calFocus = process.env.HOME_FOCUS === 'calendar';
   // Härnäst i kalendern (inom 36 h) – visas under klockan när inget spelas.
-  const nextUp = hasCal && !playing.length ? (await loadCalendarServer().catch(() => null))?.days
+  const nextUp = hasCal && !playing.length ? (await calP)?.days
     .flatMap((d) => d.timed).find((e) => e.start != null && e.start > now && e.start < now + 36 * 3600_000) ?? null : null;
+  sw.mark('kalender-nasta');
   const hasMirror = mirrorConfigured();
   // Helg: ingen tågpendling. Visa i stället vägläget mot nästa kalenderhändelse med plats (t.ex. Mariefred),
   // annars trafikläget i närområdet. Samma kortstorlek som pendlingen.
@@ -246,7 +283,7 @@ export default async function HomePage() {
   let trip: (Trip & { km: number }) | null = null;
   let weekendRoads: RoadGroup[] = [];
   if (weekend) {
-    const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
+    const cal = hasCal ? await calP : null;
     const t = cal ? nextTrip(cal.days, now) : null;
     const dest = t ? await geocode(t.location) : null;
     const dist = dest ? km(PLACE, dest) : 0;
@@ -260,6 +297,7 @@ export default async function HomePage() {
     }
   }
 
+  sw.mark('helg');
   // Nästa resa: kalenderhändelse med adress inom 8 h. TomTom räknar restid med trafik och när man bör åka.
   // Startpunkt: hemmet, eller dashboardens person (HOUSEHOLD = förnamnet i Life360) om hen är borta.
   // Utan kalenderhändelse: DEFAULT_DESTINATION (adress eller "lat,lon", t.ex. Ulrikas jobb) på arbetsdagar 05–12,
@@ -273,7 +311,7 @@ export default async function HomePage() {
   let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean; fallback: boolean; guessed: boolean; margin: number; key?: string; own?: number | null } | null = null;
   if (etaConfigured()) {
     const o = origin(locate.members);
-    const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
+    const cal = hasCal ? await calP : null;
     for (const e of cal ? upcoming(cal.days, now).slice(0, 3) : []) {
       const guess = e.location ? null : await guessPlace(e.title, PLACE);
       const dest = e.location ? (await geocode(e.location)) ?? (await guessPlace(e.location, PLACE))?.at ?? null : guess?.at ?? null;
@@ -298,6 +336,9 @@ export default async function HomePage() {
   const o2 = tg ? origin(locate.members) : null;
   let nextTransit: Awaited<ReturnType<typeof loadTransit>>[number] | null = null;
   const transitHome = !!tg && dir === 'home';
+  // Färsk position (högst 10 min): styr vad som är avklarat i resplanen, och om man har gått än.
+  const here = freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '', now);
+  let replanned = false;
   if (tg && o2) {
     const atGoal = !!o2.pos && km(o2.pos, tg.at) <= 1;
     const elsewhere = o2.away && !atGoal;
@@ -305,30 +346,45 @@ export default async function HomePage() {
     const next = trains.find((t) => !t.canceled && (t.est ?? t.dep) > now);
     const viaPref = !!process.env.TRANSIT_VIA && !!process.env.TRANSIT_TRANSFER;
     if (viaPref && next && !elsewhere && (transitHome ? atGoal || !o2.pos : !atGoal)) {
-      const j = await journeyFor(next, !transitHome, PLACE);
+      let j = await journeyFor(next, !transitHome, PLACE);
+      // Gångtiden till tåget har passerat men positionen är kvar vid startpunkten: räkna om till nästa tåg man hinner.
+      if (j && here && j.leave < now - 60_000 && km(here.at, transitHome ? tg.at : PLACE) <= 0.4) {
+        const nextAt = next.est ?? next.dep;
+        for (const t of trains.filter((x) => !x.canceled && (x.est ?? x.dep) > nextAt).slice(0, 2)) {
+          const alt = await journeyFor(t, !transitHome, PLACE);
+          if (alt && alt.leave >= now - 60_000) { j = alt; replanned = true; break; }
+        }
+      }
       if (j) nextTransit = { dep: j.leave, arr: j.arrive, legs: j.legs, startAt: null, endAt: null };
     } else {
-      if (!transitHome && !atGoal) nextTransit = (await loadTransit(o2.from, tg.at, now, 1, !o2.away))[0] ?? null;
+      if (!transitHome && !atGoal) nextTransit = (await loadTransit(o2.from, tg.at, now, 1, !o2.away, false, false, tg.label))[0] ?? null;
       if (transitHome && (o2.away || !o2.pos)) nextTransit = (await loadTransit(o2.away ? o2.pos! : tg.at, PLACE, now, 1, false, true))[0] ?? null;
     }
   }
+  sw.mark('kollektiv');
   const transitLate = nextTransit && commute ? tripDelay(nextTransit, [...commute.out, ...commute.home, ...commute.all]) : null;
   const leaveIn = nextTransit ? Math.round((nextTransit.dep - now) / 60_000) : 0;
+  // Avklarat enligt positionen (✓ bara när positionen bekräftar), och om man ännu inte gått från startpunkten.
+  const transitStart = !tg || !o2 ? null : transitHome ? (o2.away ? o2.pos : tg.at) : o2.from;
+  const transitPos = nextTransit ? progress(nextTransit.legs, here, transitStart, now) : undefined;
   // Tågläge: sitter dashboardens person på ett tåg (Life360/Apple Watch mot tågens GPS) visar pendlingskortet bara det
   // tåget och resten av resan.
   const me = process.env.HOUSEHOLD ?? '';
   const dirTrains = commute ? [...commute[dir], ...(commute.recent?.[dir] ?? [])] : [];
   // Användarens bekräftelse ("Jag är på tåget") går före positionen.
-  const confirmed = commute?.trains ? await loadConfirmed(now) : null;
+  const confirmed = commute?.trains ? await confirmedP : null;
   let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me, now), now, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
-  const guessed = !onTrain && commute?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, now, 2 * 3600_000), ...await positionHistory(positionDevices(locate.members, locate.items, me), now - 2 * 3600_000)], TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
+  const guessed = !onTrain && commute?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, now, 2 * 3600_000), ...await positionP], TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
+  sw.mark('tagslage');
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
   const allTrains = commute ? [...commute.out, ...commute.home, ...commute.all, ...(commute.recent?.out ?? []), ...(commute.recent?.home ?? [])] : [];
   const run = confirmed ? allTrains.find((t) => t.ident === confirmed.ident && t.dep === confirmed.dep) ?? pickRun(allTrains, confirmed.ident, now)
     : onTrain ? pickRun(allTrains, onTrain.train, now) : null;
   // Tågläget missade (ingen position): erbjud bekräftelse för tåget som just gått (högst 20 min sedan).
-  const justLeft = !onTrain && commute ? [...(commute.recent?.[dir] ?? [])].filter((t) => !t.canceled && (t.est ?? t.dep) > now - 20 * 60_000).sort((a, b) => b.dep - a.dep)[0] ?? null : null;
+  // Inte när positionen visar att man är hemma (då sitter man inte på tåget).
+  const atHomeNow = !!here && km(here.at, PLACE) <= 0.4;
+  const justLeft = !onTrain && !atHomeNow && commute ? [...(commute.recent?.[dir] ?? [])].filter((t) => !t.canceled && (t.est ?? t.dep) > now - 20 * 60_000).sort((a, b) => b.dep - a.dep)[0] ?? null : null;
   const riddenToWork = !!run && (!!commute?.out.some((t) => t.id === run.id) || !!commute?.recent?.out.some((t) => t.id === run.id));
   // Kommande avgångar inom en timme (minst nästa), som reserv om tågläget har fel.
   const upcomingDir = trains.filter((t) => !t.canceled && (t.est ?? t.dep) > now && t.ident !== run?.ident);
@@ -344,9 +400,9 @@ export default async function HomePage() {
   // Efter ankomsten pågår resan till sista delsträckan är klar (byte i Stockholm C, promenad hem).
   const arrived = riddenArr != null && now > riddenArr;
   // Framme (positionen vid jobbet eller hemma, högst 10 min gammal): tillbaka till normalläget.
-  const here = freshestPosition(locate.members, locate.items, me, now);
   const goalAt = riddenToWork ? transitGoal()?.at : PLACE;
   const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
+  sw.mark('vidare');
   const ridden = run && !atGoal && (!arrived || (onward.length > 0 && now <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
   const tripEnd = onward.at(-1)?.arr;
   // Resan sparas för ersättningslistan när tågläget hittat tåget (GPS eller gissat); bekräftade sparas av knappen.
@@ -354,6 +410,26 @@ export default async function HomePage() {
   if (ridden && !confirmed && (riddenToWork || homeRun)) await saveTrip(ridden, riddenToWork, guessed ? 'guess' : 'gps');
   // Säkert på tåget (bekräftat eller tågets GPS, inte gissat): fokus på måltiden och resplanen, inget brus.
   const sure = !!ridden && (!!confirmed || (!!onTrain && !guessed));
+  // Resplanen för nästa tåg (gå om …, benen med nästa sträcka markerad) visas en gång, i fokuserutan för det tåget (HomeTrains).
+  const tripPlan = !ridden && nextTransit && tg && commute ? {
+    ident: nextTransit.legs.find((l) => l.kind === 'train' && l.num)?.num ?? '',
+    node: (
+      <div className="flex flex-col gap-2">
+        <p className="flex flex-wrap items-baseline gap-x-2 text-[1.0625rem]">
+          <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
+          <span>
+            <LeaveIn dep={nextTransit.dep} serverNow={now} variant="line" />
+            {' · '}{transitHome ? 'hemma' : 'framme'} {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}
+          </span>
+          {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
+        </p>
+        {(transitPos?.waiting || replanned) && (
+          <p className="text-[1rem] font-semibold" style={{ color: C.warn }}>Du har inte gått än{replanned ? ' – räknat om till nästa tåg' : ''}</p>
+        )}
+        <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact pos={transitPos} />
+      </div>
+    ),
+  } : undefined;
   const goalTime = tripEnd ?? (riddenToWork ? riddenArr : ridden?.homeAt ?? riddenArr);
   // På jobbet före 12: avgångarna dit behövs inte, pendlingen tar liten plats tills hemresan visas.
   const work = transitGoal()?.at;
@@ -371,6 +447,9 @@ export default async function HomePage() {
 
   // ---- Hemmet ----
   const tempRooms = h.rooms.filter((r) => r.temp != null);
+  // Ljusnivå (lux): det ljusaste rummet med en ljussensor.
+  const luxRooms = h.rooms.filter((r) => r.lux != null);
+  const luxBest = luxRooms.length ? luxRooms.reduce((a, r) => (r.lux! > a.lux! ? r : a)) : null;
   const tempAvg = tempRooms.length ? tempRooms.reduce((a, r) => a + r.temp!, 0) / tempRooms.length : null;
   const odd = tempRooms.filter((r) => r.temp! >= COMFORT.high || r.temp! < COMFORT.low).sort((a, b) => b.temp! - a.temp!);
   const open = h.openings.filter((o) => o.open);
@@ -426,7 +505,7 @@ export default async function HomePage() {
   const trainNote = commute?.trains ? (trains.some((t) => trainTone(t) !== 'ok') ? 'tåg med förseningar' : 'tågen i tid') : null;
 
   // Antal rader i Hemmet: fler än sex ger lite lägre rader så att allt ryms på plattan.
-  const rowCount = [tempAvg != null, h.openings.length > 0, !!net, h.lightsTotal > 0, h.powerMeters + h.powerEstimated > 0, !!price.now, !!wine].filter(Boolean).length;
+  const rowCount = [tempAvg != null, luxBest != null, h.openings.length > 0, !!net, h.lightsTotal > 0, h.powerMeters + h.powerEstimated > 0, !!price.now, !!wine].filter(Boolean).length;
   // Närvaro: Homeys närvaroappar plus Life360-medlemmar som inte redan finns med (matchas på förnamn).
   const first = (n: string) => n.split(/\s+/)[0].toLowerCase();
   // Life360 går före Smart Presence: matchad person får Life360:s hemma/borta.
@@ -436,6 +515,21 @@ export default async function HomePage() {
       .map((m) => ({ id: m.id, name: m.first, present: m.home, since: null as string | null, src: 'L360' })),
   ].sort((x, y) => Number(y.present) - Number(x.present));
 
+  const snabbval = quickList.length > 0 && (
+    <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0">
+      <div className="flex min-h-0 flex-col overflow-y-auto">
+        <ActionTiles items={hueMode ? quickList.slice(0, 8) : quickList} layout={hueMode ? 'tiles' : 'compact'} />
+      </div>
+      {hueMode && quickList.length > 8 && (
+        <Link href="/favoriter" className="flex min-h-11 items-center justify-between text-[1rem] font-semibold text-dim">
+          Fler under Styrning<span aria-hidden="true">›</span>
+        </Link>
+      )}
+    </Card>
+  );
+
+  sw.mark('klar');
+  console.info(`Hem ${sw.line()}`);
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
       {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
@@ -482,11 +576,11 @@ export default async function HomePage() {
             </Link>
           )}
           {/* Hitta mobilen (Android via ntfy): väl synlig direkt under klockan, larmar tills den stängs på telefonen. */}
-          {pingable.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 flex-1 basis-36 justify-center" />)}
-            </div>
-          )}
+          {/* Läs upp rapport (webbläsarens röst, startar vid tryck) i samma rad. Raden döljs när den är tom (ingen talsyntes). */}
+          <div className="flex flex-wrap gap-2 empty:hidden">
+            {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 flex-1 basis-36 justify-center" />)}
+            <Suspense fallback={null}><Briefing className="min-w-0 flex-1 basis-36 justify-center" /></Suspense>
+          </div>
         </section>
 
         {/* NÄRVARO (höger, egen yta): vem är hemma, var de andra är. Källa (Life360/Smart Presence) visas på Hitta. */}
@@ -523,9 +617,9 @@ export default async function HomePage() {
 
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
         <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
-          {/* Kalenderfokus (HOME_FOCUS=calendar): kalendrarna direkt under klockan, på alla skärmstorlekar. */}
-          {calFocus && hasCal && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget collapsible={false} /></div>}
-          {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={false} /></div>}
+          {/* Kalenderfokus (HOME_FOCUS=calendar): kalendrarna direkt under klockan, på alla skärmstorlekar. På stor skärm har de minsta höjd för dagens poster (annars pressas de ihop av övriga kort och bara dagraden syns). */}
+          {calFocus && hasCal && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[16rem]"><CalendarWidget collapsible={false} /></div>}
+          {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[12rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={false} compact /></div>}
           <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
             label={`Ute ${outTemp != null ? fmtTemp(outTemp) : ''}${sky ? `, ${sky.label.toLowerCase()}` : ''}${hint ? `. ${hint.text}` : ''}. Visa väderprognosen.`} className="order-4 lg:order-none lg:shrink-0">
             <div className="flex items-center gap-3">
@@ -562,13 +656,7 @@ export default async function HomePage() {
             )}
           </Card>
 
-          {quick.length > 0 && (
-            <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0">
-              <div className="flex min-h-0 flex-col overflow-y-auto">
-                <ActionTiles items={quick} layout="compact" />
-              </div>
-            </Card>
-          )}
+          {!hueMode && snabbval}
         </div>
 
         {/* HÄRNÄST: pendling och kalender. */}
@@ -584,6 +672,11 @@ export default async function HomePage() {
               </p>
               {tripLine}
               {!tripEta.fallback && tripEta.key && <TripMargin eventKey={tripEta.key} value={tripEta.own ?? null} auto={tripEta.eta.minutes >= 30 ? 15 : 5} />}
+              {/* Kollektivt dörr till dörr: planeras vid tryck, framme senast start minus marginalen. */}
+              {!tripEta.fallback && tripEta.trip.start != null && transitSearchable() && (
+                <EventTransit key={`${tripEta.key}|${tripEta.margin}`} place={tripEta.trip.location} start={tripEta.trip.start}
+                  arriveBy={tripEta.trip.start - tripEta.margin * 60_000} fromHere={tripEta.fromHere} />
+              )}
             </Card>
           )}
           {weekend && (
@@ -628,23 +721,8 @@ export default async function HomePage() {
               {!ridden && trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               {!ridden && justLeft && (
-                <p className="flex items-center justify-between gap-3 text-[1rem]">
-                  <span>Sitter du på {justLeft.product ?? 'tåg'} {justLeft.ident} ({hhmm(justLeft.est ?? justLeft.dep)})?</span>
-                  <OnTrainButton ident={justLeft.ident} dep={justLeft.dep} arr={justLeft.arr} label="Ja ✓" />
-                </p>
+                <JustLeftAsk ident={justLeft.ident} dep={justLeft.dep} arr={justLeft.arr} text={`Sitter du på ${justLeft.product ?? 'tåg'} ${justLeft.ident} (${hhmm(justLeft.est ?? justLeft.dep)})?`} />
               )}
-              {!ridden && nextTransit && tg && (
-                <p className="flex items-baseline gap-2 text-[1rem]">
-                  <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
-                  <span>
-                    <span className="font-semibold" style={leaveIn < -1 ? { color: C.warn } : undefined}>{leaveIn < -1 ? `sen ${-leaveIn} min – ta cykel eller taxi` : leaveIn <= 0 ? 'gå nu' : `gå om ${leaveIn} min`}</span>
-                    {' · '}{transitHome ? 'hemma' : 'framme'} {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}
-                  </span>
-                  {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
-                </p>
-              )}
-              {/* Resebeskrivningen för förslaget (gång, tåg, SL) med spår och förseningar. */}
-              {!ridden && nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact />}
               {ridden && sure ? (
                 // Säkert tågläge: måltiden stort (som utetemperaturen), var tåget är och resplanen.
                 <>
@@ -689,7 +767,7 @@ export default async function HomePage() {
                     </div>
                   )}
                 </>
-              ) : <div className={nextTransit ? 'border-t border-line pt-3' : ''}><HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} /></div>}
+              ) : <div className={justLeft ? 'border-t border-line pt-3' : ''}><HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} plan={tripPlan} /></div>}
               {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). Inte i tågläget. */}
               <ul hidden={!!ridden} className="flex flex-col gap-1.5 border-t border-line pt-3">
                 {roads.length === 0 && (
@@ -756,9 +834,10 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {!calFocus && hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget /></div>}
+          {hueMode && snabbval}
+          {!calFocus && hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[16rem]"><CalendarWidget /></div>}
           {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
-          {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[8.125rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" /></div>}
+          {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[12rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" compact /></div>}
         </div>
 
         {/* HEMMET: kompakta rader, avvikelser i färg. */}
@@ -777,6 +856,7 @@ export default async function HomePage() {
                 ) : `Alla rum ${COMFORT.low}–${COMFORT.high}°`}
               />
             )}
+            {luxBest && <Row icon="sun" label="Ljusnivå" href="/temperatur" value={fmtLux(luxBest.lux!)} unit="lux" detail={`${luxBest.name} · ${luxLabel(luxBest.lux!)}`} />}
             {h.openings.length > 0 && (
               <Row
                 icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/dorrar"

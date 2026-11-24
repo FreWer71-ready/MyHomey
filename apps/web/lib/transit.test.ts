@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { bestTrips, doneLegs, fastest, parseTrips, stopName, withWalk, withWalkEnd } from './transit.ts';
+import { bestTrips, decodeEntities, doneLegs, fastest, fmtMeters, lineBadge, parseTrips, progress, stopName, walkMeters, withWalk, withWalkEnd } from './transit.ts';
 
 test('kollektiv: ResRobot-resa tolkas till ben', () => {
   const raw = JSON.parse(readFileSync(new URL('./transit.fixture.json', import.meta.url), 'utf8'));
@@ -36,6 +36,46 @@ test('kollektiv: promenad hem läggs efter sista hållplatsen', () => {
   const w = withWalkEnd(t, 0.7);
   assert.equal(w.legs.at(-1)!.to, 'Hemma');
   assert.equal(w.arr, arr + 11 * 60_000);
+});
+
+test('kollektiv: HTML-kodade namn avkodas, gångmeter och linjebrickor som i SL', () => {
+  assert.equal(stopName('M&aring;l'), 'Mål');
+  assert.equal(stopName('Olof Palmes gata 9'), 'Olof Palmes gata 9');
+  assert.equal(decodeEntities('&Ouml;rebro &#229; &#xE4;'), 'Örebro å ä');
+  assert.equal(decodeEntities('&okänd;'), '&okänd;');
+  assert.equal(walkMeters(0.2), 250);
+  assert.equal(fmtMeters(280), '280 m');
+  assert.equal(fmtMeters(1240), '1,2 km');
+  const leg = (kind: 'metro' | 'tram' | 'train' | 'bus' | 'walk', label: string | null, num: string | null = null) => ({ kind, label, num });
+  assert.deepEqual(lineBadge(leg('metro', 'Tunnelbana 13')), { text: '13', color: '#C8282A' });
+  assert.equal(lineBadge(leg('metro', 'Tunnelbana 17'))?.color, '#1F7A33');
+  assert.equal(lineBadge(leg('metro', 'Tunnelbana 10'))?.color, '#0B6BAE');
+  assert.equal(lineBadge(leg('tram', 'Tvärbana 30'))?.color, '#9A5B16');
+  assert.equal(lineBadge(leg('train', 'Pendeltåg 41'))?.color, '#C93D7B');
+  assert.equal(lineBadge(leg('train', 'Regionaltåg 914')), null);
+  assert.equal(lineBadge(leg('bus', 'Buss 3'))?.text, '3');
+  assert.equal(lineBadge(leg('walk', null)), null);
+  // Nummer saknas i namnet: tågnumret används om det är siffror.
+  assert.equal(lineBadge(leg('metro', 'Tunnelbana', '14'))?.text, '14');
+});
+
+test('kollektiv: läge i planen styrs av positionen (inget ✓ utan position, "har inte gått än" vid startpunkten)', () => {
+  const m = (h: number, mi = 0) => Date.UTC(2026, 10, 23, h, mi);
+  const HOME = { lat: 59.4003, lon: 16.4769 }, ST = { lat: 59.3695, lon: 16.5052 }, STH = { lat: 59.3301, lon: 18.0582 };
+  const legs = [
+    { kind: 'walk' as const, from: 'Hemma', to: 'Eskilstuna C', dep: m(7, 0), arr: m(7, 20), minutes: 20, label: null, num: null, dir: null, track: null, toAt: ST },
+    { kind: 'train' as const, from: 'Eskilstuna C', to: 'Stockholm C', dep: m(7, 22), arr: m(8, 12), minutes: 50, label: 'Tåg 540', num: '540', dir: null, track: null, fromAt: ST, toAt: STH },
+  ];
+  // 3. Ingen färsk position: ingenting markeras.
+  assert.deepEqual(progress(legs, null, HOME, m(7, 30)), { known: false, done: 0, waiting: false });
+  // 2. Tiden har gått (07:30) men positionen är kvar hemma: har inte gått än.
+  assert.deepEqual(progress(legs, { at: HOME, ts: m(7, 29) }, HOME, m(7, 30)), { known: true, done: 0, waiting: true });
+  // Före avgångstiden är man inte sen, även om man står hemma.
+  assert.equal(progress(legs, { at: HOME, ts: m(6, 55) }, HOME, m(6, 56)).waiting, false);
+  // 1. Vid stationen: gångbenet är bekräftat, tåget inte.
+  assert.deepEqual(progress(legs, { at: ST, ts: m(7, 21) }, HOME, m(7, 21)), { known: true, done: 1, waiting: false });
+  // Någon annanstans än vid startpunkten och hållplatserna: inget avklarat, men inte heller "inte gått".
+  assert.deepEqual(progress(legs, { at: { lat: 59.38, lon: 16.49 }, ts: m(7, 10) }, HOME, m(7, 30)), { known: true, done: 0, waiting: false });
 });
 
 test('kollektiv: avklarade sträckor utifrån positionen, tider bakåt om man hann före', () => {
