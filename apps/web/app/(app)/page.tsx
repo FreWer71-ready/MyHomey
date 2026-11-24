@@ -12,7 +12,7 @@ import { etaConfigured, routeEta, type Eta } from '@/lib/route';
 import { goalEta, origin } from '@/lib/goal';
 import { journeyFor, loadOnward, loadTransit, transitConfigured, transitGoal, transitSearchable } from '@/lib/transit-source';
 import { EventTransit } from '@/components/EventTransit';
-import { DepartsFrom, TransitLegs, tripDelay } from '@/components/TransitTrip';
+import { TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { LeaveIn } from '@/components/LeaveIn';
 import { Briefing } from '@/components/Briefing';
 import { Suspense } from 'react';
@@ -29,7 +29,7 @@ import { mirrorConfigured, mirrorTitle } from '@/lib/calendar-mirror';
 import { policeAlerts } from '@/lib/police';
 import { whereText } from '@/lib/locate';
 import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/NowPlayingStrip';
-import { OnTrainButton } from '@/components/OnTrainButton';
+import { JustLeftAsk, OnTrainButton } from '@/components/OnTrainButton';
 import { TripMargin } from '@/components/TripMargin';
 import { cookies } from 'next/headers';
 import { NearDepartures, nearDepartures } from '@/components/NearDepartures';
@@ -365,7 +365,9 @@ export default async function HomePage() {
   const run = confirmed ? allTrains.find((t) => t.ident === confirmed.ident && t.dep === confirmed.dep) ?? pickRun(allTrains, confirmed.ident, now)
     : onTrain ? pickRun(allTrains, onTrain.train, now) : null;
   // Tågläget missade (ingen position): erbjud bekräftelse för tåget som just gått (högst 20 min sedan).
-  const justLeft = !onTrain && commute ? [...(commute.recent?.[dir] ?? [])].filter((t) => !t.canceled && (t.est ?? t.dep) > now - 20 * 60_000).sort((a, b) => b.dep - a.dep)[0] ?? null : null;
+  // Inte när positionen visar att man är hemma (då sitter man inte på tåget).
+  const atHomeNow = !!here && km(here.at, PLACE) <= 0.4;
+  const justLeft = !onTrain && !atHomeNow && commute ? [...(commute.recent?.[dir] ?? [])].filter((t) => !t.canceled && (t.est ?? t.dep) > now - 20 * 60_000).sort((a, b) => b.dep - a.dep)[0] ?? null : null;
   const riddenToWork = !!run && (!!commute?.out.some((t) => t.id === run.id) || !!commute?.recent?.out.some((t) => t.id === run.id));
   // Kommande avgångar inom en timme (minst nästa), som reserv om tågläget har fel.
   const upcomingDir = trains.filter((t) => !t.canceled && (t.est ?? t.dep) > now && t.ident !== run?.ident);
@@ -390,6 +392,26 @@ export default async function HomePage() {
   if (ridden && !confirmed && (riddenToWork || homeRun)) await saveTrip(ridden, riddenToWork, guessed ? 'guess' : 'gps');
   // Säkert på tåget (bekräftat eller tågets GPS, inte gissat): fokus på måltiden och resplanen, inget brus.
   const sure = !!ridden && (!!confirmed || (!!onTrain && !guessed));
+  // Resplanen för nästa tåg (gå om …, benen med nästa sträcka markerad) visas en gång, i fokuserutan för det tåget (HomeTrains).
+  const tripPlan = !ridden && nextTransit && tg && commute ? {
+    ident: nextTransit.legs.find((l) => l.kind === 'train' && l.num)?.num ?? '',
+    node: (
+      <div className="flex flex-col gap-2">
+        <p className="flex flex-wrap items-baseline gap-x-2 text-[1.0625rem]">
+          <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
+          <span>
+            <LeaveIn dep={nextTransit.dep} serverNow={now} variant="line" />
+            {' · '}{transitHome ? 'hemma' : 'framme'} {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}
+          </span>
+          {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
+        </p>
+        {(transitPos?.waiting || replanned) && (
+          <p className="text-[1rem] font-semibold" style={{ color: C.warn }}>Du har inte gått än{replanned ? ' – räknat om till nästa tåg' : ''}</p>
+        )}
+        <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact pos={transitPos} />
+      </div>
+    ),
+  } : undefined;
   const goalTime = tripEnd ?? (riddenToWork ? riddenArr : ridden?.homeAt ?? riddenArr);
   // På jobbet före 12: avgångarna dit behövs inte, pendlingen tar liten plats tills hemresan visas.
   const work = transitGoal()?.at;
@@ -679,27 +701,8 @@ export default async function HomePage() {
               {!ridden && trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
               {/* Fyra avgångar i 2×2. Går ett tåg inom 45 min lyfts det fram stort med nedräkning, följande två på en rad. */}
               {!ridden && justLeft && (
-                <p className="flex items-center justify-between gap-3 text-[1rem]">
-                  <span>Sitter du på {justLeft.product ?? 'tåg'} {justLeft.ident} ({hhmm(justLeft.est ?? justLeft.dep)})?</span>
-                  <OnTrainButton ident={justLeft.ident} dep={justLeft.dep} arr={justLeft.arr} label="Ja ✓" />
-                </p>
+                <JustLeftAsk ident={justLeft.ident} dep={justLeft.dep} arr={justLeft.arr} text={`Sitter du på ${justLeft.product ?? 'tåg'} ${justLeft.ident} (${hhmm(justLeft.est ?? justLeft.dep)})?`} />
               )}
-              {!ridden && nextTransit && tg && (
-                <p className="flex items-baseline gap-2 text-[1rem]">
-                  <span className="font-semibold">{transitHome ? 'Hem' : tg.label}:</span>
-                  <span>
-                    <LeaveIn dep={nextTransit.dep} serverNow={now} variant="line" />
-                    {' · '}{transitHome ? 'hemma' : 'framme'} {transitLate?.delay ? `ca ${hhmm(nextTransit.arr + transitLate.delay * 60_000)}` : hhmm(nextTransit.arr)}
-                  </span>
-                  {transitLate?.canceled && <span className="font-semibold" style={{ color: C.bad }}>inställt tåg</span>}
-                </p>
-              )}
-              {/* Resebeskrivningen för förslaget (gång, tåg, SL) med spår och förseningar. */}
-              {!ridden && nextTransit && (transitPos?.waiting || replanned) && (
-                <p className="text-[1rem] font-semibold" style={{ color: C.warn }}>Du har inte gått än{replanned ? ' – räknat om till nästa tåg' : ''}</p>
-              )}
-              {!ridden && nextTransit && <DepartsFrom trip={nextTransit} />}
-              {!ridden && nextTransit && commute && <TransitLegs trip={nextTransit} trains={[...commute.out, ...commute.home, ...commute.all]} compact pos={transitPos} />}
               {ridden && sure ? (
                 // Säkert tågläge: måltiden stort (som utetemperaturen), var tåget är och resplanen.
                 <>
@@ -744,7 +747,7 @@ export default async function HomePage() {
                     </div>
                   )}
                 </>
-              ) : <div className={nextTransit ? 'border-t border-line pt-3' : ''}><HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} /></div>}
+              ) : <div className={justLeft ? 'border-t border-line pt-3' : ''}><HomeTrains trains={trains} serverNow={now} journey={tg ? (dir === 'out' ? 'out' : 'home') : undefined} plan={tripPlan} /></div>}
               {/* Vägen: upp till två händelser i samma radformat som tågen (status till höger). Inte i tågläget. */}
               <ul hidden={!!ridden} className="flex flex-col gap-1.5 border-t border-line pt-3">
                 {roads.length === 0 && (

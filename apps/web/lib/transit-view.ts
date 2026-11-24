@@ -18,3 +18,19 @@ export function lineBadge(l: Pick<TransitLeg, 'kind' | 'label' | 'num'>): { text
   if (l.kind === 'bus') return { text, color: '#2563A8' };
   return null;
 }
+
+/**
+ * Vilken sträcka som är pågående eller nästa i en resa (index, -1 om alla är passerade). Med färsk position (`pos.known`) räknas
+ * sträckor före `pos.done` som avklarade och pågående kräver att man inte väntar kvar vid start; utan position styr klockan.
+ */
+export function nextLegIndex(legs: { dep: number; arr: number }[], now: number, pos?: { known: boolean; done: number; waiting: boolean }): number {
+  const from = pos?.known ? pos.done : 0;
+  if (pos?.known && !pos.waiting) {
+    const live = legs.findIndex((l, i) => i >= from && l.dep <= now && now < l.arr);
+    if (live >= 0) return live;
+  } else if (!pos) {
+    const live = legs.findIndex((l) => l.dep <= now && now < l.arr);
+    if (live >= 0) return live;
+  }
+  return legs.findIndex((l, i) => i >= from && l.arr > now);
+}

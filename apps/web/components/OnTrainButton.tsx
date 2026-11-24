@@ -1,5 +1,5 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearTrain, confirmTrain, skipTrain, unskipAll } from '@/app/actions/onboard';
 
@@ -21,6 +21,33 @@ export function OnTrainButton({ ident, dep, arr, confirmed = false, label }: { i
       className={`btn-row ${confirmed ? '' : '!bg-sun font-bold !text-ink'} ${busy ? 'animate-pulse' : ''}`}>
       {fail ? 'Försök igen' : label ?? (confirmed ? 'Inte på tåget' : 'Jag är på tåget ✓')}
     </button>
+  );
+}
+
+/**
+ * "Sitter du på tåg X?" med Ja (bekräftar tåget) och Nej (frågan döljs för det tåget; minns i webbläsaren).
+ * Visas först när webbläsaren kollat att frågan inte redan avfärdats.
+ */
+export function JustLeftAsk({ ident, dep, arr, text }: { ident: string; dep: number; arr: number | null; text: string }) {
+  const key = `ej-pa-tag:${ident}:${dep}`;
+  const [state, setState] = useState<'wait' | 'ask' | 'no'>('wait');
+  useEffect(() => {
+    try { setState(localStorage.getItem(key) ? 'no' : 'ask'); } catch { setState('ask'); }
+  }, [key]);
+  if (state !== 'ask') return null;
+  const no = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    try { localStorage.setItem(key, '1'); } catch { /* minns inte */ }
+    setState('no');
+  };
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[1rem]">
+      <span>{text}</span>
+      <span className="flex shrink-0 gap-2">
+        <OnTrainButton ident={ident} dep={dep} arr={arr} label="Ja ✓" />
+        <button type="button" onClick={no} className="btn-row btn-row-quiet">Nej</button>
+      </span>
+    </div>
   );
 }
 

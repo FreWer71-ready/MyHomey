@@ -1,7 +1,7 @@
 import type { Train } from '@/lib/commute';
 import { TONE_COLOR } from '@/lib/commute';
 import { hhmm } from '@/lib/prices';
-import { fmtMeters, lineBadge } from '@/lib/transit-view';
+import { fmtMeters, lineBadge, nextLegIndex } from '@/lib/transit-view';
 import type { Progress, TransitLeg, TransitTrip } from '@/lib/transit';
 import { LeaveIn } from './LeaveIn';
 
@@ -79,24 +79,28 @@ export function TransitLegs({ trip, trains, compact = false, now = Date.now(), p
   const byPos = pos !== undefined;
   const current = !byPos ? trip.legs.findIndex((l) => l.dep <= now && now < l.arr)
     : pos.known && !pos.waiting ? trip.legs.findIndex((l, i) => i >= pos.done && l.dep <= now && now < l.arr) : -1;
+  // Sträckan som gäller nu ("Nu", bara när positionen eller klockan bekräftar den) eller nästa ("Nästa"): tydligt markerad.
+  const step = nextLegIndex(trip.legs, now, pos);
   return (
       <ol className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1'}`}>
         {trip.legs.map((l, i) => {
           const rt = legRealtime(l, trains);
           const badge = lineBadge(l);
           const live = i === current;
+          const focus = i === step;
           const done = byPos ? i < pos.done : l.arr <= now;
           return (
-            <li key={i} aria-current={live ? 'step' : undefined}
-              className={`flex min-w-0 items-center gap-2 ${live ? '-mx-1.5 rounded-lg bg-white/[0.14] px-1.5 py-0.5 ring-1 ring-sun/60' : ''} ${done && !live ? 'text-dim' : ''}`}>
-              <span className={`w-12 shrink-0 ${compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
+            <li key={i} aria-current={focus ? 'step' : undefined}
+              className={`relative flex min-w-0 items-center gap-2 ${focus ? '-mx-2 my-2 rounded-xl bg-sun/[0.2] px-2 py-2 ring-2 ring-sun' : ''} ${done && !live ? 'text-dim' : ''}`}>
+              {focus && <span aria-hidden className="absolute -top-2.5 left-3 rounded-full bg-sun px-2 text-[0.625rem] leading-4 font-black tracking-wide text-ink uppercase">{live ? 'Nu' : 'Nästa'}</span>}
+              <span className={`w-12 shrink-0 ${focus ? 'text-[1.0625rem]' : compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums`}>{hhmm(l.dep)}</span>
               {/* Färdsätt som symbol (skärmläsare får ordet); starttid före, sluttid efter. */}
-              <span role="img" aria-label={`${KIND[l.kind]}${done && !live ? ', avklarad' : ''}`} className={`relative flex shrink-0 items-center justify-center rounded-lg ${compact ? 'size-7' : 'size-8'} ${live ? 'bg-sun text-ink' : 'bg-white/[0.08]'}`}>
-                <LegIcon kind={l.kind} size={compact ? 18 : 20} />
+              <span role="img" aria-label={`${KIND[l.kind]}${done && !live ? ', avklarad' : ''}`} className={`relative flex shrink-0 items-center justify-center rounded-lg ${focus ? 'size-9' : compact ? 'size-7' : 'size-8'} ${focus ? 'bg-sun text-ink' : 'bg-white/[0.08]'}`}>
+                <LegIcon kind={l.kind} size={focus ? 22 : compact ? 18 : 20} />
                 {/* Avklarad delsträcka: grön bock i hörnet. */}
                 {done && !live && <span aria-hidden className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-ok text-[0.5625rem] font-black leading-none text-ink">✓</span>}
               </span>
-              <span className={`min-w-0 grow truncate ${compact ? 'text-[0.875rem]' : 'text-[0.9375rem]'}`}>
+              <span className={`min-w-0 grow truncate ${focus ? 'text-[1.0625rem] font-bold' : compact ? 'text-[0.875rem]' : 'text-[0.9375rem]'}`}>
                 {l.kind === 'walk'
                   // Sträckan i meter som i SL (tiderna på sidorna visar redan hur lång tid det tar).
                   ? <><span title={`${l.minutes} min`}>{l.meters != null ? fmtMeters(l.meters) : `${l.minutes} min`}</span> → {l.to}</>
@@ -109,7 +113,7 @@ export function TransitLegs({ trip, trains, compact = false, now = Date.now(), p
                   {rt.canceled ? 'Inställt' : `+${rt.delay} min`}
                 </span>
               )}
-              <span className={`w-12 shrink-0 text-right ${compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums ${live ? 'text-sun' : ''}`}>{hhmm(l.arr)}</span>
+              <span className={`w-12 shrink-0 text-right ${focus ? 'text-[1.0625rem]' : compact ? 'text-[0.875rem]' : 'text-[1rem]'} font-bold tabular-nums ${focus ? 'text-sun' : ''}`}>{hhmm(l.arr)}</span>
             </li>
           );
         })}
