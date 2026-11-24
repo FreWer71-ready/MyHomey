@@ -12,7 +12,8 @@ import { summarizeNet, type NetDevice, type NetIsp, type NetStatusRow } from './
 import { etaConfigured } from './route.ts';
 import { createClient } from './supabase/server.ts';
 import { loadSchoolCalendars, skolschemaConfigured } from './skolschema-source.ts';
-import { journeyFor, loadTransit, transitConfigured, transitGoal } from './transit-source.ts';
+import { journeyFor, leaveHomeFor, loadTransit, transitConfigured, transitGoal } from './transit-source.ts';
+import { stopwatch, withDeadline } from './timing.ts';
 import { isWeekend } from './trip.ts';
 import { symbolInfo } from './weather.ts';
 
@@ -47,29 +48,59 @@ async function nameDaysOf(now: number, session: boolean): Promise<string[]> {
   } catch { return []; }
 }
 
+type BriefingData = { name: string; weather: string; parts: string[] };
+
+/** Varje del får högst så här lång tid: är en källa för seg hoppas delen över i stället för att hålla upp hela rapporten. */
+const PART_MS = 5000;
+/** Färdig rapport sparas så här länge i serverns minne (per hushåll och väg), så att sidladdningar och genvägen inte räknar om den. */
+const REPORT_TTL_MS = 3 * 60_000;
+const reports = new Map<string, { at: number; p: Promise<BriefingData> }>();
+
 /**
  * Rapportens innehåll för hushållet (HOUSEHOLD), hämtat från samma källor som Hem: väder, nästa tåg och när man ska gå,
  * dagens kalender, hemresan efter sista mötet, bilresan och kvällens händelser. `weather` är väderfrasen till första
  * meningen, `parts` övriga meningar. Delar utan data hoppas över; `BRIEFING` väljer delar (se `sectionsOn`).
- * Bara läsning, ingenting sparas.
+ * Bara läsning, ingenting sparas. Resultatet cachas 3 min (inte om någon del var för långsam).
  */
-export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean; token?: string } = {}): Promise<{ name: string; weather: string; parts: string[] }> {
+export function loadBriefing(now = Date.now(), opts: { anonymous?: boolean; token?: string } = {}): Promise<BriefingData> {
+  const key = opts.anonymous ? 'anon' : 'ses';
+  const hit = reports.get(key);
+  if (hit && Date.now() - hit.at < REPORT_TTL_MS) return hit.p;
+  const p = buildBriefing(now, opts).then(({ data, late }) => {
+    if (late && reports.get(key)?.p === p) reports.delete(key); // ett försenat/ofullständigt svar sparas inte
+    return data;
+  });
+  p.catch(() => { if (reports.get(key)?.p === p) reports.delete(key); });
+  reports.set(key, { at: Date.now(), p });
+  return p;
+}
+
+async function buildBriefing(now: number, opts: { anonymous?: boolean; token?: string }): Promise<{ data: BriefingData; late: number }> {
   const name = process.env.HOUSEHOLD ?? '';
+  const sw = stopwatch();
+  const slow: string[] = [];
+  /** En del med tidsgräns och loggtid; fallback vid fel eller för lång tid. */
+  const lim = <T, F>(part: string, p: Promise<T>, fallback: F) => sw.lap(part, withDeadline(p, PART_MS, fallback, () => { slow.push(part); }));
   // Med inloggning (knappen i appen): hushållets egna läsningar. Utan (adressen för genvägar): hemmets data via nyckeln
   // (homeByToken), annars inga hushållsdata; bilresan räknas då hemifrån.
   const session = !opts.anonymous;
+  // Kalendern väntar inte på något annat och startar direkt (om någon del som behöver den kan vara på).
+  const planMaybe = calendarConfigured() && (['forsta', 'hemresa', 'kvall'] as const).some((x) =>
+    sectionsOn(process.env.BRIEFING, { vader: true, tag: true, pendlar: true, bil: true, hemma: true, skola: true, kalender: true }).has(x));
+  const calP = planMaybe ? lim('kalender', loadCalendarServer(), null) : Promise.resolve(null);
+  const noPlace = { members: [], items: [] } as Awaited<ReturnType<typeof loadLocate>>;
   const [hSes, w, commute, locSes, netSes, tok, schools, nameDays] = await Promise.all([
-    session ? loadHome().catch(() => null) : null, loadWeather().catch(() => null), loadCommute().catch(() => null),
-    session ? loadLocate().catch(() => ({ members: [], items: [] })) : null, session ? loadNet().catch(() => null) : null,
-    !session && opts.token ? homeByToken(opts.token).catch(() => null) : null,
-    skolschemaConfigured() ? loadSchoolCalendars().catch(() => []) : [],
-    nameDaysOf(now, session),
+    session ? lim('hem', loadHome(), null) : null, lim('vader', loadWeather(), null), lim('pendling', loadCommute(), null),
+    session ? lim('plats', loadLocate(), noPlace) : null, session ? lim('nat', loadNet(), null) : null,
+    !session && opts.token ? lim('hem', homeByToken(opts.token), null) : null,
+    skolschemaConfigured() ? lim('skola', loadSchoolCalendars(), [] as Awaited<ReturnType<typeof loadSchoolCalendars>>) : [],
+    lim('namnsdag', nameDaysOf(now, session), [] as string[]),
   ]);
   // Barnens skoldag idag och imorgon (SKOLSCHEMA, aktuell vecka): första start och sista slut.
   const day = (cal: Calendar | null, date: string) => { const e = cal?.days.find((d) => d.date === date)?.timed.find((t) => t.id.startsWith('skola@')); return e ? { start: e.start!, end: e.end! } : null; };
   const school: SchoolKid[] = schools.map((c) => ({ name: c.name, today: day(c.cal, dayOf(now)), tomorrow: day(c.cal, addDays(dayOf(now), 1)) })).filter((k) => k.today || k.tomorrow);
   const h = hSes ?? tok?.h ?? null;
-  const locate = locSes ?? tok?.locate ?? { members: [], items: [] };
+  const locate = locSes ?? tok?.locate ?? noPlace;
   const net = session ? netSes : tok?.net ?? null;
   const weather = weatherPhrase(w ? symbolInfo(w.current.symbol).label : null, h?.outdoorTemp ?? (w && Number.isFinite(w.current.temp) ? w.current.temp : null));
   // Väder imorgon (SMHI:s dygnsprognos), sägs från klockan 20.
@@ -84,46 +115,54 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
 
   let train: { dep: number; delay: number; leave: number } | null = null;
   let trains: TrainInfo[] = [];
-  if (on.has('tag') && goal && viaPref && commute) {
+  // Tåg, bil och kalender/hemresa hämtas samtidigt. Morgonens gå-tid räknas lokalt (ingen ResRobot); bara hemresan frågar ResRobot.
+  const trainP = (async () => {
+    if (!(on.has('tag') && goal && viaPref && commute)) return;
     const dir = direction(now);
     // BRIEFING_TAG="06:57,07:04,07:34": de tågen (som inte hunnit gå) i stället för nästa tåg, morgnar mot jobbet.
     const fixed = dir === 'out' ? pickTrains(commute.out, parseTrainTimes(process.env.BRIEFING_TAG), now) : [];
     if (fixed.length) {
       // Att "gå" i det förflutna vore missvisande: då sägs bara tågets läge.
-      trains = await Promise.all(fixed.map(async (t): Promise<TrainInfo> => {
-        const j = t.canceled ? null : await journeyFor(t, true, PLACE).catch(() => null);
-        return { dep: t.dep, delay: t.delay, canceled: t.canceled, leave: j && j.leave >= now ? j.leave : null };
-      }));
-    } else {
-      const next = commute[dir].find((t) => !t.canceled && (t.est ?? t.dep) > now);
-      const j = next ? await journeyFor(next, dir === 'out', PLACE).catch(() => null) : null;
-      // Att "gå" i det förflutna vore missvisande: då hoppas meningen över.
-      if (next && j && j.leave >= now) train = { dep: next.dep, delay: next.delay, leave: j.leave };
+      trains = fixed.map((t): TrainInfo => {
+        const leave = t.canceled ? null : leaveHomeFor(t, PLACE);
+        return { dep: t.dep, delay: t.delay, canceled: t.canceled, leave: leave != null && leave >= now ? leave : null };
+      });
+      return;
     }
-  }
+    const next = commute[dir].find((t) => !t.canceled && (t.est ?? t.dep) > now);
+    if (!next) return;
+    const leave = dir === 'out' ? leaveHomeFor(next, PLACE) : (await lim('tag', journeyFor(next, false, PLACE), null))?.leave;
+    // Att "gå" i det förflutna vore missvisande: då hoppas meningen över.
+    if (leave != null && leave >= now) train = { dep: next.dep, delay: next.delay, leave };
+  })();
 
   let car: { home: boolean; label: string; minutes: number; trafficMin: number; warnings: number } | null = null;
-  if (on.has('bil') && carGoal && commute) {
-    const g = await goalEta(locate.members, now).catch(() => null);
+  const carP = (async () => {
+    if (!(on.has('bil') && carGoal && commute)) return;
+    const g = await lim('bil', goalEta(locate.members, now), null);
     if (g && !g.atGoal) car = { home: !!g.home, label: g.label, minutes: g.eta.minutes, trafficMin: g.eta.trafficMin, warnings: groupRoad(commute.road).length };
-  }
+  })();
 
   let plan = todayPlan([], now);
-  if ((on.has('forsta') || on.has('hemresa') || on.has('kvall')) && calendarConfigured()) {
-    const day = (await loadCalendarServer().catch(() => null))?.days.find((d) => d.date === dayOf(now));
-    if (day) plan = todayPlan(day.timed, now);
-  }
-
-  // Hemresan efter sista mötet: från jobbet när mötet slutat. Sista tåget i planen är tåget hem (SL-benen före är tunnelbana/pendel).
   let homePlan: { trainDep: number | null; home: number } | null = null;
-  if (on.has('hemresa') && plan.lastEnd != null && goal) {
-    const trip = (await loadTransit(goal.at, PLACE, plan.lastEnd, 1, false, true))[0];
-    if (trip) homePlan = { trainDep: [...trip.legs].reverse().find((l) => l.kind === 'train')?.dep ?? null, home: trip.arr };
-  }
+  const planP = (async () => {
+    const dayCal = (await calP)?.days.find((d) => d.date === dayOf(now));
+    if ((on.has('forsta') || on.has('hemresa') || on.has('kvall')) && dayCal) plan = todayPlan(dayCal.timed, now);
+    // Hemresan efter sista mötet: från jobbet när mötet slutat. Sista tåget i planen är tåget hem (SL-benen före är tunnelbana/pendel).
+    if (on.has('hemresa') && plan.lastEnd != null && goal) {
+      const trip = (await lim('hemresa', loadTransit(goal.at, PLACE, plan.lastEnd, 1, false, true), []))[0];
+      if (trip) homePlan = { trainDep: [...trip.legs].reverse().find((l) => l.kind === 'train')?.dep ?? null, home: trip.arr };
+    }
+  })();
+  await Promise.all([trainP, carP, planP]);
+  console.info(`Rapport ${sw.line()}${slow.length ? ` sena=${slow.join(',')}` : ''}`);
 
   return {
-    name, weather: on.has('vader') ? weather : '',
-    parts: briefingParts({ train, trains, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, nameDays, tomorrow, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
+    late: slow.length,
+    data: {
+      name, weather: on.has('vader') ? weather : '',
+      parts: briefingParts({ train, trains, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, nameDays, tomorrow, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
+    },
   };
 }
 

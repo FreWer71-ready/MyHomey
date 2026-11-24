@@ -231,4 +231,9 @@ export async function journeyFor(t: JourneyTrain, toWork: boolean, home: LatLon,
 }
 
 /** Promenaden hem från Eskilstuna C i minuter (för "hemma hh:mm" på hemtågen). Bara med TRANSIT_ORIGIN_STOP. */
+/**
+ * När man behöver gå hemifrån för att hinna med tåget mot jobbet: tågets avgång (med förseningen) minus gångtiden till Eskilstuna C
+ * och 2 min marginal. Samma tid som `journeyFor` ger som `leave` hemifrån, men utan nätanrop.
+ */
+export const leaveHomeFor = (t: { dep: number; delay: number }, home: LatLon) => t.dep + t.delay * MIN - (walkMin(km(home, STATION_ET)) + 2) * MIN;
 export const homeWalkMin = (home: LatLon) => (process.env.TRANSIT_ORIGIN_STOP ? walkMin(km(home, STATION_ET)) : null);
