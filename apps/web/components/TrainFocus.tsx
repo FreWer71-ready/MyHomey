@@ -30,7 +30,7 @@ function useNow(serverNow: number, list: Train[]) {
 }
 
 /** Det framlyfta tåget: avgångstid till vänster, stor nedräkning till höger och en stapel som krymper mot avgång. */
-function Focus({ t, now, large, journey }: { t: Train; now: number; large?: boolean; journey?: 'out' | 'home' }) {
+function Focus({ t, now, large, journey, plan }: { t: Train; now: number; large?: boolean; journey?: 'out' | 'home'; plan?: React.ReactNode }) {
   const kvar = departsAt(t) - now;
   const farg = countdownTone(kvar) === 'ok' ? 'var(--color-fg)' : TONE_COLOR[countdownTone(kvar)];
   const andel = Math.max(0, Math.min(1, kvar / (FOCUS_MIN * 60_000)));
@@ -60,6 +60,8 @@ function Focus({ t, now, large, journey }: { t: Train; now: number; large?: bool
       {/* Strax före och vid avgång: bekräfta att man är på tåget (tågläget på alla skärmar). */}
       {(() => {
         const route = <><TrainRoute ident={t.ident} />{kvar <= 10 * 60_000 && <OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} />}<SkipButton ident={t.ident} dep={t.dep} time={hhmm(departsAt(t))} compact /></>;
+        // Resplanen för just det här tåget (från servern) visas här, en gång; annars "Dörr till dörr" som hämtas vid tryck.
+        if (plan) return <><div className="flex flex-wrap gap-2">{route}</div>{plan}</>;
         return journey ? <TrainJourney ident={t.ident} toWork={journey === 'out'} before={route} /> : <div className="flex flex-wrap gap-2">{route}</div>;
       })()}
       <div className="h-1.5 overflow-hidden rounded-full bg-glass-2" role="presentation">
@@ -69,25 +71,75 @@ function Focus({ t, now, large, journey }: { t: Train; now: number; large?: bool
   );
 }
 
-/** Pendlingskortet på Hem: fokuståget stort och två följande på en rad, annars fyra avgångar i 2×2. */
-export function HomeTrains({ trains, serverNow, journey }: { trains: Train[]; serverNow: number; journey?: 'out' | 'home' }) {
+const PICK_KEY = 'pendling-fokus';
+type Pick = { ident: string; dep: number };
+
+/** Tåget man valt att ha i fokus (sparas i webbläsaren, gäller tills tåget gått eller man släpper det). */
+function usePick(): [Pick | null, (p: Pick | null) => void] {
+  const [pick, setPick] = useState<Pick | null>(null);
+  useEffect(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(PICK_KEY) ?? 'null') as Pick | null;
+      if (v && typeof v.ident === 'string' && typeof v.dep === 'number' && Date.now() - v.dep < 6 * 3600_000) setPick(v);
+    } catch { /* inget sparat val */ }
+  }, []);
+  const set = (p: Pick | null) => {
+    setPick(p);
+    try { if (p) localStorage.setItem(PICK_KEY, JSON.stringify(p)); else localStorage.removeItem(PICK_KEY); } catch { /* sparas inte */ }
+  };
+  return [pick, set];
+}
+
+/** "Välj": gör tåget till det som visas, övriga döljs (kan tas fram igen). */
+function PickButton({ t, onPick, className = '' }: { t: Train; onPick: (p: Pick) => void; className?: string }) {
+  return (
+    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onPick({ ident: t.ident, dep: t.dep }); }}
+      aria-label={`Visa bara tåget ${hhmm(departsAt(t))}`} className={`btn-row btn-row-quiet shrink-0 ${className}`}>
+      Välj
+    </button>
+  );
+}
+
+/**
+ * Pendlingskortet på Hem: fokuståget stort och två följande på en rad, annars fyra avgångar i 2×2.
+ * `plan` är resplanen (gå om …, benen med nästa sträcka markerad) för tåget `plan.ident`: den visas en gång, i fokuserutan för det
+ * tåget (annars ovanför listan). Väljer man ett tåg ("Välj") visas bara det; övriga döljs bakom "Visa övriga tåg".
+ */
+export function HomeTrains({ trains, serverNow, journey, plan }: { trains: Train[]; serverNow: number; journey?: 'out' | 'home'; plan?: { ident: string; node: React.ReactNode } }) {
   const now = useNow(serverNow, trains);
-  const fokus = focusTrain(trains, now);
+  const [pick, setPick] = usePick();
+  const [others, setOthers] = useState(false);
+  const picked = pick ? trains.find((t) => t.ident === pick.ident && t.dep === pick.dep && departsAt(t) >= now - 30_000) ?? null : null;
+  const fokus = picked ?? focusTrain(trains, now);
   const kommande = trains.filter((t) => t !== fokus && departsAt(t) >= now - 30_000);
+  const planHere = plan && fokus && plan.ident === fokus.ident ? plan.node : null;
+  // Planen för ett annat tåg än det som visas: ovanför listan, men inte när man valt ett tåg (då hör den till de dolda tågen).
+  const planTop = plan && !planHere && !picked ? <div className="border-b border-line pb-3">{plan.node}</div> : null;
+  const choose = (p: Pick | null) => { setPick(p); setOthers(false); };
   if (fokus) {
-    const efter = kommande.filter((t) => departsAt(t) > departsAt(fokus)).slice(0, 2);
+    const efter = picked ? kommande : kommande.filter((t) => departsAt(t) > departsAt(fokus)).slice(0, 2);
     return (
       <div className="flex flex-col gap-2">
-        <Focus t={fokus} now={now} journey={journey} />
-        {efter.length > 0 && (
+        {planTop}
+        <Focus t={fokus} now={now} journey={planHere ? undefined : journey} plan={planHere} />
+        {picked && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" aria-expanded={others} onClick={() => setOthers((o) => !o)} className="btn-row btn-row-light">
+              {others ? 'Dölj övriga tåg' : `Visa övriga tåg (${kommande.length})`}
+            </button>
+            <button type="button" onClick={() => choose(null)} className="btn-row btn-row-quiet">Släpp valet</button>
+          </div>
+        )}
+        {efter.length > 0 && (!picked || others) && (
           <ul className="grid grid-cols-1 gap-x-5 gap-y-1 lg:grid-cols-2">
             {efter.map((t) => (
-              <li key={t.id} className="min-w-0">
-                <TrainRoute ident={t.ident} className="flex min-w-0 items-baseline gap-2 text-[1rem] leading-tight">
+              <li key={t.id} className="flex min-w-0 items-center gap-2">
+                <TrainRoute ident={t.ident} className="flex min-w-0 grow items-baseline gap-2 text-[1rem] leading-tight">
                 <span className={`font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : departsAt(t))}</span>
                 <span className="truncate text-dim">{t.canceled ? '' : <MinutesTo at={departsAt(t)} className="tabular-nums" />}{t.track ? ` · spår ${t.track}` : ''}</span>
                 <span className="ml-auto shrink-0 text-[0.875rem] font-semibold" style={{ color: trainTone(t) === 'ok' ? MUTE : TONE_COLOR[trainTone(t)] }}>{trainStatus(t).text}</span>
                 </TrainRoute>
+                {!t.canceled && <PickButton t={t} onPick={choose} />}
               </li>
             ))}
           </ul>
@@ -96,25 +148,29 @@ export function HomeTrains({ trains, serverNow, journey }: { trains: Train[]; se
     );
   }
   return (
-    <ul className="grid grid-cols-1 gap-x-5 gap-y-2.5 lg:grid-cols-2">
-      {kommande.slice(0, 4).map((t) => {
-        const tone = trainTone(t);
-        return (
-          <li key={t.id} className="min-w-0">
-            <TrainRoute ident={t.ident} className="flex min-w-0 flex-col leading-tight">
-            <span className="flex items-baseline gap-2">
-              <span className={`text-[1.75rem] font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : departsAt(t))}</span>
-              <span className="ml-auto shrink-0 text-[0.9375rem] font-semibold" style={{ color: tone === 'ok' ? MUTE : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
-            </span>
-            <span className="truncate text-[0.9375rem] text-dim">
-              {!t.canceled && (dayOf(t.dep) !== dayOf(now) ? <span className="font-semibold text-fg">imorgon</span> : <MinutesTo at={departsAt(t)} className="font-semibold text-fg tabular-nums" />)}
-              {t.canceled ? '' : ' · '}{t.track ? `spår ${t.track}` : t.dest}
-            </span>
-            </TrainRoute>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="flex flex-col gap-2">
+      {planTop}
+      <ul className="grid grid-cols-1 gap-x-5 gap-y-2.5 lg:grid-cols-2">
+        {kommande.slice(0, 4).map((t) => {
+          const tone = trainTone(t);
+          return (
+            <li key={t.id} className="flex min-w-0 items-center gap-2">
+              <TrainRoute ident={t.ident} className="flex min-w-0 grow flex-col leading-tight">
+              <span className="flex items-baseline gap-2">
+                <span className={`text-[1.75rem] font-bold tabular-nums ${t.canceled ? 'line-through opacity-60' : ''}`}>{hhmm(t.canceled ? t.dep : departsAt(t))}</span>
+                <span className="ml-auto shrink-0 text-[0.9375rem] font-semibold" style={{ color: tone === 'ok' ? MUTE : TONE_COLOR[tone] }}>{trainStatus(t).text}</span>
+              </span>
+              <span className="truncate text-[0.9375rem] text-dim">
+                {!t.canceled && (dayOf(t.dep) !== dayOf(now) ? <span className="font-semibold text-fg">imorgon</span> : <MinutesTo at={departsAt(t)} className="font-semibold text-fg tabular-nums" />)}
+                {t.canceled ? '' : ' · '}{t.track ? `spår ${t.track}` : t.dest}
+              </span>
+              </TrainRoute>
+              {!t.canceled && <PickButton t={t} onPick={choose} />}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
