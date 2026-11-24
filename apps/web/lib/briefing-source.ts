@@ -1,6 +1,6 @@
 import 'server-only';
 import { humidityWarnings } from './alerts.ts';
-import { batteryLabel, briefingParts, nameDaysFor, parseClosings, sectionsOn, todayPlan, weatherPhrase, type HomeInput, type SchoolKid } from './briefing.ts';
+import { batteryLabel, briefingParts, nameDaysFor, parseClosings, parseTrainTimes, pickTrains, type TrainInfo, sectionsOn, todayPlan, weatherPhrase, type HomeInput, type SchoolKid } from './briefing.ts';
 import { calendarConfigured, loadCalendarServer } from './calendar-source.ts';
 import { addDays, dayInfo, dayOf, type Calendar } from './calendar-view.ts';
 import { direction, groupRoad } from './commute.ts';
@@ -83,12 +83,23 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
   const on = sectionsOn(process.env.BRIEFING, { vader: !!weather, tag: !!goal && viaPref, pendlar: !!goal, bil: carGoal, hemma: !!home, skola: school.length > 0, kalender: calendarConfigured() });
 
   let train: { dep: number; delay: number; leave: number } | null = null;
+  let trains: TrainInfo[] = [];
   if (on.has('tag') && goal && viaPref && commute) {
     const dir = direction(now);
-    const next = commute[dir].find((t) => !t.canceled && (t.est ?? t.dep) > now);
-    const j = next ? await journeyFor(next, dir === 'out', PLACE).catch(() => null) : null;
-    // Att "gå" i det förflutna vore missvisande: då hoppas meningen över.
-    if (next && j && j.leave >= now) train = { dep: next.dep, delay: next.delay, leave: j.leave };
+    // BRIEFING_TAG="06:57,07:04,07:34": de tågen (som inte hunnit gå) i stället för nästa tåg, morgnar mot jobbet.
+    const fixed = dir === 'out' ? pickTrains(commute.out, parseTrainTimes(process.env.BRIEFING_TAG), now) : [];
+    if (fixed.length) {
+      // Att "gå" i det förflutna vore missvisande: då sägs bara tågets läge.
+      trains = await Promise.all(fixed.map(async (t): Promise<TrainInfo> => {
+        const j = t.canceled ? null : await journeyFor(t, true, PLACE).catch(() => null);
+        return { dep: t.dep, delay: t.delay, canceled: t.canceled, leave: j && j.leave >= now ? j.leave : null };
+      }));
+    } else {
+      const next = commute[dir].find((t) => !t.canceled && (t.est ?? t.dep) > now);
+      const j = next ? await journeyFor(next, dir === 'out', PLACE).catch(() => null) : null;
+      // Att "gå" i det förflutna vore missvisande: då hoppas meningen över.
+      if (next && j && j.leave >= now) train = { dep: next.dep, delay: next.delay, leave: j.leave };
+    }
   }
 
   let car: { home: boolean; label: string; minutes: number; trafficMin: number; warnings: number } | null = null;
@@ -112,7 +123,7 @@ export async function loadBriefing(now = Date.now(), opts: { anonymous?: boolean
 
   return {
     name, weather: on.has('vader') ? weather : '',
-    parts: briefingParts({ train, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, nameDays, tomorrow, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
+    parts: briefingParts({ train, trains, first: plan.first, lastEnd: plan.lastEnd, homePlan, car, evening: plan.evening, nameDays, tomorrow, home, school, now, closings: parseClosings(process.env.BRIEFING_AVSLUT) }, on),
   };
 }
 
