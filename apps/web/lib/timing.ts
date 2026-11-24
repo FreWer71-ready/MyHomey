@@ -23,6 +23,8 @@ export function stopwatch(now: () => number = Date.now) {
       p.then(done, done);
       return p;
     },
+    /** Noterar att ett steg i en kedja är klart (ms sedan start). */
+    mark(name: string) { laps.push(`${name}=${now() - t0}`); },
     line: () => [...laps, `totalt=${now() - t0}`].join(' '),
   };
 }

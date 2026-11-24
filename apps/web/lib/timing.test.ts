@@ -29,4 +29,6 @@ test('stoppur: raden visar när varje del blev klar och totalen', async () => {
   t = 1500;
   assert.equal(await a, 1);
   assert.equal(sw.line(), 'hem=120 vader=120 totalt=500');
+  sw.mark('steg');
+  assert.equal(sw.line(), 'hem=120 vader=120 steg=500 totalt=500');
 });

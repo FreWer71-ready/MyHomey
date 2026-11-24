@@ -134,6 +134,17 @@ function Sparkline({ points }: { points: [number, number][] }) {
 export default async function HomePage() {
   // Allt hämtas samtidigt (inga steg efter varandra). Loggraden "Hem hem=… totalt=…" visar när varje del blev klar (ms).
   const sw = stopwatch();
+  // Det som inte beror på annat startas här, samtidigt med första omgången, och avvaktas där det används längre ned
+  // (annars väntar de i kö efter varandra). Stegen loggas som "Hem steg=ms … totalt=ms".
+  const calP = calendarConfigured() ? sw.lap('kalender', loadCalendarServer().catch(() => null)) : Promise.resolve(null);
+  const pingableP = sw.lap('ping', pingableNames());
+  const tvP = sw.lap('tv', loadTvStatuses().catch(() => []));
+  const locateP = sw.lap('plats', loadLocate().catch(() => ({ members: [], items: [] })));
+  const policeP = sw.lap('polis', loadPolice().catch(() => []));
+  const muniP = sw.lap('kommun', loadMunicipal().catch(() => []));
+  const wxP = sw.lap('varningar', loadWeather().then((w) => loadWarnings(w)));
+  const confirmedP = sw.lap('bekraftad', loadConfirmed().catch(() => null));
+  const positionP = sw.lap('positioner', locateP.then((l) => positionHistory(positionDevices(l.members, l.items, process.env.HOUSEHOLD ?? ''), Date.now() - 2 * 3600_000)).catch(() => []));
   const [h, prices, weather, nameDay, castPlaying, net, wine, commute, powerHist, energyHist, flows, vars] = await Promise.all([
     sw.lap('hem', loadHome()), sw.lap('priser', loadPrices()), sw.lap('vader', loadWeather()), sw.lap('namnsdag', loadNameDay()), sw.lap('spelas', loadNowPlaying()),
     sw.lap('nat', loadNet()), sw.lap('vin', loadWine()), sw.lap('pendling', loadCommute()),
@@ -141,7 +152,7 @@ export default async function HomePage() {
     // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), i bokstavsordning.
     sw.lap('floden', loadFlows().catch(() => [])), sw.lap('variabler', loadVariables().catch(() => ({} as Record<string, unknown>))),
   ]);
-  console.info(`Hem ${sw.line()}`);
+  sw.mark('data1');
   // Av/på-flöden visar läget från en Homey-variabel: QUICK_TOGGLES="Flöde=Variabel;…" (standard Auto On/Off=Auto På).
   const toggles = new Map((process.env.QUICK_TOGGLES ?? 'Auto On/Off=Auto På').split(';').flatMap((e) => {
     const [f, v] = e.split('=').map((x) => x.trim());
@@ -151,7 +162,7 @@ export default async function HomePage() {
     const v = toggles.get(name.toLowerCase());
     return v && v in vars ? { toggle: true, active: vars[v] === true || vars[v] === 'Ja' } : {};
   };
-  const pingable = await pingableNames();
+  const pingable = await pingableP;
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'sv');
   const quick: Action[] = [
     ...flows.map((f) => ({ id: f.id, name: f.name.trim(), kind: 'flow' as const, advanced: f.advanced, ...toggleOf(f.name.trim()) })),
@@ -177,12 +188,12 @@ export default async function HomePage() {
   const hide = new Set((process.env.QUICK_HIDE ?? '').split(';').map((x) => x.trim().toLowerCase()).filter(Boolean));
   const quickList = quickAll.filter((a) => !hide.has(a.name.trim().toLowerCase()));
   // TV: ADB-agentens status (vad som spelas i apparna) går före Homeys cast-data.
-  const tvRows = await loadTvStatuses().catch(() => []);
+  const tvRows = await tvP;
   const tvRaw = tvRows.find((r) => r.device_id !== 'the-frame') ?? null;
   // Råa appnamn översätts (t.ex. Playplus → Telia Play).
   const tvs2 = tvRaw ? { ...tvRaw, app_name: tvAppLabel(tvRaw.app_name) } : null;
   const frame = tvRows.find((r) => r.device_id === 'the-frame') ?? null;
-  const [wx, police, locate, muni] = await Promise.all([loadWarnings(weather), loadPolice().catch(() => []), loadLocate().catch(() => ({ members: [], items: [] })), loadMunicipal().catch(() => [])]);
+  const [wx, police, locate, muni] = await Promise.all([wxP, policeP, locateP, muniP]);
   // Life360 berikar närvaron: var den som är borta befinner sig (plats, "kör 70 km/h" eller gatan).
   // Avstånd hemifrån (fågelväg) för den som är borta enligt Life360; under 1 km visas inte.
   const awayKm = (m: { lat: number | null; lon: number | null }) => {
@@ -260,8 +271,9 @@ export default async function HomePage() {
   // Ulrika: kalendern i fokus under klockan, utetemperaturen stort uppe till höger.
   const calFocus = process.env.HOME_FOCUS === 'calendar';
   // Härnäst i kalendern (inom 36 h) – visas under klockan när inget spelas.
-  const nextUp = hasCal && !playing.length ? (await loadCalendarServer().catch(() => null))?.days
+  const nextUp = hasCal && !playing.length ? (await calP)?.days
     .flatMap((d) => d.timed).find((e) => e.start != null && e.start > now && e.start < now + 36 * 3600_000) ?? null : null;
+  sw.mark('kalender-nasta');
   const hasMirror = mirrorConfigured();
   // Helg: ingen tågpendling. Visa i stället vägläget mot nästa kalenderhändelse med plats (t.ex. Mariefred),
   // annars trafikläget i närområdet. Samma kortstorlek som pendlingen.
@@ -269,7 +281,7 @@ export default async function HomePage() {
   let trip: (Trip & { km: number }) | null = null;
   let weekendRoads: RoadGroup[] = [];
   if (weekend) {
-    const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
+    const cal = hasCal ? await calP : null;
     const t = cal ? nextTrip(cal.days, now) : null;
     const dest = t ? await geocode(t.location) : null;
     const dist = dest ? km(PLACE, dest) : 0;
@@ -283,6 +295,7 @@ export default async function HomePage() {
     }
   }
 
+  sw.mark('helg');
   // Nästa resa: kalenderhändelse med adress inom 8 h. TomTom räknar restid med trafik och när man bör åka.
   // Startpunkt: hemmet, eller dashboardens person (HOUSEHOLD = förnamnet i Life360) om hen är borta.
   // Utan kalenderhändelse: DEFAULT_DESTINATION (adress eller "lat,lon", t.ex. Ulrikas jobb) på arbetsdagar 05–12,
@@ -296,7 +309,7 @@ export default async function HomePage() {
   let tripEta: { trip: Trip & { km: number }; eta: Eta; fromHere: boolean; fallback: boolean; guessed: boolean; margin: number; key?: string; own?: number | null } | null = null;
   if (etaConfigured()) {
     const o = origin(locate.members);
-    const cal = hasCal ? await loadCalendarServer().catch(() => null) : null;
+    const cal = hasCal ? await calP : null;
     for (const e of cal ? upcoming(cal.days, now).slice(0, 3) : []) {
       const guess = e.location ? null : await guessPlace(e.title, PLACE);
       const dest = e.location ? (await geocode(e.location)) ?? (await guessPlace(e.location, PLACE))?.at ?? null : guess?.at ?? null;
@@ -346,6 +359,7 @@ export default async function HomePage() {
       if (transitHome && (o2.away || !o2.pos)) nextTransit = (await loadTransit(o2.away ? o2.pos! : tg.at, PLACE, now, 1, false, true))[0] ?? null;
     }
   }
+  sw.mark('kollektiv');
   const transitLate = nextTransit && commute ? tripDelay(nextTransit, [...commute.out, ...commute.home, ...commute.all]) : null;
   const leaveIn = nextTransit ? Math.round((nextTransit.dep - now) / 60_000) : 0;
   // Avklarat enligt positionen (✓ bara när positionen bekräftar), och om man ännu inte gått från startpunkten.
@@ -356,10 +370,11 @@ export default async function HomePage() {
   const me = process.env.HOUSEHOLD ?? '';
   const dirTrains = commute ? [...commute[dir], ...(commute.recent?.[dir] ?? [])] : [];
   // Användarens bekräftelse ("Jag är på tåget") går före positionen.
-  const confirmed = commute?.trains ? await loadConfirmed(now) : null;
+  const confirmed = commute?.trains ? await confirmedP : null;
   let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me, now), now, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
-  const guessed = !onTrain && commute?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, now, 2 * 3600_000), ...await positionHistory(positionDevices(locate.members, locate.items, me), now - 2 * 3600_000)], TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
+  const guessed = !onTrain && commute?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, now, 2 * 3600_000), ...await positionP], TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
+  sw.mark('tagslage');
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
   const allTrains = commute ? [...commute.out, ...commute.home, ...commute.all, ...(commute.recent?.out ?? []), ...(commute.recent?.home ?? [])] : [];
   const run = confirmed ? allTrains.find((t) => t.ident === confirmed.ident && t.dep === confirmed.dep) ?? pickRun(allTrains, confirmed.ident, now)
@@ -385,6 +400,7 @@ export default async function HomePage() {
   // Framme (positionen vid jobbet eller hemma, högst 10 min gammal): tillbaka till normalläget.
   const goalAt = riddenToWork ? transitGoal()?.at : PLACE;
   const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
+  sw.mark('vidare');
   const ridden = run && !atGoal && (!arrived || (onward.length > 0 && now <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
   const tripEnd = onward.at(-1)?.arr;
   // Resan sparas för ersättningslistan när tågläget hittat tåget (GPS eller gissat); bekräftade sparas av knappen.
@@ -510,6 +526,8 @@ export default async function HomePage() {
     </Card>
   );
 
+  sw.mark('klar');
+  console.info(`Hem ${sw.line()}`);
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
       {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
