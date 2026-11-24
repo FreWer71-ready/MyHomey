@@ -68,6 +68,10 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - **iPhone (Siris röst):** Genvägar-appen: "Hämta innehåll från URL" (`https://<dashboard>/<basePath>/api/briefing`, metod GET, rubrik `Authorization: Bearer <nyckel>`) → "Läs text högt"/"Visa resultat" (Siri läser resultatet när genvägen körs med rösten). Kan kopplas till automation, t.ex. när väckarklockan stoppas. **Android/surfplattor:** samma adress med Tasker (HTTP-förfrågan + "Säg"), HTTP Shortcuts, Fully Kiosk Browser (JavaScript-gränssnittets `textToSpeech`) eller ett Homey-flöde som läser upp på en Nest Hub; ren text är gjord för det.
 - Steg därefter vid behov: neural röst.
 
+## Spotify
+- Styrning via Spotify Web API (Connect, kräver Premium): kortet på Styrning (`/favoriter`, `SpotifyCard`), `/api/spotify` → edge-funktionen `spotify`. En Spotify-app för båda dashboards (callback `https://trand.se/<dashboard>/api/spotify/callback`), nycklar i Vault (`spotify_client_id`, `spotify_client_secret`), inloggning per hushåll i `spotify_auth`.
+- Cast-högtalare syns bara för Spotify när de nyligen använts från Spotify-appen.
+
 ## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
 - **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.
 - **Villkora på datan, inte på inställningar:** `data.length > 0 && …`. När data kommer in visas avsnittet av sig självt vid nästa laddning, utan kodändring.

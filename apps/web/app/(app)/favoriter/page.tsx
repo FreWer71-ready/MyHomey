@@ -6,6 +6,7 @@ import { LightControl } from '@/components/LightControl';
 import { houseActions } from '@/lib/house-actions';
 import { fmtLux, luxLabel } from '@/lib/lux';
 import { TvRemote } from '@/components/TvRemote';
+import { SpotifyCard } from '@/components/SpotifyCard';
 import { TrendArrow } from '@/components/TrendArrow';
 import { loadFlows, loadHome, loadHueScenes, loadNowPlaying, loadTv } from '@/lib/data';
 import { fmtTemp } from '@/lib/scale';
@@ -104,6 +105,9 @@ export default async function FavoritesPage({ searchParams }: { searchParams: Pr
           ) : <ActionTiles items={routines} cols={2} />}
         </section>
       )}
+
+      {/* Spotify: visas när appen är inställd (anslut-knapp tills hushållet loggat in). */}
+      <SpotifyCard />
 
       {cards.length + orphans.length > 0 ? (
         <section aria-label="Rum" className="grid items-start gap-4 md:grid-cols-2 lg:gap-6 xl:grid-cols-3">
