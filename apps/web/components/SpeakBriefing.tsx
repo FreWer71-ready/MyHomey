@@ -4,7 +4,7 @@ import { briefingText, pickVoice, speechChunks } from '@/lib/briefing';
 
 /**
  * "Läs upp rapport": webbläsarens svenska talsyntes (inga nycklar, ingen kostnad). Startar bara vid tryck (iPhone tillåter
- * inget annat), läser en mening i taget och byter till "Stoppa" medan den talar. Visas inte där talsyntes saknas.
+ * inget annat), köar meningarna och byter till "Stoppa" medan den talar. Visas inte där talsyntes saknas.
  * Texten byggs vid tryck (rätt hälsning och datum även om sidan stått öppen länge); `weather` = väderfras till första
  * meningen, `parts` = övriga meningar (se lib/briefing-source.ts).
  */
@@ -12,6 +12,7 @@ export function SpeakBriefing({ name, weather = '', parts = [], className = '' }
   const [supported, setSupported] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const run = useRef(0);
+  const utter = useRef<SpeechSynthesisUtterance[]>([]);
 
   useEffect(() => {
     setSupported('speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined');
@@ -21,28 +22,35 @@ export function SpeakBriefing({ name, weather = '', parts = [], className = '' }
   }, []);
   if (!supported) return null;
 
-  const stop = () => { run.current++; window.speechSynthesis.cancel(); setSpeaking(false); };
+  const stop = () => { run.current++; utter.current = []; window.speechSynthesis.cancel(); setSpeaking(false); };
   const speak = () => {
     const synth = window.speechSynthesis;
-    synth.cancel();
+    // Chrome: cancel() direkt före speak() kan svälja uppläsningen, och talet kan fastna i pausat läge.
+    if (synth.speaking || synth.pending) synth.cancel();
+    synth.resume();
     const id = ++run.current;
     const chunks = speechChunks(briefingText({ name, now: Date.now(), weather, parts }));
+    if (!chunks.length) return;
     const voice = pickVoice(synth.getVoices());
     setSpeaking(true);
-    // Första yttrandet startas direkt i trycket (krav på iPhone); resten när föregående är klart.
-    const next = (i: number) => {
-      if (id !== run.current) return;
-      if (i >= chunks.length) { setSpeaking(false); return; }
-      const u = new SpeechSynthesisUtterance(chunks[i]);
+    const done = () => { if (id === run.current) { utter.current = []; setSpeaking(false); } };
+    // Alla meningar köas direkt i trycket (krav på iPhone; webbläsaren läser dem i tur och ordning). Referenserna sparas,
+    // annars kan Chrome städa bort dem mitt i uppläsningen så att den tystnar efter första meningen.
+    utter.current = chunks.map((text, i) => {
+      const u = new SpeechSynthesisUtterance(text);
       u.lang = 'sv-SE';
       if (voice) u.voice = voice;
       u.rate = 0.95;
-      // Kort paus efter hälsningen (första yttrandet), sedan direkt vidare.
-      u.onend = () => (i === 0 ? setTimeout(() => next(1), 700) : next(i + 1));
-      u.onerror = () => { if (id === run.current) setSpeaking(false); };
-      synth.speak(u);
-    };
-    next(0);
+      if (i === chunks.length - 1) u.onend = done;
+      u.onerror = done;
+      return u;
+    });
+    utter.current.forEach((u) => synth.speak(u));
+    // Reserv om webbläsaren inte skickar onend: släpp "Stoppa" när inget längre talas.
+    const watch = setInterval(() => {
+      if (id !== run.current) return clearInterval(watch);
+      if (!synth.speaking && !synth.pending) { clearInterval(watch); done(); }
+    }, 1000);
   };
 
   return (
