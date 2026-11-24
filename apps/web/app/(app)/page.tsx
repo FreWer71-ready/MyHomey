@@ -42,6 +42,7 @@ import { HomeShell } from '@/components/HomeShell';
 import { AlertChips, type Alert } from '@/components/AlertChips';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
+import { stopwatch } from '@/lib/timing';
 import { geocode, loadArea, loadCommute, loadLocate, loadMunicipal, loadPolice, loadFlows, loadVariables, PLACE, loadHistory, loadHome, loadTvStatuses, loadNameDay, loadNet, loadNowPlaying, loadPrices, loadWarnings, loadWeather, loadWine } from '@/lib/data';
 import { joinNames } from '@/lib/days';
 import { compass } from '@/lib/home';
@@ -131,12 +132,16 @@ function Sparkline({ points }: { points: [number, number][] }) {
 }
 
 export default async function HomePage() {
-  const [h, prices, weather, nameDay, castPlaying, net, wine, commute, powerHist, energyHist] = await Promise.all([
-    loadHome(), loadPrices(), loadWeather(), loadNameDay(), loadNowPlaying(), loadNet(), loadWine(), loadCommute(),
-    loadHistory('power', '12h').catch(() => []), loadHistory('energy', '24h').catch(() => []),
+  // Allt hämtas samtidigt (inga steg efter varandra). Loggraden "Hem hem=… totalt=…" visar när varje del blev klar (ms).
+  const sw = stopwatch();
+  const [h, prices, weather, nameDay, castPlaying, net, wine, commute, powerHist, energyHist, flows, vars] = await Promise.all([
+    sw.lap('hem', loadHome()), sw.lap('priser', loadPrices()), sw.lap('vader', loadWeather()), sw.lap('namnsdag', loadNameDay()), sw.lap('spelas', loadNowPlaying()),
+    sw.lap('nat', loadNet()), sw.lap('vin', loadWine()), sw.lap('pendling', loadCommute()),
+    sw.lap('effekt', loadHistory('power', '12h').catch(() => [])), sw.lap('energi', loadHistory('energy', '24h').catch(() => [])),
+    // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), i bokstavsordning.
+    sw.lap('floden', loadFlows().catch(() => [])), sw.lap('variabler', loadVariables().catch(() => ({} as Record<string, unknown>))),
   ]);
-  // Snabbval = favoriterna i Homey: favoritflows och favoritmoods (stjärnmärkta i Homey-appen), i bokstavsordning.
-  const [flows, vars] = await Promise.all([loadFlows().catch(() => []), loadVariables().catch(() => ({} as Record<string, unknown>))]);
+  console.info(`Hem ${sw.line()}`);
   // Av/på-flöden visar läget från en Homey-variabel: QUICK_TOGGLES="Flöde=Variabel;…" (standard Auto On/Off=Auto På).
   const toggles = new Map((process.env.QUICK_TOGGLES ?? 'Auto On/Off=Auto På').split(';').flatMap((e) => {
     const [f, v] = e.split('=').map((x) => x.trim());

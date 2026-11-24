@@ -82,6 +82,8 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 ## Prestanda
 - Klientcache 30 s (`staleTimes`), `loading.tsx` vid sidhopp. Ändra inte utan skäl.
 - Hämta data via de cachade `load*`-funktionerna i `lib/data.ts` (React `cache()`). Sekundär data strömmas i `Suspense`.
+- **Rapporten** (`loadBriefing`): delarna hämtas samtidigt (kalendern startar först av allt), varje del har tidsgräns 5 s (`PART_MS`, `withDeadline` i `lib/timing.ts`; för långsam del hoppas över), gå-tiden på morgonen mot jobbet räknas lokalt (`leaveHomeFor`, ingen ResRobot; bara hemresan frågar ResRobot) och färdig rapport cachas 3 min i serverns minne per hushåll och väg (`REPORT_TTL_MS`; inte om någon del var sen). Hem hämtar alla sina läsningar i en enda `Promise.all`.
+- **Tidsloggar** i Vercel-loggen: `Rapport hem=… vader=… totalt=…` (ms sedan start när varje del blev klar, `sena=…` om en del överskred gränsen) och `Hem …` per sidladdning. Använd dem vid tröghet i stället för att gissa.
 - Inga extra nätanrop i middleware. Inloggning kontrolleras med `getClaims()`, hushållskontrollen är cachad 10 min.
 
 ## Databas och säkerhet

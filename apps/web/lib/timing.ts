@@ -1,0 +1,28 @@
+// Tidsgräns och stoppur för servern. Ren logik (testas i timing.test.ts).
+
+/**
+ * Svarar med `fallback` om `p` inte hunnit klart inom `ms` eller felar, så en seg källa aldrig håller upp mer än `ms`.
+ * `onLate` anropas högst en gång när fallback används. Det som är långsamt fortsätter i bakgrunden (och hamnar i cachen).
+ */
+export function withDeadline<T, F>(p: Promise<T>, ms: number, fallback: F, onLate?: () => void): Promise<T | F> {
+  return new Promise((resolve) => {
+    let done = false;
+    const end = (v: T | F, late: boolean) => { if (done) return; done = true; clearTimeout(timer); if (late) onLate?.(); resolve(v); };
+    const timer = setTimeout(() => end(fallback, true), ms);
+    p.then((v) => end(v, false), () => end(fallback, true));
+  });
+}
+
+/** Stoppur för loggrader: `lap(namn, löfte)` noterar när varje del blev klar (ms sedan start), `line()` ger "hem=120 vader=300 totalt=900". */
+export function stopwatch(now: () => number = Date.now) {
+  const t0 = now();
+  const laps: string[] = [];
+  return {
+    lap<T>(name: string, p: Promise<T>): Promise<T> {
+      const done = () => { laps.push(`${name}=${now() - t0}`); };
+      p.then(done, done);
+      return p;
+    },
+    line: () => [...laps, `totalt=${now() - t0}`].join(' '),
+  };
+}
