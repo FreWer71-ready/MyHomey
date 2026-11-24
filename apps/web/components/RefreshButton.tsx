@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { skickaUppdatera } from '@/lib/uppdatera';
 import { Icon } from './Icon';
 
-/** Hämtar om sidans data utan att lämna helskärm (fungerar även i installerad app). */
+/** Hämtar om sidans data utan att lämna helskärm (fungerar även i installerad app). Öppna dörr till dörr-planer hämtar ny plats och räknas om. */
 export function RefreshButton() {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -18,6 +19,7 @@ export function RefreshButton() {
 
   const refresh = () => {
     setSpin(true);
+    skickaUppdatera();
     start(() => router.refresh());
   };
 
