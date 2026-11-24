@@ -29,6 +29,10 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - "Ringa mobilen" (`NTFY_TOPICS`) ligger i varningsraden på Hem, direkt under klockan. Lägg den inte i Snabbval: kortet klipper innehåll på stor skärm.
 - Hemkomst sköts av Hues egen automation "Komma hem" (geofence i Hue-appen). Dashboardens egen variant är borttagen (kod och tabellen `arrival_lights`).
 
+## Spotify
+- Styrning via Spotify Web API (Connect, kräver Premium): kortet i Favoriter (`SpotifyCard`), `/api/spotify` → edge-funktionen `spotify`. En Spotify-app för båda dashboards (callback `https://trand.se/<dashboard>/api/spotify/callback`), nycklar i Vault (`spotify_client_id`, `spotify_client_secret`), inloggning per hushåll i `spotify_auth`.
+- Cast-högtalare syns bara för Spotify när de nyligen använts från Spotify-appen.
+
 ## Tomma avsnitt (gäller alla dashboards: `myhomey` och `ulrikasdashboard`)
 - **Visa inte avsnitt, kort, flikar eller rader utan data.** Inga "Ingen X-data"-texter, tomma diagram eller flikar som leder till en tom vy. Exempel: Historik visar bara de flikar (Fukt, Effekt, Energi, Tåg, Vin …) som hushållet har data för.
 - **Villkora på datan, inte på inställningar:** `data.length > 0 && …`. När data kommer in visas avsnittet av sig självt vid nästa laddning, utan kodändring.
