@@ -7,7 +7,9 @@ import { mergeSchoolDays, parseManualDays, parseSkolschema, parseSkolschemaConfi
 // sista slut med antal lektioner. Klasssidan hämtas högst en gång per två timmar (sajten uppdaterar högst var andra dag) och
 // bara den vanliga adressen, inte veckolänkarna (?v=), som deras robots.txt stänger av för automatik. Visar alltså aktuell
 // vecka (från lördagen nästa). Inga personuppgifter skickas; bara en neutral klientrubrik.
-export const skolschemaConfigured = () => parseSkolschemaConfig(process.env.SKOLSCHEMA).length > 0 || parseManualDays(process.env.SKOLSCHEMA_MANUELLT).length > 0;
+/** SKOLSCHEMA_AV=1 stänger av barnens skolscheman helt (Kalender-sidan, rapporten, kalenderkortet) utan att ta bort inställningarna (hos Fredrik: bara Ulrikas dashboard visar dem). */
+const schoolOff = () => /^(1|true|ja)$/i.test(process.env.SKOLSCHEMA_AV ?? '');
+export const skolschemaConfigured = () => !schoolOff() && (parseSkolschemaConfig(process.env.SKOLSCHEMA).length > 0 || parseManualDays(process.env.SKOLSCHEMA_MANUELLT).length > 0);
 
 /** Visa barnens skoldagar som poster i kalenderkortet på Hem (SKOLSCHEMA_KALENDER=1, t.ex. bara hos Ulrika). */
 export const skolschemaInCalendar = () => /^(1|true|ja)$/i.test(process.env.SKOLSCHEMA_KALENDER ?? '') && skolschemaConfigured();
@@ -41,6 +43,7 @@ const toCalendar = (days: SchoolDay[]): Calendar => ({
  * ordningen. Manuella dagar gäller före hämtade på samma datum. cal är null om inget gick att få (låst, nere eller sidan ändrad).
  */
 export async function loadSchoolCalendars(): Promise<{ name: string; cal: Calendar | null }[]> {
+  if (schoolOff()) return [];
   const sources = parseSkolschemaConfig(process.env.SKOLSCHEMA);
   const manual = parseManualDays(process.env.SKOLSCHEMA_MANUELLT);
   const names = [...sources.map((c) => c.name), ...[...new Set(manual.map((d) => d.name))].filter((n) => !sources.some((c) => c.name === n))];
