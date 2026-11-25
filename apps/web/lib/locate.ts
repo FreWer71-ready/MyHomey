@@ -69,10 +69,18 @@ export function buildLocate(devices: LocDevice[], caps: LocCap[], homeAt?: { lat
   return { members, items };
 }
 
-/** Kort text om var någon är när den inte är hemma: plats, "kör 70 km/h" eller gatan. */
+/** Kort text om var någon är när den inte är hemma: plats, "kör 70 km/h" eller "gata, ort". */
 export function whereText(m: Member): string | null {
   if (m.home) return null;
   if (m.driving) return `kör${m.speed ? ` ${Math.round(m.speed)} km/h` : ''}`;
   if (m.place) return m.place;
-  return m.address?.split(',')[0]?.trim() || null;
+  return streetTown(m.address);
+}
+
+/** "Fredsborgsgatan 24, 117 43 Stockholm, Sverige" → "Fredsborgsgatan 24, Stockholm" (gata, ort). */
+export function streetTown(address: string | null): string | null {
+  const parts = (address ?? '').split(',').map((x) => x.trim()).filter((x) => x && !/^(sverige|sweden)$/i.test(x));
+  if (!parts.length) return null;
+  const town = parts.length > 1 ? parts.at(-1)!.replace(/^\d{3}\s?\d{2}\s*/, '').trim() : '';
+  return town && town !== parts[0] ? `${parts[0]}, ${town}` : parts[0];
 }

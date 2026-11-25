@@ -74,6 +74,9 @@ test('ersättning Movingo: 50/75/100 % av snittpriset, SJ ansöks hos SJ', () =>
   assert.deepEqual(compensation(t(60), { type: '30', price: null }), { pct: 100, kr: null });
   assert.equal(claimAt(t(30, 'SJ Regional')), 'sj');
   assert.equal(claimAt(t(30)), 'mt');
+  assert.equal(claimAt(t(62, 'Snabbtåg tåg')), 'sj'); // SJ Snabbtåg (ResRobot), t.ex. tåg 523
+  assert.equal(claimAt(t(30, 'Mälartåg')), 'mt');
+  assert.equal(claimAt(t(30, 'Tåg i Bergslagen')), 'tib');
 });
 
 test('outcome: station med namn (Dagens resa) slås upp bland tågets stationer', () => {

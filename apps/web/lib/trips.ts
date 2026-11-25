@@ -81,6 +81,7 @@ export function claimText(t: Trip, ticket?: Ticket): string {
     `Ersättning för försenat tåg`,
     `Tåg: ${t.product ?? 'Tåg'} ${t.ident}, ${station(t.from)} – ${station(t.to)}`,
     `Datum: ${ymd(t.dep)}`,
+    `Tåget kördes av: ${OPERATORS[claimAt(t)].name} (ansökan till ${OPERATORS[claimAt(t)].where})`,
     `Planerad avgång: ${hm(t.dep)}, planerad ankomst: ${hm(t.arr)}`,
   ];
   if (t.actualArr != null) rows.push(`Faktisk ankomst: ${hm(t.actualArr)} (${t.delayMin ?? delayOf(t.arr, t.actualArr)} min försenad)`);
@@ -111,8 +112,31 @@ export const isMovingo = (v: string | undefined): v is MovingoType => !!v && v i
 /** Biljetten (MOVINGO_TYPE, MOVINGO_PRICE i kr); pris saknas → bara procent. */
 export type Ticket = { type: MovingoType; price: number | null };
 
-/** Var man ansöker: Mälartåg hos Mälardalstrafik, SJ:s avgångar (med Movingo) hos SJ. */
-export const claimAt = (t: Trip): 'mt' | 'sj' => (/\bSJ\b/i.test(t.product ?? '') ? 'sj' : 'mt');
+/**
+ * Vem som kört tåget avgör var man ansöker (Mälardalstrafik, "Var du ansöker om ersättning", hämtat 2026-11-25):
+ * Mälartåg → Mälardalstrafik. Movingo på SJ:s avgångar (SJ Regional, Snabbtåg/X 2000 m.fl.) → SJ Kundservice.
+ * Movingo på Tåg i Bergslagen → Länstrafiken Örebro eller VL (efter vilket län resan startar i).
+ * Mälardalstrafik betalar bara när ett Mälartåg är försenat.
+ */
+export type Operator = 'mt' | 'sj' | 'tib';
+export function claimAt(t: Trip): Operator {
+  const p = t.product ?? '';
+  if (/\bSJ\b|snabbtåg|x ?2000|intercity|nattåg|euronight/i.test(p)) return 'sj';
+  if (/tåg i bergslagen|\bTiB\b/i.test(p)) return 'tib';
+  return 'mt';
+}
+
+/** SJ: Movingo-ersättning och ansökan (sidorna finns i sj.se:s sitemap, hämtat 2026-11-25). */
+export const SJ_CLAIM_URL = 'https://www.sj.se/kundservice/fragor-och-svar/348/hur-ansoker-jag-om-ersattning-vid-forsening';
+export const SJ_MOVINGO_URL = 'https://www.sj.se/kundservice/fragor-och-svar/224/movingo---ersattning-vid-forsening';
+export const SJ_RIGHTS_URL = 'https://www.sj.se/om-sj/regler-och-villkor/rattigheter-vid-forsening';
+
+/** Var och hur man ansöker per bolag. claimUrl saknas när ansökan går till ett annat län beroende på resan. */
+export const OPERATORS: Record<Operator, { name: string; where: string; claimUrl: string | null; rulesUrl: string }> = {
+  mt: { name: 'Mälartåg', where: 'Mälardalstrafik', claimUrl: CLAIM_URL, rulesUrl: RULES_URL },
+  sj: { name: 'SJ', where: 'SJ Kundservice', claimUrl: SJ_CLAIM_URL, rulesUrl: SJ_MOVINGO_URL },
+  tib: { name: 'Tåg i Bergslagen', where: 'Länstrafiken Örebro eller VL (efter län där resan startar)', claimUrl: null, rulesUrl: RULES_URL },
+};
 
 /** Ersättningen för en resa: andel av snittpriset och belopp (kr, avrundat) om priset är känt. */
 export function compensation(t: Trip, ticket: Ticket): { pct: number; kr: number | null } {

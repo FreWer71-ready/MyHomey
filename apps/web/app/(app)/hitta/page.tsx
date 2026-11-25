@@ -4,7 +4,7 @@ import { PingPhoneButton } from '@/components/PingPhoneButton';
 import { pingableNames } from '@/app/actions/ping';
 import { loadLocate, PLACE } from '@/lib/data';
 import { km } from '@/lib/trip';
-import { whereText } from '@/lib/locate';
+import { streetTown, whereText } from '@/lib/locate';
 import { seenAgo } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
@@ -35,7 +35,7 @@ export default async function LocatePage() {
                 <span className="flex min-w-0 grow flex-col leading-tight">
                   <span className="truncate text-[1.0625rem] font-semibold">{m.first}{m.driving && <span className="ml-2 rounded-full bg-[#F0883E]/20 px-2 py-0.5 text-[0.875rem] text-[#F0883E]">Kör</span>}</span>
                   <span className="truncate text-[0.9375rem] text-dim">
-                    {m.home ? 'Hemma' : where ?? 'Borta'}{!m.home && m.lat != null && m.lon != null && km(PLACE, { lat: m.lat, lon: m.lon }) >= 1 ? ` · ${Math.round(km(PLACE, { lat: m.lat, lon: m.lon }) * 10) / 10} km`.replace('.', ',') : ''}{m.stay ? ` · ${m.stay}` : ''}{!m.home && m.address && where !== m.address.split(',')[0] ? ` · ${m.address}` : ''}
+                    {m.home ? 'Hemma' : where ?? 'Borta'}{!m.home && m.lat != null && m.lon != null && km(PLACE, { lat: m.lat, lon: m.lon }) >= 1 ? ` · ${Math.round(km(PLACE, { lat: m.lat, lon: m.lon }) * 10) / 10} km`.replace('.', ',') : ''}{m.stay ? ` · ${m.stay}` : ''}{!m.home && m.address && where !== streetTown(m.address) ? ` · ${streetTown(m.address)}` : ''}
                   </span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-0.5 text-[0.9375rem]">
