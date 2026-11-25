@@ -282,7 +282,7 @@ export default async function HomePage() {
   // Ulrika: kalendern i fokus under klockan, utetemperaturen stort uppe till höger.
   const calFocus = process.env.HOME_FOCUS === 'calendar';
   // Härnäst i kalendern (inom 36 h) – visas under klockan när inget spelas.
-  const nextUp = hasCal && !playing.length ? (await calP)?.days
+  const nextUp = hasCal ? (await calP)?.days
     .flatMap((d) => d.timed).find((e) => e.start != null && e.start > now && e.start < now + 36 * 3600_000) ?? null : null;
   sw.mark('kalender-nasta');
   const hasMirror = mirrorConfigured();
@@ -546,7 +546,12 @@ export default async function HomePage() {
   const hour = Number(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', hourCycle: 'h23' }).format(now));
   const greeting = hour >= 4 && hour < 10 ? 'God morgon' : hour >= 18 || hour < 4 ? 'God kväll' : 'Hej';
   const greetName = me.toLowerCase() === 'ulrika' ? 'Svensson' : me.toLowerCase() === 'fredrik' ? 'Fredrik' : null;
-  const nextStep = stepLeg ? { dep: stepLeg.dep, title: stepLeg.kind === 'walk' ? `gå till ${stepLeg.to}` : `ta ${stepLeg.label} → ${stepLeg.to}` } : null;
+  // Nästa steg: pågående/nästa sträcka i resplanen med nedräkning, annars nästa kalenderhändelse ("Möten på jobbet imorgon 07:00").
+  const nextStep: { title: string; dep?: number; when?: string; href: string } | null = stepLeg
+    ? { dep: stepLeg.dep, href: '/pendling', title: stepLeg.kind === 'walk' ? `gå till ${stepLeg.to}` : `ta ${stepLeg.label} → ${stepLeg.to}` }
+    : nextUp?.start != null
+      ? { href: '/kalender', title: shortTitle(nextUp.title), when: `${dayOf(nextUp.start) === dayOf(now) ? 'idag' : dayOf(nextUp.start) === addDays(dayOf(now), 1) ? 'imorgon' : dayInfo(dayOf(nextUp.start), now).main.toLowerCase()} ${hhmm(nextUp.start)}` }
+      : null;
 
   // Elpris: dygnets timmar som staplar (idag, Stockholmstid).
   const priceLevelText = price.level?.label ?? null;
@@ -628,16 +633,7 @@ export default async function HomePage() {
           </span>
           {/* Spelar nu under klockan: fyller ytan och låter varningarna ligga högst upp i mitten. */}
           <div className="min-w-0 basis-full overflow-hidden">
-            {/* Inget spelas: härnäst i kalendern på samma plats (annars blir ytan tom). */}
-            {playing.length ? <NowPlayingStrip items={playing} /> : nextUp && (
-              <div className="flex h-[4.5rem] min-w-0 items-center gap-3.5 rounded-[1.125rem] border border-line bg-card pl-3 pr-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name="calendar" size={24} /></span>
-                <span className="flex min-w-0 grow flex-col leading-tight">
-                  <span className="truncate text-[0.875rem] text-dim">Härnäst · {dayOf(nextUp.start!) === dayOf(now) ? 'idag' : dayOf(nextUp.start!) === addDays(dayOf(now), 1) ? 'imorgon' : dayInfo(dayOf(nextUp.start!), now).main.toLowerCase()} {hhmm(nextUp.start!)}</span>
-                  <span className="truncate text-[1.3125rem] font-bold">{shortTitle(nextUp.title)}{nextUp.location && <span className="text-[1rem] font-semibold text-dim"> · {placeLabel(nextUp.location)}</span>}</span>
-                </span>
-              </div>
-            )}
+            {playing.length > 0 && <NowPlayingStrip items={playing} />}
           </div>
         </header>
 
@@ -648,14 +644,14 @@ export default async function HomePage() {
               {greetName && <span className="text-[1.875rem] leading-tight font-bold">{greeting}, {greetName}</span>}
               {nextStep && (
                 <span className="text-[1.125rem] leading-snug text-fg/90">
-                  <span className="text-dim">Nästa steg:</span> {nextStep.title} <LeaveIn dep={nextStep.dep} serverNow={now} variant="in" />
+                  <span className="text-dim">Nästa steg:</span> {nextStep.title} {nextStep.dep != null ? <LeaveIn dep={nextStep.dep} serverNow={now} variant="in" /> : <span className="font-semibold">{nextStep.when}</span>}
                 </span>
               )}
             </>
           );
           const cls = 'order-2 flex min-w-0 flex-col gap-1 self-center px-1 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-5 lg:row-start-1 2xl:col-span-5 cols2:hidden';
           return nextStep
-            ? <Link href="/pendling" aria-label={`${greetName ? `${greeting}, ${greetName}. ` : ''}Nästa steg: ${nextStep.title}. Visa resan.`} className={`${cls} row-hit rounded-xl`}>{inner}</Link>
+            ? <Link href={nextStep.href} aria-label={`${greetName ? `${greeting}, ${greetName}. ` : ''}Nästa steg: ${nextStep.title}${nextStep.when ? ` ${nextStep.when}` : ''}.`} className={`${cls} row-hit rounded-xl`}>{inner}</Link>
             : <div className={cls}>{inner}</div>;
         })()}
 
