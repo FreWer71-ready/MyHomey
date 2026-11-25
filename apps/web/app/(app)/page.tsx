@@ -644,14 +644,14 @@ export default async function HomePage() {
               {greetName && <span className="text-[1.875rem] leading-tight font-bold">{greeting}, {greetName}</span>}
               {nextStep && (
                 <span className="text-[1.125rem] leading-snug text-fg/90">
-                  <span className="text-dim">Nästa steg:</span> {nextStep.title} {nextStep.dep != null ? <LeaveIn dep={nextStep.dep} serverNow={now} variant="in" /> : <span className="font-semibold">{nextStep.when}</span>}
+                  <span className="text-dim">Nästa händelse:</span> {nextStep.title} {nextStep.dep != null ? <LeaveIn dep={nextStep.dep} serverNow={now} variant="in" /> : <span className="font-semibold">{nextStep.when}</span>}
                 </span>
               )}
             </>
           );
           const cls = 'order-2 flex min-w-0 flex-col gap-1 self-center px-1 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-5 lg:row-start-1 2xl:col-span-5 cols2:hidden';
           return nextStep
-            ? <Link href={nextStep.href} aria-label={`${greetName ? `${greeting}, ${greetName}. ` : ''}Nästa steg: ${nextStep.title}${nextStep.when ? ` ${nextStep.when}` : ''}.`} className={`${cls} row-hit rounded-xl`}>{inner}</Link>
+            ? <Link href={nextStep.href} aria-label={`${greetName ? `${greeting}, ${greetName}. ` : ''}Nästa händelse: ${nextStep.title}${nextStep.when ? ` ${nextStep.when}` : ''}.`} className={`${cls} row-hit rounded-xl`}>{inner}</Link>
             : <div className={cls}>{inner}</div>;
         })()}
 
