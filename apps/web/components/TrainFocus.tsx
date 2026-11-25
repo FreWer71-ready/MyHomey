@@ -225,7 +225,7 @@ export function RiddenTrain({ t, guessed, confirmed }: { t: Train; guessed?: boo
         {confirmed ? <span className="text-dim"> · bekräftat</span> : guessed && <span className="text-dim"> · enligt senaste position vid stationen</span>}
       </span>
       <TrainProgress ident={t.ident} />
-      <div className="flex flex-wrap gap-2"><TrainRoute ident={t.ident} /><OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} confirmed={confirmed} label={confirmed ? undefined : 'Stämmer ✓'} /></div>
+      <div className="flex flex-wrap gap-2"><TrainRoute ident={t.ident} /><OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} confirmed={confirmed} label={confirmed ? undefined : 'Stämmer'} /></div>
     </div>
   );
 }

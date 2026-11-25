@@ -31,7 +31,7 @@ export function NearDepartures({ trains, now, guessed, className = '' }: { train
                 <span className="truncate font-semibold">{mine ? 'Gissat · ' : ''}{t.dest}</span>
                 <span className="truncate text-[0.875rem] text-dim">{t.product ?? 'Tåg'} {t.ident} · {gone ? 'har gått' : `om ${Math.max(1, Math.round((d - now) / 60_000))} min`}</span>
               </span>
-              <OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} label={mine ? 'Stämmer ✓' : 'Det här ✓'} />
+              <OnTrainButton ident={t.ident} dep={t.dep} arr={t.arr} label={mine ? 'Stämmer' : 'Det här'} />
             </li>
           );
         })}
