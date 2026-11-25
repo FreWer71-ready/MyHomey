@@ -33,10 +33,20 @@ export const fromRow = (r: Row): Trip => ({
 export type Ann = { LocationSignature: string; ActivityType?: string; Canceled?: boolean; AdvertisedTimeAtLocation?: string; TimeAtLocation?: string };
 
 /** Utfallet ur tågets passager: faktisk ankomst vid slutstationen (närmast planerad tid, högst 10 min ifrån) eller inställt. Null om det inte är känt än. */
-export function outcome(anns: Ann[], toSig: string, plannedArr: number): { actualArr: number | null; canceled: boolean } | null {
+/** "Kristianstad C", "Kristianstad Centralstation" och "Kristianstad" blir samma nyckel. */
+const stationKey = (n: string) => n.toLowerCase().replace(/\s+(c|central|centralstation|station)$/, '').trim();
+
+/**
+ * Faktisk ankomst vid slutstationen, närmast planerad tid. `toSig` är Trafikverkets signatur (pendlingen) eller stationens
+ * namn (Dagens resa, ur ResRobot): namnet slås upp i `names` (signatur → namn ur trafik-funktionen). Hittas ingen station
+ * används ankomsten med exakt den planerade tiden (samma tåg, samma minut).
+ */
+export function outcome(anns: Ann[], toSig: string, plannedArr: number, names: Record<string, string> = {}): { actualArr: number | null; canceled: boolean } | null {
   const diff = (a: Ann) => Math.abs(Date.parse(a.AdvertisedTimeAtLocation ?? '') - plannedArr);
-  const a = anns.filter((x) => x.LocationSignature === toSig && x.ActivityType === 'Ankomst' && x.AdvertisedTimeAtLocation && diff(x) <= 10 * 60_000)
-    .sort((x, y) => diff(x) - diff(y))[0];
+  const sigs = new Set([toSig, ...Object.entries(names).filter(([, n]) => stationKey(n) === stationKey(toSig)).map(([sig]) => sig)]);
+  const arrivals = anns.filter((x) => x.ActivityType === 'Ankomst' && x.AdvertisedTimeAtLocation);
+  const at = arrivals.filter((x) => sigs.has(x.LocationSignature) && diff(x) <= 10 * 60_000);
+  const a = (at.length ? at : arrivals.filter((x) => diff(x) < 60_000)).sort((x, y) => diff(x) - diff(y))[0];
   if (!a) return null;
   if (a.Canceled) return { actualArr: null, canceled: true };
   return a.TimeAtLocation ? { actualArr: Date.parse(a.TimeAtLocation), canceled: false } : null;

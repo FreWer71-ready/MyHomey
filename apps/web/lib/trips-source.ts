@@ -41,7 +41,7 @@ export async function settleTrips(now = Date.now()): Promise<void> {
     for (const r of data ?? []) {
       const arr = Date.parse(r.arr as string);
       const { data: d } = await sb.functions.invoke('trafik', { body: { train: r.ident } });
-      const o = outcome((d?.announcements ?? []) as Ann[], r.to_sig as string, arr);
+      const o = outcome((d?.announcements ?? []) as Ann[], r.to_sig as string, arr, (d?.names ?? {}) as Record<string, string>);
       const patch = o ? { settled: true, canceled: o.canceled, actual_arr: o.actualArr ? iso(o.actualArr) : null, delay_min: o.actualArr ? delayOf(arr, o.actualArr) : null }
         : now - arr > GIVE_UP ? { settled: true } : null;
       if (patch) await sb.from('train_trips').update(patch).eq('ident', r.ident).eq('dep', r.dep);
@@ -89,14 +89,14 @@ export type LegTrip = { ident: string; dep: number; arr: number; from: string; t
 
 /**
  * Sparar ett tåg som användaren själv bekräftat i Dagens resa (source = user). Stationerna sparas med namn (historiken visar
- * okända signaturer som de är). Förseningen är okänd (ingen Trafikverket-signatur att slå upp), så resan markeras som färdig
- * direkt och räknas aldrig för ersättning. Bekräftas ett tåg som tagits bort visas det igen.
+ * dem som de är); verklig ankomst och försening fylls i efteråt av settleTrips, som slår upp namnet bland tågets stationer.
+ * Bekräftas ett tåg som tagits bort visas det igen.
  */
 export async function logLeg(l: LegTrip): Promise<boolean> {
   try {
     const sb = await createClient();
     const { error } = await sb.from('train_trips').upsert(
-      { ident: l.ident, dep: iso(l.dep), arr: iso(l.arr), from_sig: l.from, to_sig: l.to, product: l.product, km: l.km, source: 'user', hidden: false, settled: true },
+      { ident: l.ident, dep: iso(l.dep), arr: iso(l.arr), from_sig: l.from, to_sig: l.to, product: l.product, km: l.km, source: 'user', hidden: false, settled: false },
       { onConflict: 'household_id,ident,dep' },
     );
     return !error;
