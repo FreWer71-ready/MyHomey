@@ -31,7 +31,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - Ersättning enligt Mälardalstrafik (Movingo): 20–39 min 50 %, 40–59 min 75 %, 60+ min 100 % av snittpriset per resa (`MOVINGO_TYPE`, `MOVINGO_PRICE` i Vercel). Ingen automatisk ansökan – appen ger belopp, underlag och länk.
 - **Vem som kört tåget avgör var man ansöker** (`claimAt`/`OPERATORS` i `lib/trips.ts`, Mälardalstrafiks "Var du ansöker om ersättning", kontrollerat 2026-11-25): Mälartåg → Mälardalstrafik (`CLAIM_URL`); Movingo på SJ:s avgångar (SJ Regional, Snabbtåg/X 2000 m.fl., känns igen på produktnamnet) → SJ Kundservice (`SJ_CLAIM_URL`, `SJ_MOVINGO_URL`, sidorna finns i sj.se:s sitemap); Tåg i Bergslagen → Länstrafiken Örebro eller VL efter startlän (ingen länk). Mälardalstrafik ersätter bara försenade Mälartåg; beloppet för SJ-tåg räknas med Movingo-nivåerna och visas som uppskattning. sj.se renderas i webbläsaren och går inte att läsa automatiskt, så SJ:s exakta nivåer är inte verifierade.
 - Konstanter i `lib/trips.ts`: `CLAIM_MIN = 20` (ersättning från 20 min eller mer), `DELAYED_MIN = 5`, `ROUTE_KM = 109`. Ändra där.
-- Resor med 20 min försening eller mer visas i "Begär ersättning" med status och kopierbart underlag.
+- Resor med 20 min försening eller mer visas i "Begär ersättning" med status och kopierbart underlag. Utbetalda och avslagna ärenden döljs (`claimDone`) och ligger hopfällda under "Avslutade (N)", där statusen kan ändras tillbaka.
 
 ## Hem: färgspråk och tillstånd (UX 2026-11-25)
 - **Hover, fokus och status är tre skilda tillstånd.** Hover (`a.surface:hover`, `.row-hit:hover`, `.btn:hover`) ändrar bara yta, kant och skugga, aldrig storlek eller läge. Fokus (`:focus-visible`) är en 2 px bärnstensring. Status är färg/ram: bärnsten (`.next-action`, `.row-warn`) = viktigt nu/agera snart, röd (`.row-bad`) = åtgärd krävs, grönt bara bekräftat friskt (liten prick, `Okay`), blått är kontext. Gul ram betyder alltså aldrig "muspekaren är här".
@@ -94,7 +94,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - `BirthdayOverlay` (i layouten) visar "Grattis / på födelsedagen" med namnet i gult under, med fyrverkerier, konfetti, blommor och champagne i cirka 5 s (avslutas med ett finalsalvo av fyrverkerier) vid varje full omladdning under dagen, inte vid sidbyte eller automatisk uppdatering. Tryck stänger direkt. Utan `BIRTHDAYS` visas inget.
 
 ## Version
-- **Semantisk version `V<stor>.<mindre>.<fix>`, utan PR-nummer** (nu V1.3.1). Ett enda ställe: `const version` i `next.config.ts` (visas via `lib/version.ts` ovanför huset i sidomenyn, i mobilen längst ned: "MyHomey V1.3.1").
+- **Semantisk version `V<stor>.<mindre>.<fix>`, utan PR-nummer** (nu V1.3.2). Ett enda ställe: `const version` i `next.config.ts` (visas via `lib/version.ts` ovanför huset i sidomenyn, i mobilen längst ned: "MyHomey V1.3.2").
 - **Claude höjer versionen i varje ändring, före commit** (samma PR som ändringen): **fix** (tredje siffran, +1) = buggar och små rättelser; **mindre** (andra siffran +1, fix nollas) = mindre omdisponering och justeringar i befintlig funktion; **stor** (första siffran +1, övriga nollas) = stora ändringar och nya funktioner med stor påverkan. Vid tveksamhet: välj den lägre nivån och säg vilken som valdes i svaret. Rena dokumentationsändringar (bara CLAUDE.md) höjer inte versionen. **Vid publicering anges den nya versionen (inte PR-numret) i commit- och PR-rubriken (`… (V1.3.0)`) och i svaret till användaren.**
 
 ## Prestanda

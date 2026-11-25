@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { TONE_COLOR, station } from '@/lib/commute';
 import { hhmm } from '@/lib/prices';
-import { CLAIM_MIN, DELAYED_MIN, MOVINGO_LABEL, OPERATORS, RULES_URL, SJ_MOVINGO_URL, claimAt, claimText, claimable, compensation, stats, type Ticket, type Trip } from '@/lib/trips';
+import { CLAIM_MIN, DELAYED_MIN, MOVINGO_LABEL, OPERATORS, RULES_URL, SJ_MOVINGO_URL, claimAt, claimDone, claimText, claimable, compensation, stats, type Ticket, type Trip } from '@/lib/trips';
 import { ClaimChips, CopyClaim, DeleteTrip } from './TripButtons';
 
 export const RANGES = { '30d': { label: '30 dagar', days: 30 }, '365d': { label: '1 år', days: 365 }, all: { label: 'Allt', days: Infinity } } as const;
@@ -28,7 +28,9 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
   const since = Date.now() - RANGES[range].days * 86400_000;
   const inRange = trips.filter((t) => t.dep >= since);
   const s = stats(inRange);
-  const claims = trips.filter(claimable);
+  // Utbetalda och avslagna döljs; de ligger kvar under "Avslutade" så att statusen kan ändras.
+  const claims = trips.filter((t) => claimable(t) && !claimDone(t));
+  const done = trips.filter((t) => claimable(t) && claimDone(t));
   const open = claims.filter((t) => t.claim === 'none').length;
   const tiles: [string, string, string?][] = [
     ['Resor', String(s.trips)],
@@ -65,7 +67,7 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
         </section>
       )}
 
-      {claims.length > 0 && <section aria-label="Ersättning" className="flex flex-col gap-2 rounded-[1.5rem] glass p-3">
+      {(claims.length > 0 || done.length > 0) && <section aria-label="Ersättning" className="flex flex-col gap-2 rounded-[1.5rem] glass p-3">
         <h2 className="flex flex-wrap items-baseline justify-between gap-2 text-xl font-extrabold">
           Begär ersättning
           <span className="text-[0.875rem] font-bold text-dim">{open > 0 ? `${open} att begära` : 'inget att begära'} · försenad {CLAIM_MIN} min eller mer</span>
@@ -120,6 +122,19 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
             </li>
           ))}
         </ul>
+        {done.length > 0 && (
+          <details className="text-[0.9375rem]">
+            <summary className="cursor-pointer font-bold text-dim">Avslutade ({done.length})</summary>
+            <ul className="mt-2 flex flex-col gap-2">
+              {done.map((t) => (
+                <li key={`${t.ident}-${t.dep}`} className="flex flex-wrap items-center gap-2 rounded-2xl bg-glass-2 px-3 py-2">
+                  <span className="min-w-0 grow truncate">{date(t.dep)} · {t.product ?? 'Tåg'} {t.ident} · +{t.delayMin} min</span>
+                  <ClaimChips ident={t.ident} dep={t.dep} claim={t.claim} />
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </section>}
 
       {inRange.length > 0 && (
