@@ -30,6 +30,11 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - Konstanter i `lib/trips.ts`: `CLAIM_MIN = 20` (ersättning från 20 min eller mer), `DELAYED_MIN = 5`, `ROUTE_KM = 109`. Ändra där.
 - Resor med 20 min försening eller mer visas i "Begär ersättning" med status och kopierbart underlag.
 
+## Hem: färgspråk och tillstånd (UX 2026-11-25)
+- **Hover, fokus och status är tre skilda tillstånd.** Hover (`a.surface:hover`, `.row-hit:hover`, `.btn:hover`) ändrar bara yta, kant och skugga, aldrig storlek eller läge. Fokus (`:focus-visible`) är en 2 px bärnstensring. Status är färg/ram: bärnsten (`.next-action`, `.row-warn`) = viktigt nu/agera snart, röd (`.row-bad`) = åtgärd krävs, grönt bara bekräftat friskt (liten prick, `Okay`), blått är kontext. Gul ram betyder alltså aldrig "muspekaren är här".
+- Ytor: `.surface` (#1D222A, 16 px, kant 8 %), `.surface-primary` för Nu och nästa (Pendling). Bakgrund #101318 med dämpad slöja. Knappar `.btn` (min 48 px). Allt i `globals.css`; tokens `--color-card`, `--color-dim` (sekundär), `--color-mute` (metadata).
+- Hem: varningsraden `AlertBar` över hela bredden (en dominerande varning, övriga dämpade, resten bakom "+N"), "Nästa steg" i mitten av rad 1, Hemmet som platta rader med avvikelser överst (`rows` i `page.tsx`), Elpris som eget kort, Snabbval längst ned (Kväll, Släck, Städ, Chill + Alla kontroller; `QUICK_PICK`). Ingen kontinuerlig dekorationsrörelse.
+
 ## Hue (Ulrika)
 - Hallsensorns automation ligger i Hue-bryggan (behavior_instance "Sensor hall"): rörelse 08–22 tänder zonen "Alla rum" (scen "Ljust", allt utom "Använts ej"), 22–08 gör ingenting, ingen automatisk släckning. Ändras i Hue-appen eller via CLIP v2.
 - Sidan på adressen `/favoriter` heter **Styrning** (rubrik och menyflik) i alla hushåll. Styrning: Rutiner i fyra kolumner (`ActionTiles` layout `tiles`) med plats för 8 rutiner för hela hemmet, "Mys i hela huset" och "Släck alla lampor" först. Fler fälls ut under "Fler rutiner".

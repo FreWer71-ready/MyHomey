@@ -43,7 +43,7 @@ export function iconFor(name: string): IconName {
  * Knappar för moods, flows och Hue-scener i samma stil: ikon (eller Hue-färger), namn och typ.
  * layout="grid" för Rutiner (rutor), "list" för rummens kort (rader). Status visas direkt på knappen.
  */
-export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Action[]; layout?: 'grid' | 'list' | 'compact' | 'tiles'; cols?: 1 | 2 }) {
+export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Action[]; layout?: 'grid' | 'list' | 'compact' | 'tiles' | 'bar'; cols?: 1 | 2 }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [state, setState] = useState<{ id: string; status: 'busy' | 'ok' | 'error'; msg?: string } | null>(null);
@@ -68,24 +68,26 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className={layout === 'grid' ? 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4' : layout === 'compact' ? 'grid grid-cols-2 gap-2' : layout === 'tiles' ? 'grid grid-cols-4 gap-2' : cols === 2 ? 'grid grid-cols-1 gap-x-8 md:grid-cols-2' : 'flex flex-col'}>
+      <ul className={layout === 'grid' ? 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4' : layout === 'compact' ? 'grid grid-cols-2 gap-2' : layout === 'tiles' ? 'grid grid-cols-4 gap-2' : layout === 'bar' ? 'flex flex-wrap gap-2' : cols === 2 ? 'grid grid-cols-1 gap-x-8 md:grid-cols-2' : 'flex flex-col'}>
         {items.map((a) => {
           const st = state?.id === a.id ? state.status : null;
           return (
-            <li key={`${a.kind}-${a.id}`} className={layout === 'list' ? `border-b border-line last:border-b-0 ${cols === 2 ? 'md:[&:nth-last-child(2):nth-child(odd)]:border-b-0' : ''}` : ''}>
+            <li key={`${a.kind}-${a.id}`} className={layout === 'bar' ? `min-w-0 ${a.toggle ? 'max-lg:basis-full' : 'max-lg:basis-[calc(50%-0.25rem)]'} lg:flex-1` : layout === 'list' ? `border-b border-line last:border-b-0 ${cols === 2 ? 'md:[&:nth-last-child(2):nth-child(odd)]:border-b-0' : ''}` : ''}>
               <button
                 type="button" onClick={() => run(a)} disabled={state?.status === 'busy'} aria-pressed={a.toggle ? on(a) : undefined}
                 className={`relative flex w-full min-w-0 ${layout === 'tiles' ? 'text-center' : 'text-left'} ${layout === 'compact' ? 'gap-2' : layout === 'tiles' ? 'gap-1' : 'gap-3'} transition-colors ${
- layout === 'grid'
+ layout === 'bar'
+ ? 'btn h-full min-h-14 w-full justify-center px-3'
+ : layout === 'grid'
  ? 'h-[6.75rem] flex-col items-start justify-center overflow-hidden rounded-[1rem] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[4.75rem] sm:flex-row sm:items-center sm:px-4'
  : layout === 'tiles'
  ? 'h-full min-h-[4.75rem] flex-col items-center justify-center rounded-[0.875rem] border border-line bg-white/[0.04] px-1 py-2 hover:bg-white/[0.08]'
  : layout === 'compact'
  ? 'h-full min-h-12 items-center rounded-[0.875rem] border border-line bg-white/[0.04] px-2.5 py-2 hover:bg-white/[0.08]'
  : 'h-14 items-center'
- } ${a.toggle ? (on(a) ? 'sel !border-transparent' : '!bg-transparent') : ''} ${st === 'busy' ? 'animate-pulse' : ''}`}
+ } ${a.toggle && layout !== 'bar' ? (on(a) ? 'sel !border-transparent' : '!bg-transparent') : ''} ${st === 'busy' ? 'animate-pulse' : ''}`}
               >
-                <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' || layout === 'tiles' ? `h-6 min-w-6 ${a.toggle && on(a) ? '' : 'text-dim'}` : 'size-10 rounded-[0.75rem] bg-white/[0.06]'}`}>
+                <span className={`flex shrink-0 items-center justify-center ${layout === 'compact' || layout === 'tiles' || layout === 'bar' ? `h-6 min-w-6 ${a.toggle && on(a) ? '' : 'text-dim'}` : 'size-10 rounded-[0.75rem] bg-white/[0.06]'}`}>
                   {a.kind === 'hue' && a.colors?.length ? (
                     <span className="flex -space-x-1.5">
                       {a.colors.slice(0, 3).map((c, i) => <span key={i} className="size-3.5 rounded-full ring-2 ring-[#131A22]" style={{ background: c }} />)}
@@ -93,11 +95,12 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
                   ) : <Icon name={a.toggle ? (on(a) ? 'toggle' : 'toggleOff') : iconFor(a.name)} size={layout === 'compact' ? 20 : 24} />}
                 </span>
                 <span className={`flex min-w-0 grow flex-col leading-tight ${layout === 'tiles' ? 'w-full grow-0 items-center' : ''}`}>
-                  <span className={`font-semibold ${layout === 'grid' ? 'text-[1.0625rem] line-clamp-1 sm:line-clamp-2' : layout === 'compact' ? 'text-[0.9375rem] break-words hyphens-auto' : layout === 'tiles' ? 'text-[0.8125rem] leading-tight break-words hyphens-auto line-clamp-2' : 'text-[1.0625rem] truncate'}`}>{a.name}</span>
-                  <span className={`truncate text-[0.9375rem] text-dim ${layout === 'compact' || layout === 'tiles' ? 'hidden' : ''}`}>
+                  <span className={`font-semibold ${layout === 'grid' ? 'text-[1.0625rem] line-clamp-1 sm:line-clamp-2' : layout === 'compact' ? 'text-[0.9375rem] break-words hyphens-auto' : layout === 'tiles' ? 'text-[0.8125rem] leading-tight break-words hyphens-auto line-clamp-2' : layout === 'bar' ? 'text-[1rem] line-clamp-1' : 'text-[1.0625rem] truncate'}`}>{a.name}</span>
+                  <span className={`truncate text-[0.9375rem] text-dim ${layout === 'compact' || layout === 'tiles' || layout === 'bar' ? 'hidden' : ''}`}>
                     {KIND[a.kind]}{a.dynamic ? ' · dynamisk' : ''}{a.active ? ' · på' : ''}
                   </span>
                 </span>
+                {layout === 'bar' && a.toggle && <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: on(a) ? '#3FB950' : 'transparent', boxShadow: on(a) ? undefined : 'inset 0 0 0 2px #77818F' }} />}
                 {st && st !== 'busy' && (
                   <span className={`text-[1.25rem] font-bold ${layout === 'grid' ? 'absolute top-2 right-3' : layout === 'tiles' ? 'absolute top-0.5 right-1.5 text-[1rem]' : 'shrink-0'}`} aria-live="polite">
                     {st === 'ok' ? <span className="text-ok">✓</span> : <span className="text-danger">!</span>}

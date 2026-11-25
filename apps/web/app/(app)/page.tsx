@@ -41,7 +41,8 @@ import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
 import { HomeTrains, RiddenTrain } from '@/components/TrainFocus';
 import { tvAppLabel } from '@/lib/media';
 import { HomeShell } from '@/components/HomeShell';
-import { AlertChips, type Alert } from '@/components/AlertChips';
+import { AlertBar, AlertChips, type Alert } from '@/components/AlertChips';
+import { nextLegIndex } from '@/lib/transit-view';
 import { weatherAlerts } from '@/components/WarningBanners';
 import { humidityWarnings, rainWarning } from '@/lib/alerts';
 import { stopwatch } from '@/lib/timing';
@@ -73,20 +74,20 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 /** Pendling/helgtrafik: höjd efter innehåll men högst halva kolumnen; kalendern tar resten. */
 const COMMUTE_H = 'lg:max-h-[calc(50%-0.75rem)]';
 
-/** Kort: helt kort (#131A22), ingen gradient, samma inre marginal överallt. */
 /**
- * Kort på Hem. Med href blir hela kortet en länk: pilen › visar det (WCAG 2.4.4), och `label` ger skärmläsare ett kort
- * namn i stället för kortets hela text.
+ * Kort på Hem (`surface`: #1D222A, kant 8 %, radie 16 px, bred dämpad skugga). Med href blir hela kortet en länk: pilen › visar
+ * det (WCAG 2.4.4), `label` ger skärmläsare ett kort namn. Hover ändrar bara yta/kant/skugga (aldrig storlek eller läge).
+ * `primary` = Nu och nästa: något ljusare yta, ingen färgad glöd.
  */
-function Card({ title, icon, href, label, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; label?: string; className?: string; children: React.ReactNode }) {
+function Card({ title, icon, href, label, primary, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; label?: string; primary?: boolean; className?: string; children: React.ReactNode }) {
   const Box = href ? Link : 'section';
   return (
-    <Box href={href!} aria-label={href ? label : undefined} data-live="" className={`relative flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:p-6 ${className}`}>
+    <Box href={href!} aria-label={href ? label : undefined} data-live="" className={`surface ${primary ? 'surface-primary' : ''} relative flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-5 lg:p-6 ${className}`}>
       {title && (
         <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
           {icon && <Icon name={icon} size={22} />}
           {title}
-          {href && <span aria-hidden="true" className="ml-auto pl-2 text-[1.25rem] leading-none">›</span>}
+          {href && <span aria-hidden="true" className="chev ml-auto pl-2 text-[1.25rem] leading-none text-mute">›</span>}
         </h2>
       )}
       {children}
@@ -96,28 +97,34 @@ function Card({ title, icon, href, label, className = '', children }: { title?: 
   );
 }
 
+/** Frisk status: liten grön prick och dämpad text (grönt bara för bekräftat friskt). */
+const Okay = ({ children }: { children: React.ReactNode }) => (
+  <span className="flex items-center gap-1.5 text-[1rem] font-semibold text-fg"><span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: C.ok }} />{children}</span>
+);
+
 /**
- * Rad i Hemmet, samma upplägg överallt: ikon · rubrik med undertext · värde med enhet under.
- * Värdekolumnen har fast bredd och är högerjusterad, så att värdena står rakt under varandra.
+ * Rad i Hemmet: platt, bara en tunn avdelare (ingen egen yta). Ikon · rubrik med undertext · värde med enhet under.
+ * Normalt är raden dämpad; `state` ("warn" bärnsten, "bad" röd) ger avvikelsen egen yta, färgad vänsterkant och färgat värde.
  */
-function Row({ icon, label, value, unit, detail, color, href, extra }: {
-  icon: IconName; label: string; value: React.ReactNode; unit?: string; detail?: React.ReactNode; color?: string; href?: string; extra?: React.ReactNode;
+function Row({ icon, label, value, unit, detail, color, href, extra, state }: {
+  icon: IconName; label: string; value: React.ReactNode; unit?: string; detail?: React.ReactNode; color?: string; href?: string; extra?: React.ReactNode; state?: 'warn' | 'bad';
 }) {
   const Box = href ? (href.startsWith('http') ? 'a' : Link) : 'div';
   const ext = href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+  const tone = state === 'bad' ? C.bad : state === 'warn' ? C.warn : color;
   return (
-    <Box href={href!} {...ext} className="flex h-[var(--row-h,3.75rem)] min-w-0 shrink-0 lg:h-[4.25rem] cols2:h-auto cols2:min-h-[4.25rem] cols2:lg:h-auto cols2:py-2 items-center gap-3 border-b border-line last:border-b-0">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-[0.75rem] bg-white/[0.06]"><Icon name={icon} size={24} /></span>
+    <Box href={href!} {...ext} className={`${href ? 'row-hit' : ''} ${state ? `row-${state}` : ''} -mx-2 flex min-h-[var(--row-h,3.5rem)] min-w-0 shrink-0 items-center gap-3 border-b border-white/[0.07] px-2 py-1.5 last:border-b-0 lg:min-h-[4rem] cols2:min-h-[4.25rem]`}>
+      <span className={`flex size-9 shrink-0 items-center justify-center ${state ? '' : 'text-dim'}`} style={tone ? { color: tone } : undefined}><Icon name={icon} size={24} /></span>
       <span className="flex min-w-0 grow flex-col gap-0.5 leading-tight">
         <span className="truncate text-[1.0625rem] font-semibold text-fg">{label}</span>
-        {detail && <span className="truncate text-[1rem] text-dim">{detail}</span>}
+        {detail && <span className="truncate text-[0.9375rem] text-dim">{detail}</span>}
       </span>
       {extra}
-      <span className="flex w-[5.75rem] shrink-0 flex-col items-end leading-none">
-        <span className="text-[1.875rem] font-bold tracking-tight tabular-nums" style={{ color }}>{value}</span>
-        {unit && <span className="mt-1 text-[0.875rem] text-dim">{unit}</span>}
+      <span className="flex min-w-[5.75rem] shrink-0 flex-col items-end leading-none whitespace-nowrap">
+        <span className={`${state ? 'text-[1.75rem] font-bold' : 'text-[1.375rem] font-semibold'} tracking-tight tabular-nums`} style={tone ? { color: tone } : undefined}>{value}</span>
+        {unit && <span className="mt-1 text-[0.8125rem] text-mute">{unit}</span>}
       </span>
-      {href && <span className="shrink-0 text-[1.375rem] text-dim" aria-hidden="true">›</span>}
+      {href && <span className="chev shrink-0 text-[1.25rem] text-mute" aria-hidden="true">›</span>}
     </Box>
   );
 }
@@ -510,8 +517,6 @@ export default async function HomePage() {
   const roadNote = roads.length ? `Väg 56/E18: ${roads.length === 1 ? roads[0].type.toLowerCase() : `${roads.length} ärenden`}` : 'väg 56/E18 fri';
   const trainNote = commute?.trains ? (trains.some((t) => trainTone(t) !== 'ok') ? 'tåg med förseningar' : 'tågen i tid') : null;
 
-  // Antal rader i Hemmet: fler än sex ger lite lägre rader så att allt ryms på plattan.
-  const rowCount = [tempAvg != null, luxBest != null, h.openings.length > 0, !!net, h.lightsTotal > 0, h.powerMeters + h.powerEstimated > 0, !!price.now, !!wine].filter(Boolean).length;
   // Närvaro: Homeys närvaroappar plus Life360-medlemmar som inte redan finns med (matchas på förnamn).
   const first = (n: string) => n.split(/\s+/)[0].toLowerCase();
   // Life360 går före Smart Presence: matchad person får Life360:s hemma/borta.
@@ -521,27 +526,93 @@ export default async function HomePage() {
       .map((m) => ({ id: m.id, name: m.first, present: m.home, since: null as string | null, src: 'L360' })),
   ].sort((x, y) => Number(y.present) - Number(x.present));
 
-  const snabbval = quickList.length > 0 && (
-    <Card title="Snabbval" icon="star" className="order-3 lg:order-none lg:min-h-0">
-      <div className="flex min-h-0 flex-col overflow-y-auto">
-        <ActionTiles items={hueMode ? quickList.slice(0, 8) : quickList} layout={hueMode ? 'tiles' : 'compact'} />
-      </div>
-      {hueMode && quickList.length > 8 && (
-        <Link href="/favoriter" className="flex min-h-11 items-center justify-between text-[1rem] font-semibold text-dim">
-          Fler under Styrning<span aria-hidden="true">›</span>
-        </Link>
-      )}
-    </Card>
+  // Snabbval: bara de mest använda (Kväll, Släck alla, Städ, Chill) + "Alla kontroller"; Auto På/Av som status sist.
+  const QUICK_PICK = [/kväll/i, /släck/i, /städ/i, /chill|mys/i];
+  const picked: Action[] = [];
+  for (const re of QUICK_PICK) { const f = quickList.find((a) => !a.toggle && re.test(a.name) && !picked.includes(a)); if (f) picked.push(f); }
+  const quickShown = [...(picked.length >= 2 ? picked : quickList.filter((a) => !a.toggle).slice(0, 4)), ...quickList.filter((a) => a.toggle).slice(0, 1)];
+  const snabbval = quickShown.length > 0 && (
+    <section aria-label="Snabbval" data-live="" className="surface relative order-3 flex min-w-0 flex-col gap-3 p-3 lg:order-none lg:col-span-12 lg:row-start-4 lg:flex-row lg:items-center lg:gap-4 lg:px-5 cols2:lg:col-span-2 cols2:lg:row-start-5">
+      <h2 className="flex items-center gap-2.5 px-1 text-[1.125rem] font-semibold text-dim lg:shrink-0"><Icon name="star" size={22} />Snabbval</h2>
+      <div className="min-w-0 grow"><ActionTiles items={quickShown} layout="bar" /></div>
+      <Link href="/favoriter" className="btn min-h-14 shrink-0 text-[1rem]">Alla kontroller<span aria-hidden="true">›</span></Link>
+    </section>
   );
+
+  // Nästa steg: pågående/nästa sträcka i resplanen (annars visas inget).
+  const stepIdx = !ridden && nextTransit ? nextLegIndex(nextTransit.legs, now, transitPos) : -1;
+  const stepLeg = stepIdx >= 0 ? nextTransit!.legs[stepIdx] : null;
+  // Hälsning: Godmorgon 04–09, annars Hej (som rapporten). Namn per dashboard: Fredrik, Svensson (Ulrika).
+  const hour = Number(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', hourCycle: 'h23' }).format(now));
+  const greeting = hour >= 4 && hour < 10 ? 'God morgon' : hour >= 18 || hour < 4 ? 'God kväll' : 'Hej';
+  const greetName = me.toLowerCase() === 'ulrika' ? 'Svensson' : me.toLowerCase() === 'fredrik' ? 'Fredrik' : null;
+  const nextStep = stepLeg ? { dep: stepLeg.dep, title: stepLeg.kind === 'walk' ? `Gå till ${stepLeg.to}` : `${stepLeg.label} → ${stepLeg.to}` } : null;
+
+  // Elpris: dygnets timmar som staplar (idag, Stockholmstid).
+  const priceLevelText = price.level?.label ?? null;
+  const dayMs = startOfDayStockholm(now);
+  const dayHours = hours.filter((p) => p.start >= dayMs && p.start < dayMs + 24 * 3600_000);
+  const dayMax = Math.max(...dayHours.map((p) => p.ore), 1);
+  const dayBars = dayHours.map((p) => ({ start: p.start, pct: Math.max(8, (p.ore / dayMax) * 100), now: p.start <= now && now < p.end, past: p.end <= now, cheap: !!cheap && p.start >= cheap.start && p.end <= cheap.end }));
+
+  // Hemmet: rader med avvikelsen först (stabil sortering: normalt ordning kvar).
+  type HRow = { key: string; lvl: 0 | 1 | 2; node: React.ReactNode };
+  const rows: HRow[] = [];
+  const add = (key: string, lvl: 0 | 1 | 2, node: React.ReactNode) => rows.push({ key, lvl, node });
+  if (tempAvg != null) {
+    const worst = odd.some((r) => r.temp! >= COMFORT.high + 2 || r.temp! < COMFORT.low - 2) ? 2 : odd.length ? 1 : 0;
+    add('temp', worst, <Row key="temp" icon="thermo" label="Inomhus" href="/temperatur" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt" state={worst === 2 ? 'bad' : worst === 1 ? 'warn' : undefined}
+      detail={odd.length ? (
+        <span className="font-semibold">
+          {odd.slice(0, 3).map((r, i) => (
+            <span key={r.id} style={{ color: r.temp! >= COMFORT.high + 2 || r.temp! < COMFORT.low - 2 ? C.bad : C.warn }}>{i ? ' · ' : ''}{r.name} {fmtTemp(r.temp)}</span>
+          ))}
+        </span>
+      ) : `Alla rum ${COMFORT.low}–${COMFORT.high}°`} />);
+  }
+  if (h.openings.length > 0) {
+    add('open', open.length ? 1 : 0, <Row key="open" icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/dorrar" state={open.length ? 'warn' : undefined}
+      detail={open.length ? open.map((o) => o.name).join(', ') : undefined}
+      value={open.length ? open.length : <Okay>Alla stängda</Okay>} unit={open.length ? 'öppna' : undefined} />);
+  }
+  if (net) {
+    const bad = net.state === 'down'; const slow = net.state === 'slow';
+    add('net', bad ? 2 : slow ? 1 : 0, <Row key="net" icon="wifi" label="Internet" href="/larm#natverk" state={bad ? 'bad' : slow ? 'warn' : undefined}
+      value={bad ? 'Nere' : net.state === 'ok' ? <Okay>Online</Okay> : slow ? 'Långsamt' : '–'}
+      detail={[
+        net.state === 'unknown' ? 'Status okänd' : null,
+        !bad && net.latency != null ? `${Math.round(net.latency)} ms` : null,
+        net.downMbit != null ? `↓ ${Math.round(net.downMbit)} / ↑ ${Math.round(net.upMbit ?? 0)} Mbit` : null,
+        net.isp,
+      ].filter(Boolean).join(' · ') || undefined} />);
+  }
+  if (h.lightsTotal > 0) add('lights', 0, <Row key="lights" icon="bulb" label="Belysning" href="/lampor" value={`${h.lightsOn} / ${h.lightsTotal}`} unit="tända" />);
+  if (h.powerMeters + h.powerEstimated > 0) {
+    add('power', 0, <Row key="power" icon="bolt" label="Effekt nu" href="/energi?vy=forbrukning"
+      value={h.powerW >= 1000 ? num(h.powerW / 1000, 2) : num(h.powerW, h.powerW < 100 ? 1 : 0)} unit={h.powerW >= 1000 ? 'kW' : 'W'}
+      detail={kwh > 0 ? `${num(kwh, 1)} kWh · ${num(kr, 0)} kr idag` : undefined} extra={<Sparkline points={powerLine} />} />);
+  }
+  if (luxBest) add('lux', 0, <Row key="lux" icon="sun" label={`Ljusnivå · ${luxBest.name}`} href="/temperatur" value={fmtLux(luxBest.lux!)} unit="lux" detail={luxLabel(luxBest.lux!)} />);
+  if (price.now && fixed) {
+    // Fast pris: rörligt nu (inkl. moms) jämfört med det fasta.
+    const cheaper = price.now.ore * VAT < fixed;
+    add('price', 0, <Row key="price" icon="money" label="Elpris rörligt" href="/energi?vy=pris" value={Math.round(price.now.ore * VAT)} unit="öre/kWh" color={cheaper ? C.ok : undefined} state={cheaper ? undefined : 'warn'}
+      detail={`Fast ${Math.round(fixed)} öre · rörligt ${Math.round(Math.abs(price.now.ore * VAT - fixed))} öre ${cheaper ? 'billigare' : 'dyrare'}`} />);
+  }
+  if (wine) {
+    add('wine', 0, <Row key="wine" icon="wine" label="Vinkällaren" href="https://wine.trand.se" value={wine.total} unit="flaskor"
+      detail={['red', 'white', 'sparkling', 'rose'].filter((c) => wine.by_color[c]).map((c) => `${wine.by_color[c]} ${({ red: 'röda', white: 'vita', sparkling: 'bubbel', rose: 'rosé' } as Record<string, string>)[c]}`).join(' · ')} />);
+  }
+  rows.sort((x, y) => y.lvl - x.lvl);
 
   sw.mark('klar');
   console.info(`Hem ${sw.line()}`);
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
       {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-6 cols2:lg:h-auto cols2:lg:grid-cols-2 cols2:lg:grid-rows-[auto_auto_auto_1fr] cols2:lg:items-start">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto] lg:items-stretch lg:gap-5 cols2:lg:h-auto cols2:lg:grid-cols-2 cols2:lg:grid-rows-[auto_auto_auto_1fr_auto] cols2:lg:items-start">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
-        <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-4 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-2 lg:self-start cols2:lg:col-span-1 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
+        <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-1 lg:row-start-1 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-2 lg:self-start cols2:lg:col-span-1 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
           <h1 className="sr-only">Hemma</h1>
           {/* Stor skärm: klockraden och Spelar nu lika höga som varningsplattorna (4,5 rem + 0,5 rem mellanrum), så de linjerar. */}
           <Clock show="time" className={`${calFocus ? 'max-lg:!text-[4.125rem] ' : ''}text-[4.75rem] leading-[0.9] font-bold tracking-tight text-sun tabular-nums lg:flex lg:h-[4.5rem] lg:items-end lg:text-[5.5rem] lg:leading-[0.75]`} />
@@ -569,29 +640,45 @@ export default async function HomePage() {
           </div>
         </header>
 
-        {/* VARNINGAR (mitten): det brådskande överst och centralt. Korta rubriker; detaljerna finns på sidan bakom. */}
-        <section aria-label="Varningar" className="order-2 flex min-w-0 flex-col gap-2 md:col-span-2 lg:order-none lg:col-span-4 lg:self-start 2xl:col-span-5 cols2:lg:col-span-2 cols2:2xl:col-span-2 cols2:lg:row-start-2">
-          {issues > 0 ? (
-            <AlertChips alerts={alerts} />
-          ) : (
-            <Link href="/larm" className="flex min-h-12 min-w-0 items-center gap-2.5 rounded-[0.875rem] px-1 text-[1rem] text-dim">
-              <span className="size-2.5 shrink-0 rounded-full" style={{ background: C.ok }} />
-              <span className="truncate">
-                Inga varningar{trainNote ? ` · ${trainNote}` : ''}{commute ? ` · ${roadNote}` : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
-              </span>
-            </Link>
-          )}
-          {/* Hitta mobilen (Android via ntfy): väl synlig direkt under klockan, larmar tills den stängs på telefonen. */}
-          {/* Läs upp rapport (webbläsarens röst, startar vid tryck) i samma rad. Raden döljs när den är tom (ingen talsyntes). */}
-          <div className="flex flex-wrap gap-2 empty:hidden">
-            {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 flex-1 basis-36 justify-center" />)}
-            <Suspense fallback={null}><Briefing className="min-w-0 flex-1 basis-36 justify-center" /></Suspense>
+        {/* HÄLSNING + NÄSTA STEG (mitten, rad 1): svarar på "vad gör jag härnäst?" före allt annat. Namn: Fredrik / Svensson (Ulrikas dashboard). */}
+        {(greetName || nextStep) && (
+          <div className="order-2 flex min-w-0 flex-col gap-1 self-center px-1 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-5 lg:row-start-1 2xl:col-span-5 cols2:hidden">
+            {greetName && <h2 className="text-[1.75rem] leading-tight font-bold">{greeting}, {greetName}</h2>}
+            {nextStep && (
+              <Link href="/pendling" aria-label={`Nästa steg: ${nextStep.title}. Visa resan.`} className="row-hit -mx-2 flex flex-col rounded-xl px-2 py-1">
+                <span className="text-[1.125rem] font-semibold">Nästa steg: {nextStep.title}</span>
+                <span className="text-[1rem] text-dim"><LeaveIn dep={nextStep.dep} serverNow={now} variant="line" /> · kl {hhmm(nextStep.dep)}</span>
+              </Link>
+            )}
           </div>
+        )}
+
+        {/* VARNINGAR: en kompakt rad över hela bredden. Den viktigaste dominerar (bärnsten/röd), övriga dämpas, resten bakom "+N". */}
+        <section aria-label="Varningar" className="order-2 min-w-0 md:col-span-2 lg:order-none lg:col-span-12 lg:row-start-2 cols2:lg:col-span-2 cols2:lg:row-start-2">
+          {/* Läs upp rapport (webbläsarens röst, startar vid tryck) och Hitta mobilen (ntfy) till höger i raden; tomma utan talsyntes. */}
+          {(() => {
+            const actions = (
+              <>
+                {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 justify-center" />)}
+                <Suspense fallback={null}><Briefing className="min-w-0 justify-center" /></Suspense>
+              </>
+            );
+            return issues > 0 ? <AlertChips alerts={alerts} actions={actions} /> : (
+              <AlertBar actions={actions}>
+                <Link href="/larm" className="row-hit flex min-h-12 min-w-0 items-center gap-2.5 rounded-xl px-3 text-[1rem] text-dim">
+                  <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: C.ok }} />
+                  <span className="truncate">
+                    Inga varningar{trainNote ? ` · ${trainNote}` : ''}{commute ? ` · ${roadNote}` : ''}{net?.state === 'ok' ? ' · internet uppe' : ''}
+                  </span>
+                </Link>
+              </AlertBar>
+            );
+          })()}
         </section>
 
         {/* NÄRVARO (höger, egen yta): vem är hemma, var de andra är. Källa (Life360/Smart Presence) visas på Hitta. */}
         {(people.length > 0 || (calFocus && outTemp != null)) && (
-          <div className="order-2 min-w-0 md:col-span-2 lg:order-none lg:col-span-4 lg:self-start 2xl:col-span-3 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-1 flex flex-col gap-3">
+          <div className="order-2 min-w-0 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:self-start 2xl:col-span-3 2xl:col-start-10 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-1 flex flex-col gap-3">
           {/* Kalenderfokus (Ulrika): utetemperaturen stort överst till höger, i klockans storlek men vit. */}
           {calFocus && outTemp != null && (
             <Link href="/vader" aria-label={`Ute ${fmtTemp(outTemp)}. Visa väderprognosen.`}
@@ -622,7 +709,7 @@ export default async function HomePage() {
         )}
 
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
-        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
+        <div className="contents lg:col-span-4 lg:col-start-1 lg:row-start-3 lg:flex lg:min-h-0 lg:flex-col lg:gap-5 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
           {/* Kalenderfokus (HOME_FOCUS=calendar): kalendrarna direkt under klockan, på alla skärmstorlekar. På stor skärm har de minsta höjd för dagens poster (annars pressas de ihop av övriga kort och bara dagraden syns). */}
           {calFocus && hasCal && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[16rem]"><CalendarWidget collapsible={false} /></div>}
           {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[12rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={false} compact /></div>}
@@ -662,11 +749,10 @@ export default async function HomePage() {
             )}
           </Card>
 
-          {!hueMode && snabbval}
         </div>
 
         {/* HÄRNÄST: pendling och kalender. */}
-        <div className="contents lg:col-span-4 lg:flex lg:min-h-0 lg:flex-col lg:gap-6 2xl:col-span-5 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
+        <div className="contents lg:col-span-4 lg:col-start-5 lg:row-start-3 lg:flex lg:min-h-0 lg:flex-col lg:gap-5 2xl:col-span-5 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
           {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
           {tripEta && !(weekend && trip) && !sure && (
             <Card title={`Resa · ${tripEta.trip.place}`} icon="road"
@@ -726,7 +812,7 @@ export default async function HomePage() {
             </Card>
           )}
           {!focus && commute?.trains && !weekend && !atWork && (
-            <Card title={ridden ? <>{arrived || sure ? (riddenToWork ? 'På väg till jobbet' : 'På väg hem') : guessed ? 'På tåget (troligen)' : 'På tåget'}<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{arrived && tripEnd ? `framme ${hhmm(tripEnd)}` : `${ridden.product ?? 'Tåg'} ${ridden.ident}`}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
+            <Card title={ridden ? <>{arrived || sure ? (riddenToWork ? 'På väg till jobbet' : 'På väg hem') : guessed ? 'På tåget (troligen)' : 'På tåget'}<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{arrived && tripEnd ? `framme ${hhmm(tripEnd)}` : `${ridden.product ?? 'Tåg'} ${ridden.ident}`}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling" primary
               label={ridden && arrived && tripEnd ? `På väg ${riddenToWork ? 'till jobbet' : 'hem'}, ${riddenToWork ? 'framme' : 'hemma'} ${hhmm(tripEnd)}. Visa trafikläget.` : ridden ? `Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}${ridden.canceled ? ', inställt' : ridden.delay ? `, ${plural(ridden.delay, 'minut', 'minuter')} sent` : ', i tid'}${riddenArr ? `, framme ${ridden.dest} cirka ${hhmm(riddenArr)}` : ''}${onward.length ? `, framme ${riddenToWork ? 'på jobbet' : 'hemma'} ${hhmm(onward.at(-1)!.arr)}` : ''}. Visa trafikläget.` : `Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: ${leaveIn < -1 ? `sen ${plural(-leaveIn, 'minut', 'minuter')}, ta cykel eller taxi` : `gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}`}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
               {!ridden && trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
@@ -845,77 +931,42 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {hueMode && snabbval}
           {!calFocus && hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[16rem]"><CalendarWidget /></div>}
           {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
           {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[12rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" compact /></div>}
         </div>
 
-        {/* HEMMET: kompakta rader, avvikelser i färg. */}
-        <Card className="order-6 lg:order-none lg:col-span-4 2xl:col-span-3 cols2:2xl:col-span-1 lg:self-start lg:py-3 lg:max-h-full cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-4 cols2:lg:max-h-none">
-          <h2 className="sr-only">Hemmet</h2>
-          <div className="scroll-x flex min-h-0 flex-col overflow-y-auto lg:grow" style={{ '--row-h': rowCount > 6 ? '3.1875rem' : '3.625rem' } as React.CSSProperties}>
-            {tempAvg != null && (
-              <Row
-                icon="thermo" label="Inomhus" href="/temperatur" value={num(Math.round(tempAvg * 10) / 10)} unit="°C snitt"
-                detail={odd.length ? (
-                  <span className="font-semibold">
-                    {odd.slice(0, 3).map((r, i) => (
-                      <span key={r.id} style={{ color: r.temp! >= COMFORT.high + 2 || r.temp! < COMFORT.low - 2 ? C.bad : C.warn }}>{i ? ' · ' : ''}{r.name} {fmtTemp(r.temp)}</span>
+        {/* HEMMET (höger): platta rader i ett kort. Avvikelser lyfts överst och får egen yta; det normala är dämpat. */}
+        <div className="contents lg:col-span-4 lg:col-start-9 lg:row-start-3 lg:flex lg:min-h-0 lg:flex-col lg:gap-5 2xl:col-span-3 2xl:col-start-10 cols2:2xl:col-span-1 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-4">
+          <Card className="order-6 lg:order-none lg:max-h-full lg:self-stretch lg:py-3 cols2:lg:max-h-none" title="Hemmet" icon="home">
+            <div className="scroll-x flex min-h-0 flex-col overflow-y-auto" style={{ '--row-h': rows.length > 6 ? '3.25rem' : '3.5rem' } as React.CSSProperties}>
+              {rows.map((r) => r.node)}
+            </div>
+          </Card>
+
+          {/* Elpris (prioritet 3): stort värde nu, dygnets timmar som staplar, billigaste fönstret i bärnsten. Fast pris ligger som rad i Hemmet. */}
+          {price.now && !fixed && (
+            <Card title="Elpris nu" icon="bolt" href="/energi?vy=pris" label={`Elpris nu ${Math.round(price.now.ore)} öre per kilowattimme${priceLevelText ? `, ${priceLevelText}` : ''}. Visa energi.`} className="order-6 lg:order-none lg:shrink-0">
+              <div className="flex items-end justify-between gap-4">
+                <span className="flex flex-col leading-none">
+                  <span className="text-[3rem] font-bold tracking-tight tabular-nums" style={{ color: priceColor }}>{Math.round(price.now.ore)}</span>
+                  <span className="mt-1 text-[0.9375rem] text-dim">öre/kWh{priceLevelText ? ` · ${priceLevelText}` : ''}</span>
+                </span>
+                {dayBars.length > 1 && (
+                  <span role="img" aria-label="Elpris per timme idag" className="flex h-14 min-w-0 grow items-end gap-[2px] sm:max-w-[11rem]">
+                    {dayBars.map((b) => (
+                      <span key={b.start} className="min-w-0 flex-1 rounded-[1px]" style={{ height: `${b.pct}%`, background: b.now ? '#F5F7FA' : b.cheap ? C.warn : b.past ? 'rgb(255 255 255 / 0.14)' : 'rgb(255 255 255 / 0.3)' }} />
                     ))}
                   </span>
-                ) : `Alla rum ${COMFORT.low}–${COMFORT.high}°`}
-              />
-            )}
-            {luxBest && <Row icon="sun" label="Ljusnivå" href="/temperatur" value={fmtLux(luxBest.lux!)} unit="lux" detail={`${luxBest.name} · ${luxLabel(luxBest.lux!)}`} />}
-            {h.openings.length > 0 && (
-              <Row
-                icon={open.length ? 'shieldAlert' : 'shield'} label="Dörrar & fönster" href="/dorrar"
-                detail={open.length ? open.map((o) => o.name).join(', ') : 'Alla stängda'}
-                value={open.length} unit="öppna" color={open.length ? C.warn : C.ok}
-              />
-            )}
-            {net && (
-              <Row
-                icon="wifi" label="Internet" href="/larm#natverk"
-                value={net.state === 'down' ? 'Nere' : net.latency != null ? Math.round(net.latency) : '–'}
-                unit={net.state === 'down' ? undefined : 'ms svarstid'}
-                color={net.state === 'down' ? C.bad : net.state === 'slow' ? C.warn : net.state === 'ok' ? C.ok : undefined}
-                detail={[
-                  net.state === 'unknown' ? 'Status okänd' : net.state === 'slow' ? 'Långsamt' : null,
-                  net.downMbit != null ? `↓ ${Math.round(net.downMbit)} / ↑ ${Math.round(net.upMbit ?? 0)} Mbit` : null,
-                  net.isp,
-                ].filter(Boolean).join(' · ') || undefined}
-              />
-            )}
-            {h.lightsTotal > 0 && <Row icon="bulb" label="Lampor" href="/lampor" value={h.lightsOn} unit="tända" detail={`av ${h.lightsTotal} lampor`} />}
-            {h.powerMeters + h.powerEstimated > 0 && (
-              <Row icon="bolt" label="Effekt" href="/energi?vy=forbrukning"
-                value={h.powerW >= 1000 ? num(h.powerW / 1000, 2) : num(h.powerW, h.powerW < 100 ? 1 : 0)} unit={h.powerW >= 1000 ? 'kW' : 'W'}
-                detail={kwh > 0 ? `${num(kwh, 1)} kWh · ${num(kr, 0)} kr idag` : 'Just nu'}
-                extra={<Sparkline points={powerLine} />}
-              />
-            )}
-            {price.now && (
-              fixed ? (
-                // Fast pris: rörligt nu (inkl. moms) jämfört med det fasta.
-                <Row icon="money" label="Elpris rörligt" href="/energi?vy=pris" value={Math.round(price.now.ore * VAT)} unit="öre/kWh"
-                  color={price.now.ore * VAT < fixed ? C.ok : C.bad}
-                  detail={`Fast ${Math.round(fixed)} öre · rörligt ${Math.round(Math.abs(price.now.ore * VAT - fixed))} öre ${price.now.ore * VAT < fixed ? 'billigare' : 'dyrare'}`}
-                />
-              ) : (
-              <Row icon="money" label="Elpris" href="/energi?vy=pris" value={Math.round(price.now.ore)} unit="öre/kWh" color={priceColor}
-                detail={cheap ? `Billigast ${hhmm(cheap.start).slice(0, 2)}–${hhmm(cheap.end).slice(0, 2)} · ${Math.round(cheap.ore)} öre` : price.level?.label}
-              />
-              )
-            )}
-            {wine && (
-              <Row icon="wine" label="Vinkällaren" href="https://wine.trand.se" value={wine.total} unit="flaskor"
-                detail={['red', 'white', 'sparkling', 'rose'].filter((c) => wine.by_color[c]).map((c) => `${wine.by_color[c]} ${({ red: 'röda', white: 'vita', sparkling: 'bubbel', rose: 'rosé' } as Record<string, string>)[c]}`).join(' · ')}
-              />
-            )}
-          </div>
-        </Card>
+                )}
+              </div>
+              {cheap && <p className="text-[0.9375rem] text-mute">Billigast {hhmm(cheap.start).slice(0, 2)}–{hhmm(cheap.end).slice(0, 2)} · {Math.round(cheap.ore)} öre/kWh</p>}
+            </Card>
+          )}
+        </div>
+
+        {/* SNABBVAL (nederst): bara det mest använda; resten på Styrning. */}
+        {snabbval}
 
       </div>
     </HomeShell>

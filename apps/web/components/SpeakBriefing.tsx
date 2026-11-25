@@ -55,7 +55,7 @@ export function SpeakBriefing({ name, weather = '', parts = [], className = '' }
 
   return (
     <button type="button" onClick={speaking ? stop : speak} aria-pressed={speaking}
-      className={`pill h-11 shrink-0 px-4 text-[0.9375rem] ${speaking ? 'on' : ''} ${className}`}>
+      className={`btn min-h-12 shrink-0 px-4 text-[0.9375rem] ${speaking ? 'on' : ''} ${className}`}>
       {speaking ? '⏹ Stoppa' : '🔊 Läs upp rapport'}
     </button>
   );
