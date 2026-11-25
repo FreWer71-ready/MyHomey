@@ -45,7 +45,7 @@ export function DepartsFrom({ trip }: { trip: TransitTrip }) {
 }
 
 /** En kollektivresa: avresa, ankomst och benen (gång, buss, tåg, SL) med spår och tågens realtid. */
-export function TransitTripCard({ trip, trains, first, home = false, pos }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean; pos?: Progress }) {
+export function TransitTripCard({ trip, trains, first, home = false, pos, action }: { trip: TransitTrip; trains: Train[]; first: boolean; home?: boolean; pos?: Progress; action?: React.ReactNode }) {
   const { delay, canceled } = tripDelay(trip, trains);
   const total = Math.round((trip.arr - trip.dep) / 60_000);
   // Nedräkningen tickar i klienten (LeaveIn); serverns tid är startvärdet.
@@ -65,6 +65,7 @@ export function TransitTripCard({ trip, trains, first, home = false, pos }: { tr
       {canceled && <p className="text-[0.9375rem] font-bold" style={{ color: TONE_COLOR.bad }}>Ett tåg på resan är inställt – välj nästa resa.</p>}
       <DepartsFrom trip={trip} />
       <TransitLegs trip={trip} trains={trains} pos={pos} />
+      {action}
     </section>
   );
 }
