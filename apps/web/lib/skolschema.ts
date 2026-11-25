@@ -1,4 +1,4 @@
-import type { Calendar, CalEvent } from './calendar-view.ts';
+import { addDays, holidays, type Calendar, type CalEvent } from './calendar-view.ts';
 
 // Skolschema från skolschema.se (klassens offentliga schema, hämtat ur skolans öppna schemavisning). Ren tolkning här;
 // hämtningen i skolschema-source.ts. Sidan bäddar in veckans lektioner i sin RSC-data ("lessons" per veckodag 1–5).
@@ -99,6 +99,44 @@ export function mergeSchoolDays(fetched: SchoolDay[] | null, manual: SchoolDay[]
   const by = new Map<string, SchoolDay>((fetched ?? []).map((d) => [d.date, d]));
   for (const d of manual) by.set(d.date, { date: d.date, start: d.start, end: d.end, slots: d.slots });
   return [...by.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Lov och ledigheter som inte följer av röda dagar: SKOLSCHEMA_LEDIGT="2026-12-21..2027-01-06;2027-02-22..2027-02-26;2027-05-14"
+ * (intervall med .. eller enstaka datum, semikolon emellan). Ogiltiga poster hoppas över.
+ */
+export function parseBreaks(raw: string | undefined): { from: string; to: string }[] {
+  const out: { from: string; to: string }[] = [];
+  for (const part of (raw ?? '').split(';')) {
+    const m = part.trim().match(/^(\d{4}-\d{2}-\d{2})(?:\.\.(\d{4}-\d{2}-\d{2}))?$/);
+    if (!m) continue;
+    const to = m[2] ?? m[1];
+    if (Date.parse(`${m[1]}T12:00:00Z`) > 0 && Date.parse(`${to}T12:00:00Z`) > 0 && m[1] <= to) out.push({ from: m[1], to });
+  }
+  return out;
+}
+
+const mondayOf = (date: string) => addDays(date, -((new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7));
+
+/**
+ * Veckorna är återkommande: skolans senaste kända vecka (hämtad, annars manuellt inlagd) kopieras `weeks` veckor framåt, utom
+ * på röda dagar och lov/ledigheter (`breaks`). Bara dagar som saknas i `known` läggs till, så hämtade och manuella dagar gäller
+ * alltid före kopian. Utan underlag ges ingenting.
+ */
+export function projectWeeks(known: SchoolDay[], weeks: number, breaks: { from: string; to: string }[]): SchoolDay[] {
+  if (!known.length || weeks < 1) return [];
+  const lastMonday = mondayOf(known.map((d) => d.date).sort().at(-1)!);
+  const base = known.filter((d) => mondayOf(d.date) === lastMonday);
+  const have = new Set(known.map((d) => d.date));
+  const out: SchoolDay[] = [];
+  for (let k = 1; k <= weeks; k++) {
+    for (const d of base) {
+      const date = addDays(d.date, 7 * k);
+      if (have.has(date) || holidays(Number(date.slice(0, 4))).has(date) || breaks.some((b) => b.from <= date && date <= b.to)) continue;
+      out.push({ ...d, date });
+    }
+  }
+  return out.sort((x, y) => x.date.localeCompare(y.date));
 }
 
 /**
