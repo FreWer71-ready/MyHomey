@@ -53,7 +53,7 @@ export function Nav({ alarms = [], calendar = false }: { alarms?: string[]; cale
     >
       {/* Versionsnummer, diskret ovanför huset i sidomenyn (inte i bottenraden på mobil). */}
       <span title={`Version ${APP_VERSION.replace(/^V/, '')}`} className="hidden pt-1 pb-0.5 text-center text-[0.625rem] leading-tight font-semibold tracking-wide text-mute md:block">
-        {APP_VERSION.split('.PR')[0]}{APP_VERSION.includes('.PR') && <><br />PR{APP_VERSION.split('.PR')[1]}</>}
+        {APP_VERSION}
       </span>
       {ITEMS.filter((it) => it.href !== '/pendling' || process.env.NEXT_PUBLIC_COMMUTE !== 'off')
         .filter((it) => it.href !== '/kalender' || calendar) // bara när en kalender är kopplad

@@ -11,7 +11,7 @@ export function PingPhoneButton({ first, label = 'Ringa mobilen', className = ''
       type="button" disabled={busy}
       onClick={() => start(async () => { const r = await pingPhone(first); setSt({ ok: r.ok, msg: r.error }); setTimeout(() => setSt(null), 5000); })}
       aria-label={`Ringa ${first}s mobil`}
-      className={`pill h-11 shrink-0 px-4 text-[0.9375rem] ${className} ${busy ? 'animate-pulse' : ''} ${st?.ok ? 'text-ok' : st ? 'text-danger' : ''}`}
+      className={`btn min-h-12 shrink-0 px-4 text-[0.9375rem] ${className} ${busy ? 'animate-pulse' : ''} ${st?.ok ? 'text-ok' : st ? 'text-danger' : ''}`}
     >
       {st?.ok ? 'Ringer ✓' : st ? (st.msg ?? 'Gick inte') : label}
     </button>

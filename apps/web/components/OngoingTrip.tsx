@@ -38,7 +38,7 @@ export function OngoingTrip({ run, legs, toWork, goalTime, now, arrived, confirm
       {legs.length > 0 && <TransitLegs trip={{ dep: legs[0].dep, arr: legs.at(-1)!.arr, legs, startAt: null, endAt: null }} now={now} trains={trains} />}
       <div className="flex flex-wrap gap-2">
         <TrainRoute ident={run.ident} />
-        <OnTrainButton ident={run.ident} dep={run.dep} arr={run.arr} confirmed={confirmed} label={confirmed ? undefined : 'Stämmer ✓'} />
+        <OnTrainButton ident={run.ident} dep={run.dep} arr={run.arr} confirmed={confirmed} label={confirmed ? undefined : 'Stämmer'} />
       </div>
     </section>
   );

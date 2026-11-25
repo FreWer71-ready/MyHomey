@@ -7,11 +7,8 @@ export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/mydashboard';
 // Versionsnotering: byggdatum (Stockholm) och commit från Vercel.
 const built = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', dateStyle: 'short', timeStyle: 'short' }).format(new Date());
 
-// Version: V0.9.PR<nummer>. Numret är PR:en som byggdes: squash-commitens rubrik slutar på "(#123)" (VERCEL_GIT_COMMIT_MESSAGE),
-// annars PR-id för förhandsvisningar. Utan PR (lokalt) bara V0.9. Höj BASE_VERSION vid ny version.
-const BASE_VERSION = 'V0.9';
-const pr = (process.env.VERCEL_GIT_COMMIT_MESSAGE ?? '').split('\n')[0].match(/\(#(\d+)\)\s*$/)?.[1] ?? process.env.VERCEL_GIT_PULL_REQUEST_ID;
-const version = pr ? `${BASE_VERSION}.PR${pr}` : BASE_VERSION;
+// Version (semantisk, ett enda ställe): V<stor>.<mindre>.<fix>. Höjs av Claude i varje ändring, se CLAUDE.md "Version".
+const version = 'V1.3.1';
 console.log(`Version ${version}`); // syns i bygglogg
 
 const config: NextConfig = {

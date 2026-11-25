@@ -83,3 +83,48 @@ export async function saveTrip(t: { ident: string; dep: number; arr: number | nu
     );
   } catch { /* nästa sidvisning försöker igen */ }
 }
+
+/** Ett tåg ur Dagens resa (vilket tåg som helst, inte bara pendlingen). */
+export type LegTrip = { ident: string; dep: number; arr: number; from: string; to: string; product: string | null; km: number };
+
+/**
+ * Sparar ett tåg som användaren själv bekräftat i Dagens resa (source = user). Stationerna sparas med namn (historiken visar
+ * okända signaturer som de är). Förseningen är okänd (ingen Trafikverket-signatur att slå upp), så resan markeras som färdig
+ * direkt och räknas aldrig för ersättning. Bekräftas ett tåg som tagits bort visas det igen.
+ */
+export async function logLeg(l: LegTrip): Promise<boolean> {
+  try {
+    const sb = await createClient();
+    const { error } = await sb.from('train_trips').upsert(
+      { ident: l.ident, dep: iso(l.dep), arr: iso(l.arr), from_sig: l.from, to_sig: l.to, product: l.product, km: l.km, source: 'user', hidden: false, settled: true },
+      { onConflict: 'household_id,ident,dep' },
+    );
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/** Ångra: resan döljs (raden finns kvar, så en gissning kommer inte tillbaka). */
+export async function unlogLeg(ident: string, dep: number): Promise<boolean> {
+  try {
+    const sb = await createClient();
+    const { error } = await sb.from('train_trips').update({ hidden: true }).eq('ident', ident).eq('dep', iso(dep));
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/** Vilka av tågen (ident + avgång) som redan är sparade och synliga i historiken. Nyckel: `${ident}|${dep}`. */
+export async function savedLegs(legs: { ident: string; dep: number }[]): Promise<Set<string>> {
+  if (!legs.length) return new Set();
+  try {
+    const sb = await createClient();
+    const { data } = await sb.from('train_trips').select('ident,dep').eq('hidden', false).in('ident', legs.map((l) => l.ident))
+      .gte('dep', iso(Math.min(...legs.map((l) => l.dep)) - 60_000)).lte('dep', iso(Math.max(...legs.map((l) => l.dep)) + 60_000));
+    return new Set((data ?? []).map((r) => `${r.ident}|${Date.parse(r.dep as string)}`));
+  } catch {
+    return new Set();
+  }
+}

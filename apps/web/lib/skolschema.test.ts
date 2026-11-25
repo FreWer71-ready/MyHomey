@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { CalDay, CalEvent, Calendar } from './calendar-view.ts';
-import { isoWeekMonday, mergeSchoolDays, parseManualDays, parseSkolschema, parseSkolschemaConfig, schoolDays, withSchoolDays } from './skolschema.ts';
+import { isoWeekMonday, mergeSchoolDays, parseManualDays, parseSkolschema, parseBreaks, parseSkolschemaConfig, projectWeeks, schoolDays, withSchoolDays } from './skolschema.ts';
 
 const lesson = (day: number, start: string, end: string, type: string, room = '4') => ({ dayOfWeekNumber: day, startStr: `${start}:00`, endStr: `${end}:00`, type, name: '', room });
 // Så som skolschema.se bäddar in veckan: RSC-data i self.__next_f.push, och "Vecka 48, 2026" i rubriken med taggar emellan.
@@ -79,4 +79,21 @@ test('skolschema: barnens skoldagar som poster i en kalender (bara dagar i föns
   // Dagar utanför kalenderns fönster läggs inte till, och originalet ändras inte.
   assert.equal(withSchoolDays(cal, [{ name: 'Wilmer', cal: school('2026-12-24', 8) }]).days.flatMap((d) => d.timed).length, 1);
   assert.equal(cal.days[0].timed.length, 1);
+});
+
+test('skolschema: lov och ledigheter (intervall och enstaka datum)', () => {
+  assert.deepEqual(parseBreaks('2026-12-21..2027-01-06; 2027-05-14 ;fel;2027-02-02..2027-01-01'), [{ from: '2026-12-21', to: '2027-01-06' }, { from: '2027-05-14', to: '2027-05-14' }]);
+  assert.deepEqual(parseBreaks(undefined), []);
+});
+
+test('skolschema: senaste veckan kopieras framåt, utom röda dagar, lov och dagar som redan finns', () => {
+  const wk = [{ date: '2026-11-30', start: '08:00', end: '14:55', slots: 7 }, { date: '2026-12-01', start: '08:10', end: '16:10', slots: 8 }, { date: '2026-12-04', start: '08:10', end: '14:50', slots: 6 }];
+  const p = projectWeeks(wk, 3, [{ from: '2026-12-14', to: '2026-12-14' }]);
+  assert.deepEqual(p.map((d) => d.date), ['2026-12-07', '2026-12-08', '2026-12-11', '2026-12-15', '2026-12-18', '2026-12-21', '2026-12-22']); // 14 dec = lov
+  assert.deepEqual(p[1], { date: '2026-12-08', start: '08:10', end: '16:10', slots: 8 });
+  // Julafton/juldagen (röda dagar) och dagar som redan finns hoppas över.
+  const jul = projectWeeks([{ date: '2026-12-21', start: '08:00', end: '14:00', slots: 5 }, { date: '2026-12-24', start: '08:00', end: '10:00', slots: 2 }, { date: '2026-12-25', start: '08:00', end: '10:00', slots: 2 }], 1, []);
+  assert.deepEqual(jul.map((d) => d.date), ['2026-12-28']); // 28 dec saknas inte; 31 dec (nyårsafton) och 1 jan är lediga
+  assert.deepEqual(projectWeeks([], 4, []), []);
+  assert.deepEqual(projectWeeks(wk, 0, []), []);
 });

@@ -62,7 +62,7 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
 
   return (
     <>
-    <section aria-label={title} className={`flex min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden rounded-[1.25rem] bg-card p-5 lg:max-h-none lg:p-6 ${compact ? 'max-h-[30rem]' : 'max-h-[44rem]'}`}>
+    <section aria-label={title} className={`flex min-h-0 w-full min-w-0 flex-col gap-3 surface overflow-hidden p-5 lg:max-h-none lg:p-6 ${compact ? 'max-h-[30rem]' : 'max-h-[44rem]'}`}>
       <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
         {/* Rubriken fäller in och ut; "Månad" öppnar 30 dagar i en egen ruta. */}
         {collapsible ? (
@@ -106,7 +106,7 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
       </div>
     </section>
     {cal && (
-      <div ref={week} id={id} popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,45rem)] overflow-hidden rounded-[1.25rem] bg-card p-0 text-fg shadow-2xl backdrop:bg-black/60">
+      <div ref={week} id={id} popover="auto" className="m-auto max-h-[88dvh] w-[min(94vw,45rem)] surface overflow-hidden p-0 text-fg shadow-2xl backdrop:bg-black/60">
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
           <h2 className="flex items-center gap-2.5 text-[1.25rem] font-semibold"><Icon name="calendar" size={24} />{title === 'Kalender' ? 'Kommande 30 dagar' : `${title} · 30 dagar`}</h2>
           <button type="button" popoverTarget={id} popoverTargetAction="hide" className="pill">Stäng</button>
