@@ -32,6 +32,8 @@ import { NowPlayingStrip, type PlayingItem, type TvView } from '@/components/Now
 import { JustLeftAsk, OnTrainButton } from '@/components/OnTrainButton';
 import { TripMargin } from '@/components/TripMargin';
 import { cookies } from 'next/headers';
+import { FOCUS_COOKIE, parseFocus } from '@/lib/focus-trip';
+import { FocusTripCard } from '@/components/FocusTrip';
 import { NearDepartures, nearDepartures } from '@/components/NearDepartures';
 import { loadTrips, saveTrip, ticket } from '@/lib/trips-source';
 import { claimAt, claimable, compensation } from '@/lib/trips';
@@ -338,6 +340,9 @@ export default async function HomePage() {
   const transitHome = !!tg && dir === 'home';
   // Färsk position (högst 10 min): styr vad som är avklarat i resplanen, och om man har gått än.
   const here = freshestPosition(locate.members, locate.items, process.env.HOUSEHOLD ?? '', now);
+  // Dagens resa (vald i Sök resa): ersätter pendlingskortet resten av dagen.
+  const focus = parseFocus((await cookies()).get(FOCUS_COOKIE)?.value, now);
+  const focusPos = focus ? progress(focus.legs, here, null, now) : undefined;
   let replanned = false;
   if (tg && o2) {
     const atGoal = !!o2.pos && km(o2.pos, tg.at) <= 1;
@@ -708,13 +713,18 @@ export default async function HomePage() {
               </ul>
             </Card>
           )}
-          {commute?.trains && !weekend && atWork && (
+          {focus && (
+            <Card className="order-3 lg:order-none lg:shrink-0">
+              <FocusTripCard focus={focus} trains={commute ? [...commute.out, ...commute.home, ...commute.all] : []} pos={focusPos} />
+            </Card>
+          )}
+          {!focus && commute?.trains && !weekend && atWork && (
             <Card title={<>Pendling<span className="ml-auto rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">På jobbet</span></>} icon="train" href="/pendling"
               label="Du är på jobbet. Hemresan visas från klockan 12. Visa alla avgångar." className="order-3 lg:order-none lg:shrink-0">
               <p className="text-[1rem] text-dim">Hemresan visas från 12:00</p>
             </Card>
           )}
-          {commute?.trains && !weekend && !atWork && (
+          {!focus && commute?.trains && !weekend && !atWork && (
             <Card title={ridden ? <>{arrived || sure ? (riddenToWork ? 'På väg till jobbet' : 'På väg hem') : guessed ? 'På tåget (troligen)' : 'På tåget'}<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{arrived && tripEnd ? `framme ${hhmm(tripEnd)}` : `${ridden.product ?? 'Tåg'} ${ridden.ident}`}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling"
               label={ridden && arrived && tripEnd ? `På väg ${riddenToWork ? 'till jobbet' : 'hem'}, ${riddenToWork ? 'framme' : 'hemma'} ${hhmm(tripEnd)}. Visa trafikläget.` : ridden ? `Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}${ridden.canceled ? ', inställt' : ridden.delay ? `, ${plural(ridden.delay, 'minut', 'minuter')} sent` : ', i tid'}${riddenArr ? `, framme ${ridden.dest} cirka ${hhmm(riddenArr)}` : ''}${onward.length ? `, framme ${riddenToWork ? 'på jobbet' : 'hemma'} ${hhmm(onward.at(-1)!.arr)}` : ''}. Visa trafikläget.` : `Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: ${leaveIn < -1 ? `sen ${plural(-leaveIn, 'minut', 'minuter')}, ta cykel eller taxi` : `gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}`}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>

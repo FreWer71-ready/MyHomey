@@ -7,6 +7,7 @@ import type { Train } from '@/lib/commute';
 import type { TransitTrip } from '@/lib/transit';
 import { TransitTripCard, tripDelay } from './TransitTrip';
 import { RoadImpact } from './RoadImpact';
+import { FocusTripButton } from './FocusTripButton';
 import type { Tone } from '@/lib/commute';
 
 type To = 'home' | 'work' | 'place';
@@ -47,6 +48,7 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
   // Rensa: tillbaka till Min plats → förvalt mål, utan svar.
   const clear = () => { reset(); setFrom({ kind: 'here', q: '' }); setTo({ kind: defaultTo, q: '' }); setActive(null); setWhen('now'); };
   const dirty = !!res || !!err || from.kind !== 'here' || to.kind !== defaultTo || when !== 'now';
+  const name = (k: From, place?: string) => (k === 'home' ? 'hem' : k === 'work' ? workLabel.toLowerCase() : k === 'here' ? 'din plats' : place ?? 'platsen');
   const label = (e: End) => (e.kind === 'here' ? 'Min plats' : e.kind === 'home' ? 'Hem' : e.kind === 'work' ? workLabel : e.q);
 
   const go = async () => {
@@ -145,8 +147,12 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
       </div>
       {err && <p role="alert" className="px-1 text-[0.9375rem] text-danger">{err}</p>}
       {res?.here && <p className="rounded-2xl bg-glass-2 p-3 font-bold">Du är redan {res.to === 'home' ? 'hemma' : 'framme'}.</p>}
-      {res && !res.here && <TripResult res={res} name={(k, place) => (k === 'home' ? 'hem' : k === 'work' ? workLabel.toLowerCase() : k === 'here' ? 'din plats' : place ?? 'platsen')} />}
-      {res?.trips && <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{res.trips.map((t, i) => <TransitTripCard key={t.dep} trip={t} trains={res.trains ?? []} first={i === 0} home={res.to === 'home'} />)}</div>}
+      {res && !res.here && <TripResult res={res} name={name} />}
+      {/* Varje resa kan väljas som dagens resa: den ersätter pendlingsförslagen på Hem och Pendling resten av dagen. */}
+      {res?.trips && <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{res.trips.map((t, i) => (
+        <TransitTripCard key={t.dep} trip={t} trains={res.trains ?? []} first={i === 0} home={res.to === 'home'}
+          action={<FocusTripButton legs={t.legs} to={cap(name(res.to, res.place))} home={res.to === 'home'} />} />
+      ))}</div>}
       </div>
     </section>
   );

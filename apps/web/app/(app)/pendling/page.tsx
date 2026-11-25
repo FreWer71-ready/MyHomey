@@ -1,4 +1,7 @@
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { FOCUS_COOKIE, parseFocus } from '@/lib/focus-trip';
+import { FocusTripCard } from '@/components/FocusTrip';
 import { Icon, type IconName } from '@/components/Icon';
 import { loadCommute, loadLocate, PLACE } from '@/lib/data';
 import { goalEta, origin } from '@/lib/goal';
@@ -129,6 +132,19 @@ function Road({ list, stations }: { list: RoadEvent[]; stations: RoadStation[] }
   );
 }
 
+/** Med dagens resa vald: pendlingståg och väg fälls ihop (finns kvar ett tryck bort). */
+function FocusWrap({ on, children }: { on: boolean; children: React.ReactNode }) {
+  if (!on) return <>{children}</>;
+  return (
+    <details className="group rounded-2xl glass">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-[1rem] font-semibold">
+        Pendlingståg och väg<span aria-hidden="true" className="transition-transform group-open:rotate-90">›</span>
+      </summary>
+      <div className="px-3 pb-3">{children}</div>
+    </details>
+  );
+}
+
 export default async function CommutePage() {
   if (process.env.COMMUTE === 'off') notFound();
   const [c, locate] = await Promise.all([loadCommute(), (etaConfigured() && process.env.DEFAULT_DESTINATION) || transitConfigured() ? loadLocate().catch(() => ({ members: [], items: [] })) : Promise.resolve({ members: [], items: [] })]);
@@ -173,6 +189,8 @@ export default async function CommutePage() {
   const homeRun = !!run && [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === run.id);
   // Framme (positionen vid jobbet eller hemma): tillbaka till normalläget.
   const here = freshestPosition(locate.members, locate.items, me, nowMs);
+  // Dagens resa (vald i Sök resa): överst, och ersätter förslagen till jobbet/hem resten av dagen.
+  const focus = parseFocus((await cookies()).get(FOCUS_COOKIE)?.value, nowMs);
   const goalAt = toWork ? transitGoal()?.at : PLACE;
   const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
   const ridden = run && !atGoal && (!arrived || (onward.length > 0 && nowMs <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
@@ -192,6 +210,7 @@ export default async function CommutePage() {
           {c && <span className="text-[0.875rem] font-bold text-mute">Trafikverket · uppdaterad {hhmm(c.fetched)}</span>}
         </span>
       </h1>
+      {focus && <FocusTripCard focus={focus} trains={rtTrains} pos={progress(focus.legs, here, null, nowMs)} />}
       {!ridden && (transitSearchable() || etaConfigured()) && (
         <TripFromHere defaultTo={dir === 'out' ? 'work' : 'home'} workLabel={tg?.label ?? process.env.DEFAULT_DESTINATION_LABEL ?? 'Jobbet'} transit={transitSearchable()} car={etaConfigured()} />
       )}
@@ -218,7 +237,7 @@ export default async function CommutePage() {
           })()}
         </section>
       )}
-      {!ridden && goal && (
+      {!ridden && !focus && goal && (
         // ETA först och störst; restid, avstånd och trafik mindre under (ljusgrå #C5CDD6 klarar 4,5:1 även mot ljus bild).
         <section aria-label={goal.home ? 'Tid hem' : `Tid till ${goal.label.toLowerCase()}`} className="flex items-center gap-4 rounded-2xl glass px-4 py-3">
           <Icon name="road" size={32} />
@@ -242,7 +261,7 @@ export default async function CommutePage() {
           </span>
         </section>
       )}
-      {!ridden && tg && transit.length > 0 && (
+      {!ridden && !focus && tg && transit.length > 0 && (
         <section aria-label={goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`} className="flex flex-col gap-2">
           <h2 className="text-[1.125rem] font-bold">{goingHome ? 'Resa hem' : `Resa till ${tg.label.toLowerCase()}`}{o.away ? ' · härifrån' : ''}</h2>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -250,6 +269,7 @@ export default async function CommutePage() {
           </div>
         </section>
       )}
+      <FocusWrap on={!!focus}>
       {ridden ? null : !c ? (
         <p className="rounded-2xl glass p-4 font-bold text-dim">Trafikinformationen är inte tillgänglig just nu.</p>
       ) : (
@@ -271,6 +291,7 @@ export default async function CommutePage() {
           </div>
         </div>
       )}
+      </FocusWrap>
     </>
   );
 }
