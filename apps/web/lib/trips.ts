@@ -58,6 +58,9 @@ export const delayOf = (planned: number, actual: number) => Math.max(0, Math.rou
 /** Resa att begära ersättning för: försenad {CLAIM_MIN} min eller mer vid ankomst. */
 export const claimable = (t: Trip) => !t.canceled && (t.delayMin ?? 0) >= CLAIM_MIN;
 
+/** Avslutat ärende: utbetald eller avslagen ersättning. Döljs i listan (kan visas igen under "Avslutade"). */
+export const claimDone = (t: Trip) => t.claim === 'paid' || t.claim === 'rejected';
+
 export function stats(trips: Trip[]) {
   const ran = trips.filter((t) => !t.canceled);
   const delays = ran.flatMap((t) => (t.delayMin == null ? [] : [t.delayMin]));

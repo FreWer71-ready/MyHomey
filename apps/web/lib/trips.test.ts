@@ -90,3 +90,11 @@ test('outcome: station med namn (Dagens resa) slås upp bland tågets stationer'
   assert.deepEqual(outcome(anns, 'Okänd', Date.parse(t(11, 50))), { actualArr: Date.parse(t(11, 52)), canceled: false });
   assert.equal(outcome(anns, 'Okänd', Date.parse(t(11, 45))), null);
 });
+
+test('avslutade ärenden (utbetald/avslagen) döljs', async () => {
+  const { claimDone } = await import('./trips.ts');
+  const base = { claim: 'none' } as Parameters<typeof claimDone>[0];
+  assert.equal(claimDone({ ...base, claim: 'paid' }), true);
+  assert.equal(claimDone({ ...base, claim: 'rejected' }), true);
+  assert.equal(claimDone({ ...base, claim: 'sent' }), false);
+});
