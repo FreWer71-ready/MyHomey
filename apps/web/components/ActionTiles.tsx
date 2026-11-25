@@ -68,16 +68,16 @@ export function ActionTiles({ items, layout = 'list', cols = 1 }: { items: Actio
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className={layout === 'grid' ? 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4' : layout === 'compact' ? 'grid grid-cols-2 gap-2' : layout === 'tiles' ? 'grid grid-cols-4 gap-2' : layout === 'bar' ? 'flex flex-wrap gap-2' : cols === 2 ? 'grid grid-cols-1 gap-x-8 md:grid-cols-2' : 'flex flex-col'}>
+      <ul className={layout === 'grid' ? 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4' : layout === 'compact' ? 'grid grid-cols-2 gap-2' : layout === 'tiles' ? 'grid grid-cols-4 gap-2' : layout === 'bar' ? 'scroll-x flex gap-2 max-lg:overflow-x-auto lg:flex-wrap' : cols === 2 ? 'grid grid-cols-1 gap-x-8 md:grid-cols-2' : 'flex flex-col'}>
         {items.map((a) => {
           const st = state?.id === a.id ? state.status : null;
           return (
-            <li key={`${a.kind}-${a.id}`} className={layout === 'bar' ? `min-w-0 ${a.toggle ? 'max-lg:basis-full' : 'max-lg:basis-[calc(50%-0.25rem)]'} lg:flex-1` : layout === 'list' ? `border-b border-line last:border-b-0 ${cols === 2 ? 'md:[&:nth-last-child(2):nth-child(odd)]:border-b-0' : ''}` : ''}>
+            <li key={`${a.kind}-${a.id}`} className={layout === 'bar' ? `min-w-0 max-lg:shrink-0 lg:flex-1` : layout === 'list' ? `border-b border-line last:border-b-0 ${cols === 2 ? 'md:[&:nth-last-child(2):nth-child(odd)]:border-b-0' : ''}` : ''}>
               <button
                 type="button" onClick={() => run(a)} disabled={state?.status === 'busy'} aria-pressed={a.toggle ? on(a) : undefined}
                 className={`relative flex w-full min-w-0 ${layout === 'tiles' ? 'text-center' : 'text-left'} ${layout === 'compact' ? 'gap-2' : layout === 'tiles' ? 'gap-1' : 'gap-3'} transition-colors ${
  layout === 'bar'
- ? 'btn h-full min-h-14 w-full justify-center px-3'
+ ? 'btn h-full min-h-12 w-full justify-center px-3 lg:min-h-14'
  : layout === 'grid'
  ? 'h-[6.75rem] flex-col items-start justify-center overflow-hidden rounded-[1rem] border border-line bg-white/[0.04] p-3 hover:bg-white/[0.08] sm:h-[4.75rem] sm:flex-row sm:items-center sm:px-4'
  : layout === 'tiles'

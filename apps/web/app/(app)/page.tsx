@@ -532,10 +532,10 @@ export default async function HomePage() {
   for (const re of QUICK_PICK) { const f = quickList.find((a) => !a.toggle && re.test(a.name) && !picked.includes(a)); if (f) picked.push(f); }
   const quickShown = [...(picked.length >= 2 ? picked : quickList.filter((a) => !a.toggle).slice(0, 4)), ...quickList.filter((a) => a.toggle).slice(0, 1)];
   const snabbval = quickShown.length > 0 && (
-    <section aria-label="Snabbval" data-live="" className="surface relative order-3 flex min-w-0 flex-col gap-3 p-3 lg:order-none lg:col-span-12 lg:row-start-4 lg:flex-row lg:items-center lg:gap-4 lg:px-5 cols2:lg:col-span-2 cols2:lg:row-start-5">
-      <h2 className="flex items-center gap-2.5 px-1 text-[1.125rem] font-semibold text-dim lg:shrink-0"><Icon name="star" size={22} />Snabbval</h2>
+    <section aria-label="Snabbval" data-live="" className="surface sticky bottom-4 z-10 mt-4 flex min-w-0 flex-row items-center gap-2 !border-white/[0.14] p-2 !shadow-[0_-8px_24px_rgb(0_0_0/0.4),inset_0_1px_0_rgb(255_255_255/0.04)] max-md:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:mt-5 lg:gap-4 lg:p-3 lg:px-5">
+      <h2 className="hidden items-center gap-2.5 px-1 text-[1.125rem] font-semibold text-dim md:flex md:shrink-0"><Icon name="star" size={22} />Snabbval</h2>
       <div className="min-w-0 grow"><ActionTiles items={quickShown} layout="bar" /></div>
-      <Link href="/favoriter" className="btn min-h-14 shrink-0 text-[1rem]">Alla kontroller<span aria-hidden="true">›</span></Link>
+      <Link href="/favoriter" className="btn min-h-12 shrink-0 text-[1rem] lg:min-h-14"><span className="max-lg:hidden">Alla kontroller</span><span className="lg:hidden">Alla</span><span aria-hidden="true">›</span></Link>
     </section>
   );
 
@@ -609,8 +609,9 @@ export default async function HomePage() {
   console.info(`Hem ${sw.line()}`);
   return (
     <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
+      <>
       {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem)] lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto] lg:items-stretch lg:gap-5 cols2:lg:h-auto cols2:lg:grid-cols-2 cols2:lg:grid-rows-[auto_auto_auto_1fr_auto] cols2:lg:items-start">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem-5.9rem)] lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)] lg:items-stretch lg:gap-5 cols2:lg:h-auto cols2:lg:grid-cols-2 cols2:lg:grid-rows-[auto_auto_auto_1fr] cols2:lg:items-start">
         {/* NU: klocka, datum, namnsdag (accentfärg bara här). */}
         <header className="order-1 flex flex-wrap items-end gap-x-4 gap-y-1 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-1 lg:row-start-1 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-2 lg:self-start cols2:lg:col-span-1 cols2:lg:row-start-1 cols2:lg:flex-row cols2:lg:items-end">
           <h1 className="sr-only">Hemma</h1>
@@ -711,44 +712,8 @@ export default async function HomePage() {
         {/* NU (vänster): kompakt Ute med det som påverkar hemmet, och Snabbval under. */}
         <div className="contents lg:col-span-4 lg:col-start-1 lg:row-start-3 lg:flex lg:min-h-0 lg:flex-col lg:gap-5 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-3">
           {/* Kalenderfokus (HOME_FOCUS=calendar): kalendrarna direkt under klockan, på alla skärmstorlekar. På stor skärm har de minsta höjd för dagens poster (annars pressas de ihop av övriga kort och bara dagraden syns). */}
-          {calFocus && hasCal && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[16rem]"><CalendarWidget collapsible={false} /></div>}
-          {calFocus && hasMirror && <div className="order-1 flex min-h-0 lg:order-none lg:min-h-[12rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={false} compact /></div>}
-          <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
-            label={`Ute ${outTemp != null ? fmtTemp(outTemp) : ''}${sky ? `, ${sky.label.toLowerCase()}` : ''}${hint ? `. ${hint.text}` : ''}. Visa väderprognosen.`} className="order-4 lg:order-none lg:shrink-0">
-            <div className="flex items-center gap-3">
-              {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={60} label={sky.label} />}
-              <div className="flex min-w-0 grow flex-col">
-                {outTemp != null ? (
-                  <span className="text-[3rem] leading-none font-bold tracking-tight tabular-nums">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
-                ) : (
-                  <span className="text-[1.25rem] font-semibold text-dim">{h.outdoorStale ? 'Stationen tyst' : 'Ej tillgänglig'}</span>
-                )}
-                {sky && weather && (
-                  <span className="truncate text-[1rem] font-semibold">
-                    {weather.nextPrecip && weather.nextPrecip.time > weather.current.time
-                      ? `${sky.label} · ${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} ${hhmm(weather.nextPrecip.time)}`
-                      : sky.label}
-                  </span>
-                )}
-              </div>
-              {station?.wind != null && (
-                <span className="flex shrink-0 flex-col items-end text-[0.9375rem] text-dim">
-                  <span className="flex items-center gap-1"><Icon name="wind" size={16} />{num(station.wind, 0)}{station.gust != null && station.gust > station.wind ? `–${num(station.gust, 0)}` : ''} m/s</span>
-                  {station.road != null && <span className={homeSlip ? 'font-semibold' : undefined} style={{ color: slipColor }}>{homeSlip ? '⚠ ' : ''}Väg {fmtTemp(station.road)}</span>}
-                </span>
-              )}
-            </div>
-            {weather && (
-              <div className="border-t border-line pt-2"><HourStrip hours={weather.hours.slice(1, 13)} lat={PLACE.lat} lon={PLACE.lon} interactive={false} /></div>
-            )}
-            {/* Halka står redan i varningsraden: visa inte tipset dubbelt. */}
-            {hint && !(hint.icon === 'road' && alerts.some((x) => x.id.startsWith('halka'))) && (
-              <p className="flex items-center gap-2 text-[0.9375rem] font-semibold" style={{ color: C.warn }}>
-                <Icon name={hint.icon} size={18} /><span className="truncate">{hint.text}</span>
-              </p>
-            )}
-          </Card>
-
+          {hasCal && <div className={`${calFocus ? 'order-1' : 'order-5'} flex min-h-0 lg:order-none lg:min-h-[16rem]`}><CalendarWidget collapsible={calFocus ? false : undefined} /></div>}
+          {hasMirror && <div className={`${calFocus ? 'order-1' : 'order-5'} flex min-h-0 lg:order-none lg:min-h-[12rem]`}><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" collapsible={calFocus ? false : undefined} compact /></div>}
         </div>
 
         {/* HÄRNÄST: pendling och kalender. */}
@@ -931,9 +896,41 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          {!calFocus && hasCal && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[16rem]"><CalendarWidget /></div>}
-          {/* Speglad kalender (t.ex. Fredriks hos Ulrika) under den egna. */}
-          {!calFocus && hasMirror && <div className="order-5 flex min-h-0 lg:order-none lg:min-h-[12rem]"><CalendarWidget src="/api/calendar/mirror" title={mirrorTitle()} id="kalender-spegel" compact /></div>}
+          <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
+            label={`Ute ${outTemp != null ? fmtTemp(outTemp) : ''}${sky ? `, ${sky.label.toLowerCase()}` : ''}${hint ? `. ${hint.text}` : ''}. Visa väderprognosen.`} className="order-4 lg:order-none lg:shrink-0">
+            <div className="flex items-center gap-3">
+              {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={60} label={sky.label} />}
+              <div className="flex min-w-0 grow flex-col">
+                {outTemp != null ? (
+                  <span className="text-[3rem] leading-none font-bold tracking-tight tabular-nums">{fmtTemp(outTemp)}<TrendArrow trend={h.outdoorTrend} /></span>
+                ) : (
+                  <span className="text-[1.25rem] font-semibold text-dim">{h.outdoorStale ? 'Stationen tyst' : 'Ej tillgänglig'}</span>
+                )}
+                {sky && weather && (
+                  <span className="truncate text-[1rem] font-semibold">
+                    {weather.nextPrecip && weather.nextPrecip.time > weather.current.time
+                      ? `${sky.label} · ${symbolInfo(weather.nextPrecip.symbol).label.toLowerCase()} ${hhmm(weather.nextPrecip.time)}`
+                      : sky.label}
+                  </span>
+                )}
+              </div>
+              {station?.wind != null && (
+                <span className="flex shrink-0 flex-col items-end text-[0.9375rem] text-dim">
+                  <span className="flex items-center gap-1"><Icon name="wind" size={16} />{num(station.wind, 0)}{station.gust != null && station.gust > station.wind ? `–${num(station.gust, 0)}` : ''} m/s</span>
+                  {station.road != null && <span className={homeSlip ? 'font-semibold' : undefined} style={{ color: slipColor }}>{homeSlip ? '⚠ ' : ''}Väg {fmtTemp(station.road)}</span>}
+                </span>
+              )}
+            </div>
+            {weather && (
+              <div className="border-t border-line pt-2"><HourStrip hours={weather.hours.slice(1, 13)} lat={PLACE.lat} lon={PLACE.lon} interactive={false} /></div>
+            )}
+            {/* Halka står redan i varningsraden: visa inte tipset dubbelt. */}
+            {hint && !(hint.icon === 'road' && alerts.some((x) => x.id.startsWith('halka'))) && (
+              <p className="flex items-center gap-2 text-[0.9375rem] font-semibold" style={{ color: C.warn }}>
+                <Icon name={hint.icon} size={18} /><span className="truncate">{hint.text}</span>
+              </p>
+            )}
+          </Card>
         </div>
 
         {/* HEMMET (höger): platta rader i ett kort. Avvikelser lyfts överst och får egen yta; det normala är dämpat. */}
@@ -965,10 +962,11 @@ export default async function HomePage() {
           )}
         </div>
 
-        {/* SNABBVAL (nederst): bara det mest använda; resten på Styrning. */}
-        {snabbval}
-
       </div>
+
+      {/* SNABBVAL: fast underst (sticky, sist i sidan) med diskret ram; bara det mest använda, resten på Styrning. */}
+      {snabbval}
+      </>
     </HomeShell>
   );
 }
