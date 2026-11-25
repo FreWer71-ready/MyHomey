@@ -40,7 +40,7 @@ function TrainTimeline({ id, ident, p, box }: { id: string; ident: string; p: Tr
 }
 
 /** "Sträckan ›": hämtar tågets alla mellanliggande punkter först vid tryck (för alla tåg, oavsett avgångstid). */
-export function TrainRoute({ ident, children, className = '' }: { ident: string; children?: React.ReactNode; className?: string }) {
+export function TrainRoute({ ident, children, className = '', label = 'Sträckan ›' }: { ident: string; children?: React.ReactNode; className?: string; label?: string }) {
   const [p, setP] = useState<TrainPath | null>(null);
   // Rutan skapas först vid första tryck (annars skiljer sig serverns och webbläsarens HTML åt).
   const [shown, setShown] = useState(0);
@@ -56,7 +56,7 @@ export function TrainRoute({ ident, children, className = '' }: { ident: string;
     <>
       {children
         ? <button type="button" onClick={open} aria-label={`Tåg ${ident}: visa hela sträckan`} className={`w-full text-left ${className}`}>{children}</button>
-        : <button type="button" onClick={open} className="btn-row btn-row-light">Sträckan ›</button>}
+        : <button type="button" onClick={open} aria-label={`Tåg ${ident}: visa hela sträckan`} className="btn-row btn-row-light">{label}</button>}
       {shown > 0 && <TrainTimeline id={id} ident={ident} p={p} box={box} />}
     </>
   );
