@@ -1,6 +1,7 @@
 'use server';
 import { createClient } from '@/lib/supabase/server';
-import { dropUpcomingTrip, logTrip } from '@/lib/trips-source';
+import { dropUpcomingTrip, logLeg, logTrip, unlogLeg } from '@/lib/trips-source';
+import { km as distKm } from '@/lib/trip';
 
 // "Jag är på tåget": användarens bekräftelse går före gissningen (position/GPS) och gäller på alla skärmar i hushållet
 // tills ankomsten + resten av resan (75 min). "Inte på tåget" tar bort den.
@@ -47,4 +48,23 @@ export async function unskipAll(): Promise<Result> {
   const sb = await createClient();
   const { error } = await sb.from('commute_skip').delete().neq('ident', '');
   return { ok: !error };
+}
+
+/**
+ * Dagens resa: bekräfta ett tåg (vilket som helst) så att det sparas i tåghistoriken. Sträckan räknas ur hållplatsernas läge
+ * (annars 0 km). Bara det användaren själv trycker på sparas.
+ */
+export async function confirmLeg(leg: { ident: string; dep: number; arr: number; from: string; to: string; label: string | null; fromAt?: { lat: number; lon: number } | null; toAt?: { lat: number; lon: number } | null }): Promise<Result> {
+  if (!/^\d{1,6}$/.test(leg.ident) || !Number.isFinite(leg.dep) || !Number.isFinite(leg.arr) || leg.arr <= leg.dep) return { ok: false };
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return { ok: false };
+  const d = leg.fromAt && leg.toAt ? Math.round(distKm(leg.fromAt, leg.toAt)) : 0;
+  const product = (leg.label ?? '').replace(/\s*\d+\s*$/, '').trim().slice(0, 40) || null;
+  return { ok: await logLeg({ ident: leg.ident, dep: leg.dep, arr: leg.arr, from: leg.from.slice(0, 60), to: leg.to.slice(0, 60), product, km: Math.min(2000, Math.max(0, d)) }) };
+}
+
+export async function unconfirmLeg(ident: string, dep: number): Promise<Result> {
+  if (!/^\d{1,6}$/.test(ident) || !Number.isFinite(dep)) return { ok: false };
+  return { ok: await unlogLeg(ident, dep) };
 }
