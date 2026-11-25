@@ -378,9 +378,10 @@ export default async function HomePage() {
   const dirTrains = commute ? [...commute[dir], ...(commute.recent?.[dir] ?? [])] : [];
   // Användarens bekräftelse ("Jag är på tåget") går före positionen.
   const confirmed = commute?.trains ? await confirmedP : null;
-  let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : commute?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me, now), now, new Set(dirTrains.map((t) => t.ident))) : null;
+  let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : commute?.trains && !focus ? await detectTrain(freshestPosition(locate.members, locate.items, me, now), now, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
-  const guessed = !onTrain && commute?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, now, 2 * 3600_000), ...await positionP], TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
+  // Dagens resa går före tågläget: pendlingståget söks eller gissas inte då (bara ett bekräftat tåg).
+  const guessed = !onTrain && !focus && commute?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, now, 2 * 3600_000), ...await positionP], TERMINALS[dir === 'out' ? 0 : 1], dirTrains, now) : null;
   sw.mark('tagslage');
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
   const allTrains = commute ? [...commute.out, ...commute.home, ...commute.all, ...(commute.recent?.out ?? []), ...(commute.recent?.home ?? [])] : [];
@@ -389,7 +390,7 @@ export default async function HomePage() {
   // Tågläget missade (ingen position): erbjud bekräftelse för tåget som just gått (högst 20 min sedan).
   // Inte när positionen visar att man är hemma (då sitter man inte på tåget).
   const atHomeNow = !!here && km(here.at, PLACE) <= 0.4;
-  const justLeft = !onTrain && !atHomeNow && commute ? [...(commute.recent?.[dir] ?? [])].filter((t) => !t.canceled && (t.est ?? t.dep) > now - 20 * 60_000).sort((a, b) => b.dep - a.dep)[0] ?? null : null;
+  const justLeft = !onTrain && !focus && !atHomeNow && commute ? [...(commute.recent?.[dir] ?? [])].filter((t) => !t.canceled && (t.est ?? t.dep) > now - 20 * 60_000).sort((a, b) => b.dep - a.dep)[0] ?? null : null;
   const riddenToWork = !!run && (!!commute?.out.some((t) => t.id === run.id) || !!commute?.recent?.out.some((t) => t.id === run.id));
   // Kommande avgångar inom en timme (minst nästa), som reserv om tågläget har fel.
   const upcomingDir = trains.filter((t) => !t.canceled && (t.est ?? t.dep) > now && t.ident !== run?.ident);
