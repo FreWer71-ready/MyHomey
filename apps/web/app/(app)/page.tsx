@@ -542,6 +542,10 @@ export default async function HomePage() {
   // Nästa steg: pågående/nästa sträcka i resplanen (annars visas inget).
   const stepIdx = !ridden && nextTransit ? nextLegIndex(nextTransit.legs, now, transitPos) : -1;
   const stepLeg = stepIdx >= 0 ? nextTransit!.legs[stepIdx] : null;
+  // Hälsning: Godmorgon 04–09, annars Hej (som rapporten). Namn per dashboard: Fredrik, Svensson (Ulrika).
+  const hour = Number(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', hourCycle: 'h23' }).format(now));
+  const greeting = hour >= 4 && hour < 10 ? 'God morgon' : hour >= 18 || hour < 4 ? 'God kväll' : 'Hej';
+  const greetName = me.toLowerCase() === 'ulrika' ? 'Svensson' : me.toLowerCase() === 'fredrik' ? 'Fredrik' : null;
   const nextStep = stepLeg ? { dep: stepLeg.dep, title: stepLeg.kind === 'walk' ? `Gå till ${stepLeg.to}` : `${stepLeg.label} → ${stepLeg.to}` } : null;
 
   // Elpris: dygnets timmar som staplar (idag, Stockholmstid).
@@ -636,14 +640,17 @@ export default async function HomePage() {
           </div>
         </header>
 
-        {/* NÄSTA STEG (mitten, rad 1): svarar på "vad gör jag härnäst?" före allt annat. Bara när en resa planeras. */}
-        {nextStep && (
-          <Link href="/pendling" aria-label={`Nästa steg: ${nextStep.title}. Visa resan.`}
-            className="order-2 flex min-w-0 flex-col gap-1 self-center rounded-xl px-1 py-1 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-5 lg:row-start-1 2xl:col-span-5 cols2:hidden">
-            <span className="text-[0.9375rem] font-semibold text-dim">Nästa steg</span>
-            <span className="text-[1.75rem] leading-tight font-semibold">{nextStep.title}</span>
-            <span className="text-[1.125rem] text-dim"><LeaveIn dep={nextStep.dep} serverNow={now} variant="line" /> · kl {hhmm(nextStep.dep)}</span>
-          </Link>
+        {/* HÄLSNING + NÄSTA STEG (mitten, rad 1): svarar på "vad gör jag härnäst?" före allt annat. Namn: Fredrik / Svensson (Ulrikas dashboard). */}
+        {(greetName || nextStep) && (
+          <div className="order-2 flex min-w-0 flex-col gap-1 self-center px-1 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-5 lg:row-start-1 2xl:col-span-5 cols2:hidden">
+            {greetName && <h2 className="text-[1.75rem] leading-tight font-bold">{greeting}, {greetName}</h2>}
+            {nextStep && (
+              <Link href="/pendling" aria-label={`Nästa steg: ${nextStep.title}. Visa resan.`} className="row-hit -mx-2 flex flex-col rounded-xl px-2 py-1">
+                <span className="text-[1.125rem] font-semibold">Nästa steg: {nextStep.title}</span>
+                <span className="text-[1rem] text-dim"><LeaveIn dep={nextStep.dep} serverNow={now} variant="line" /> · kl {hhmm(nextStep.dep)}</span>
+              </Link>
+            )}
+          </div>
         )}
 
         {/* VARNINGAR: en kompakt rad över hela bredden. Den viktigaste dominerar (bärnsten/röd), övriga dämpas, resten bakom "+N". */}
