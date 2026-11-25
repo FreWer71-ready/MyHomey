@@ -169,10 +169,13 @@ export default async function CommutePage() {
   const dirTrains = c ? [...c[d0], ...(c.recent?.[d0] ?? [])] : [];
   // Avslutade resor får sin faktiska ankomst (sparas för statistiken under Historik → Tåg).
   if (c?.trains) await settleTrips(nowMs);
+  // Dagens resa (vald i Sök resa): överst, och ersätter förslagen till jobbet/hem resten av dagen.
+  // Den går också före tågläget: pendlingståget söks eller gissas inte (bara ett bekräftat tåg visas).
+  const focus = parseFocus((await cookies()).get(FOCUS_COOKIE)?.value, nowMs);
   const confirmed = c?.trains ? await loadConfirmed(nowMs) : null;
-  let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : c?.trains ? await detectTrain(freshestPosition(locate.members, locate.items, me), nowMs, new Set(dirTrains.map((t) => t.ident))) : null;
+  let onTrain = confirmed ? { train: confirmed.ident, dist: 0, src: 'user' as const } : c?.trains && !focus ? await detectTrain(freshestPosition(locate.members, locate.items, me), nowMs, new Set(dirTrains.map((t) => t.ident))) : null;
   // Ingen ny position sedan perrongen strax före en avgång: troligen på det tåget.
-  const guessed = !onTrain && c?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, nowMs, 2 * 3600_000), ...await positionHistory(positionDevices(locate.members, locate.items, me), nowMs - 2 * 3600_000)], TERMINALS[d0 === 'out' ? 0 : 1], dirTrains, nowMs) : null;
+  const guessed = !onTrain && !focus && c?.trains ? inferTrain([...allPositions(locate.members, locate.items, me, nowMs, 2 * 3600_000), ...await positionHistory(positionDevices(locate.members, locate.items, me), nowMs - 2 * 3600_000)], TERMINALS[d0 === 'out' ? 0 : 1], dirTrains, nowMs) : null;
   if (guessed) onTrain = { train: guessed, dist: 0, src: 'life360' };
   const pool = [...rtTrains, ...(c?.recent?.out ?? []), ...(c?.recent?.home ?? [])];
   const run = confirmed ? pool.find((t) => t.ident === confirmed.ident && t.dep === confirmed.dep) ?? pickRun(pool, confirmed.ident, nowMs)
@@ -189,8 +192,6 @@ export default async function CommutePage() {
   const homeRun = !!run && [...(c?.home ?? []), ...(c?.recent?.home ?? [])].some((t) => t.id === run.id);
   // Framme (positionen vid jobbet eller hemma): tillbaka till normalläget.
   const here = freshestPosition(locate.members, locate.items, me, nowMs);
-  // Dagens resa (vald i Sök resa): överst, och ersätter förslagen till jobbet/hem resten av dagen.
-  const focus = parseFocus((await cookies()).get(FOCUS_COOKIE)?.value, nowMs);
   const goalAt = toWork ? transitGoal()?.at : PLACE;
   const atGoal = !!here && !!goalAt && km(here.at, goalAt) < 0.4;
   const ridden = run && !atGoal && (!arrived || (onward.length > 0 && nowMs <= onward.at(-1)!.arr + 5 * 60_000)) ? run : null;
