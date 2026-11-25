@@ -8,7 +8,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - **Backlogg:** `BACKLOGG.md` (iPhone-ring, larmknapp 112, redigera kalenderhändelser med Google-synk). Ta inte upp den förrän det efterfrågas.
 - **Publicera direkt, utan att fråga,** när ändringen är byggd och testad (tsc, eslint, `npm test`), om användaren inte anger annat: commit → push → PR → merge (squash) → kontrollera att Vercel-bygget blir `READY` – alltid för **båda** dashboards (`myhomey` = Fredrik, `ulrikasdashboard` = Ulrika). Stanna och fråga bara om kontrollerna är röda, ett bygge fallerar eller användaren sagt "vänta" eller "merga inte". (Stående besked från användaren 2026-11-23.)
 - **Fråga före** databasändringar och åtgärder som är destruktiva eller svåra att backa (radera data eller miljövariabler, force-push).
-- Allt ska vara committat och pushat (stopp-hook). Utvecklingsgren: `claude/charming-dirac-60g8ft`. Har fjärrgrenen avvikande historik: cherry-picka, aldrig force-push.
+- Allt ska vara committat och pushat (stopp-hook). **Skapa varje ny gren från senaste `main`** (`git fetch --depth=1 origin main`, sedan `git checkout -B <gren> FETCH_HEAD`), så att reglerna här och versionen alltid följer med; gamla grenar (t.ex. `claude/charming-dirac-60g8ft`) har gammal historik och saknar dem. Har fjärrgrenen avvikande historik: cherry-picka, aldrig force-push. Efter squash-merge raderas ofta fjärrgrenen: stoppkrokens varning om "osparade commits" är då falsklarm när ändringen ligger i main.
 - Före commit: `npm test`, `npx tsc --noEmit` och eslint på ändrade filer (i `apps/web`). Databas: `scripts/test-db.sh`. Större UI-ändringar: `next build`.
 
 ## Plats och integritet
