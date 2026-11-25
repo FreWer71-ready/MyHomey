@@ -36,7 +36,7 @@ import { FOCUS_COOKIE, parseFocus } from '@/lib/focus-trip';
 import { FocusTripCard } from '@/components/FocusTrip';
 import { NearDepartures, nearDepartures } from '@/components/NearDepartures';
 import { loadTrips, saveTrip, ticket } from '@/lib/trips-source';
-import { claimAt, claimable, compensation } from '@/lib/trips';
+import { claimable, compensation } from '@/lib/trips';
 import { TrainProgress, TrainRoute } from '@/components/TrainProgress';
 import { HomeTrains, RiddenTrain } from '@/components/TrainFocus';
 import { tvAppLabel } from '@/lib/media';
@@ -483,7 +483,7 @@ export default async function HomePage() {
   const damp = humidityWarnings(h.rooms);
   // Alla varningar i samma format; nivån (gul/orange/röd) styr bara färgen.
   // Tågresor med försening att begära ersättning för (senaste 60 dagarna, Mälartåg).
-  const openClaims = commute?.trains ? (await loadTrips().catch(() => [])).filter((t) => claimable(t) && t.claim === 'none' && claimAt(t) === 'mt' && t.dep > now - 60 * 86400_000) : [];
+  const openClaims = commute?.trains ? (await loadTrips().catch(() => [])).filter((t) => claimable(t) && t.claim === 'none' && t.dep > now - 60 * 86400_000) : [];
   const claimKr = openClaims.reduce((a, t) => a + (compensation(t, ticket()).kr ?? 0), 0);
   const alerts: Alert[] = [
     ...weatherAlerts(wx),

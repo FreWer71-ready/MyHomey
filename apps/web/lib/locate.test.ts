@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildLocate, shortName, whereText, type LocCap } from './locate.ts';
+import { buildLocate, shortName, streetTown, whereText, type LocCap } from './locate.ts';
 
 const c = (device_id: string, capability_id: string, v: number | boolean | string): LocCap => ({
   device_id, capability_id, last_updated: '2026-11-15T18:00:00Z',
@@ -42,4 +42,11 @@ test('hemma = nära dashboardens hem, inte särbons "Hem" i Life360', () => {
   assert.equal(buildLocate(dev, caps, { lat: 59.37, lon: 16.51 }).members[0].home, false);
   assert.equal(buildLocate(dev, caps, { lat: 59.6005, lon: 16.5502 }).members[0].home, true);
   assert.equal(buildLocate(dev, caps).members[0].home, true);
+});
+
+test('gata, ort', () => {
+  assert.equal(streetTown('Fredsborgsgatan 24, 117 43 Stockholm, Sverige'), 'Fredsborgsgatan 24, Stockholm');
+  assert.equal(streetTown('Faktorigatan, Eskilstuna'), 'Faktorigatan, Eskilstuna');
+  assert.equal(streetTown('Kungsgatan 3'), 'Kungsgatan 3');
+  assert.equal(streetTown(null), null);
 });

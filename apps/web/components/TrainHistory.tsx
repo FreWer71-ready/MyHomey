@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { TONE_COLOR, station } from '@/lib/commute';
 import { hhmm } from '@/lib/prices';
-import { CLAIM_MIN, CLAIM_URL, DELAYED_MIN, MOVINGO_LABEL, RULES_URL, claimAt, claimText, claimable, compensation, stats, type Ticket, type Trip } from '@/lib/trips';
+import { CLAIM_MIN, DELAYED_MIN, MOVINGO_LABEL, OPERATORS, RULES_URL, SJ_MOVINGO_URL, claimAt, claimText, claimable, compensation, stats, type Ticket, type Trip } from '@/lib/trips';
 import { ClaimChips, CopyClaim, DeleteTrip } from './TripButtons';
 
 export const RANGES = { '30d': { label: '30 dagar', days: 30 }, '365d': { label: '1 år', days: 365 }, all: { label: 'Allt', days: Infinity } } as const;
@@ -79,12 +79,15 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
           <ul className="flex list-disc flex-col gap-1 pb-2 pl-5 text-[0.9375rem]">
             <li>Försening vid ankomst <b>20–39 min: 50 %</b>, <b>40–59 min: 75 %</b>, <b>60 min eller mer: 100 %</b> av snittpriset per resa – oavsett tågets sträcka.</li>
             <li>Snittpris = periodpriset delat med resdagar: 5/30 → 10, 30 dagar → 30, 90 dagar → 90, år → 365 (köpt från 8 januari).{ticket.price == null && ' Ange priset (MOVINGO_PRICE) för att se belopp.'}</li>
-            <li>Gäller bara när ett <b>Mälartåg</b> är försenat. Med Movingo på SJ:s avgångar ansöker du hos SJ.</li>
+            <li>Mälardalstrafik ersätter bara när ett <b>Mälartåg</b> är försenat. Med Movingo på <b>SJ:s avgångar</b> (SJ Regional, Snabbtåg) ansöker du hos <b>SJ Kundservice</b>; på <b>Tåg i Bergslagen</b> hos Länstrafiken Örebro eller VL, beroende på i vilket län resan startar. Beloppen för SJ-tåg är en uppskattning – SJ beslutar.</li>
             <li>Missad lokaltrafik ersätts inte, och inte heller missad anslutning när Mälartåget var mindre än 20 min sent.</li>
             <li>Total ersättning kan aldrig bli mer än biljettens pris.</li>
             <li>Utbetalning snabbast via Swish (numret kopplat till ditt personnummer), annars Swedbanks utbetalningssystem.</li>
           </ul>
-          <a href={RULES_URL} target="_blank" rel="noopener noreferrer" className="text-[0.9375rem] font-bold underline">Hela reglerna hos Mälardalstrafik ↗</a>
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <a href={RULES_URL} target="_blank" rel="noopener noreferrer" className="text-[0.9375rem] font-bold underline">Hela reglerna hos Mälardalstrafik ↗</a>
+            <a href={SJ_MOVINGO_URL} target="_blank" rel="noopener noreferrer" className="text-[0.9375rem] font-bold underline">Movingo och försening hos SJ ↗</a>
+          </span>
         </details>
         <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {claims.map((t) => (
@@ -102,15 +105,15 @@ export function TrainHistory({ trips, range, ticket }: { trips: Trip[]; range: R
                 return (
                   <p className="text-[0.9375rem]">
                     <b>{c.pct} % av snittpriset</b>{c.kr != null && <> · ca <b>{c.kr} kr</b></>}
-                    {claimAt(t) === 'sj' && <span className="text-dim"> · SJ-tåg: ansök hos SJ Kundservice</span>}
+                    {claimAt(t) !== 'mt' && <span className="text-dim"> · {OPERATORS[claimAt(t)].name}-tåg: ansök hos {OPERATORS[claimAt(t)].where}{claimAt(t) === 'sj' ? ' (uppskattat belopp)' : ''}</span>}
                   </p>
                 );
               })()}
               <ClaimChips ident={t.ident} dep={t.dep} claim={t.claim} />
               <div className="flex flex-wrap items-center gap-2">
                 <CopyClaim text={claimText(t, ticket)} />
-                {claimAt(t) === 'mt' && t.claim === 'none' && (
-                  <a href={CLAIM_URL} target="_blank" rel="noopener noreferrer" className="pill h-9 w-fit bg-sun px-3 text-[0.875rem] font-bold text-ink">Ansök hos Mälardalstrafik ↗</a>
+                {t.claim === 'none' && OPERATORS[claimAt(t)].claimUrl && (
+                  <a href={OPERATORS[claimAt(t)].claimUrl!} target="_blank" rel="noopener noreferrer" className="pill h-9 w-fit bg-sun px-3 text-[0.875rem] font-bold text-ink">Ansök hos {claimAt(t) === 'sj' ? 'SJ' : 'Mälardalstrafik'} ↗</a>
                 )}
                 <span className="ml-auto flex items-center gap-1.5 text-[0.875rem] text-dim">Fel tåg? <DeleteTrip ident={t.ident} dep={t.dep} /></span>
               </div>
