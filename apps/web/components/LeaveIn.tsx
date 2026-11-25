@@ -18,10 +18,14 @@ function useNow(serverNow: number) {
  * Nedräkning till avresan som tickar (sidan är annars serverrenderad per visning):
  * "Gå om 3 min", "Gå nu" och när avresan passerat "Gått kl 13:53". `card` = rubrik i resekortet, `line` = rad på Hem.
  */
-export function LeaveIn({ dep, serverNow, variant }: { dep: number; serverNow: number; variant: 'card' | 'line' }) {
+export function LeaveIn({ dep, serverNow, variant }: { dep: number; serverNow: number; variant: 'card' | 'line' | 'in' }) {
   const now = useNow(serverNow);
   const min = Math.round((dep - now) / 60_000);
   const gone = min < -1;
+  // "om 6 min" som slutet på en mening ("Nästa steg: gå till Norrköping C om 6 min").
+  if (variant === 'in') {
+    return <span className="font-semibold" style={gone ? { color: TONE_COLOR.warn } : undefined}>{gone ? `(sen ${-min} min)` : min <= 0 ? 'nu' : `om ${min} min`}</span>;
+  }
   if (variant === 'line') {
     return (
       <span className="font-semibold" style={gone ? { color: TONE_COLOR.warn } : undefined}>

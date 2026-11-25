@@ -90,7 +90,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - `BirthdayOverlay` (i layouten) visar "Grattis / på födelsedagen" med namnet i gult under, med fyrverkerier, konfetti, blommor och champagne i cirka 5 s (avslutas med ett finalsalvo av fyrverkerier) vid varje full omladdning under dagen, inte vid sidbyte eller automatisk uppdatering. Tryck stänger direkt. Utan `BIRTHDAYS` visas inget.
 
 ## Version
-- Versionen heter **V0.9.PR<nummer>**: grundversionen `BASE_VERSION` (nu V0.9) och numret på PR:en som byggdes, tagen ur squash-commitens rubrik `(#nnn)` (`VERCEL_GIT_COMMIT_MESSAGE`, annars `VERCEL_GIT_PULL_REQUEST_ID`) i `next.config.ts`. Varje PR ger alltså ett nytt nummer automatiskt. Lokalt utan PR: V0.9. Höj `BASE_VERSION` vid större version. Visas diskret ovanför huset i sidomenyn (stor skärm, på två rader: V0.9 / PR111). I mobilen (där menyn ligger i bottenraden) står den längst ned på alla sidor: "MyHomey V0.9.PR146" (`(app)/layout.tsx`, dold från `md`).
+- Versionen heter **V1.0.0.PR<nummer>**: grundversionen `BASE_VERSION` (nu V1.0.0) och numret på PR:en som byggdes, tagen ur squash-commitens rubrik `(#nnn)` (`VERCEL_GIT_COMMIT_MESSAGE`, annars `VERCEL_GIT_PULL_REQUEST_ID`) i `next.config.ts`. Varje PR ger alltså ett nytt nummer automatiskt. Lokalt utan PR: V1.0.0. Höj `BASE_VERSION` vid större version. Visas diskret ovanför huset i sidomenyn (stor skärm, på två rader: V1.0.0 / PR111). I mobilen (där menyn ligger i bottenraden) står den längst ned på alla sidor: "MyHomey V1.0.0.PR146" (`(app)/layout.tsx`, dold från `md`).
 
 ## Prestanda
 - Klientcache 30 s (`staleTimes`), `loading.tsx` vid sidhopp. Ändra inte utan skäl.
