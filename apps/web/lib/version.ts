@@ -1,5 +1,5 @@
 /**
- * Appens version, V1.0.0.PR<nummer> (se next.config.ts: grundversion och PR-nummer sätts vid bygget).
- * Visas diskret ovanför huset i sidomenyn (stor skärm).
+ * Appens version, V<stor>.<mindre>.<fix> (sätts i next.config.ts och höjs i varje ändring).
+ * Visas diskret ovanför huset i sidomenyn (stor skärm) och längst ned på mobil.
  */
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? 'V1.0.0';
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? 'V1.1.0';
