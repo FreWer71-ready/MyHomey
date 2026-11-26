@@ -120,3 +120,9 @@ export function thinPath(points: LatLon[], stepKm = 0.15): LatLon[] {
 /** Vägärenden som ligger på den faktiska rutten (inom `buffer` km från någon del av den). */
 export const onRoute = (events: RoadEvent[], path: LatLon[], buffer = 0.25) =>
   path.length < 2 ? [] : events.filter((e) => has(e) && path.some((p, i) => i > 0 && toSegmentKm(e, path[i - 1], p) <= buffer));
+
+/** Träff från platssökningen (Nominatim). Naturplatser (holmar, sjöar, berg) duger inte som resmål. */
+export type GeoHit = { lat: string; lon: string; category?: string; type?: string };
+const NATURE = /^(islet|island|archipelago|bay|lake|water|peak|cape|wetland|wood|forest|strait)$/;
+export const usableHit = (h: GeoHit | undefined): h is GeoHit =>
+  !!h && h.category !== 'natural' && h.category !== 'waterway' && h.category !== 'water' && !NATURE.test(h.type ?? '');

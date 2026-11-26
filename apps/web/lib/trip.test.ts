@@ -58,3 +58,11 @@ test('hinder bara på den faktiska rutten', () => {
   const hit = onRoute([ev('på', 59.335, 16.855), ev('bredvid', 59.355, 16.855), ev('mål', 59.29, 18.02)], path).map((e: { id: string }) => e.id);
   assert.deepEqual(hit, ['på']);
 });
+
+test('platssökning: naturplatser duger inte (holmen "Köpenhamn" i Småland)', async () => {
+  const { usableHit } = await import('./trip.ts');
+  assert.equal(usableHit({ lat: '56.69', lon: '14.18', category: 'place', type: 'islet' }), false);
+  assert.equal(usableHit({ lat: '55.68', lon: '12.57', category: 'place', type: 'city' }), true);
+  assert.equal(usableHit({ lat: '59.3', lon: '18.0', category: 'highway', type: 'residential' }), true);
+  assert.equal(usableHit(undefined), false);
+});

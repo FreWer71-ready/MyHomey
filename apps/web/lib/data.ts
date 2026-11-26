@@ -15,6 +15,7 @@ import { homeWalkMin } from './transit-source';
 import { parsePolice, type PoliceEvent, type RawPolice } from './police';
 import { buildLocate, type Item, type LocCap, type Member } from './locate';
 import { extractHits, toItems, type MuniItem } from './municipal';
+import { usableHit, type GeoHit } from './trip';
 import { buildSeries, METRICS, PERIODS, STALE_CHECKED, type MetricKey, type PeriodKey, type Row, type Series } from './history';
 
 /** Lokalt demoläge (bara `next dev`): läser JSON i stället för Supabase. */
@@ -517,17 +518,22 @@ export async function geocode(q: string): Promise<{ lat: number; lon: number } |
   const place = q.trim().slice(0, 120);
   if (!place) return null;
   if (DEMO) return /mariefred/i.test(place) ? { lat: 59.2597, lon: 17.2207 } : null;
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=se&q=${encodeURIComponent(place)}`, {
-      headers: { 'User-Agent': 'home-dashboard/1.0', 'Accept-Language': 'sv' },
-      next: { revalidate: 30 * 86400 },
-      signal: AbortSignal.timeout(5000),
-    });
-    const [hit] = res.ok ? ((await res.json()) as { lat: string; lon: string }[]) : [];
-    return hit ? { lat: Number(hit.lat), lon: Number(hit.lon) } : null;
-  } catch {
-    return null;
-  }
+  // Sverige först; ger det ingen användbar träff (t.ex. holmen "Köpenhamn" i Småland) söks även grannländerna,
+  // så att resor till Köpenhamn, Oslo och Helsingfors hittas.
+  const search = async (countries: string) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=${countries}&q=${encodeURIComponent(place)}`, {
+        headers: { 'User-Agent': 'home-dashboard/1.0', 'Accept-Language': 'sv' },
+        next: { revalidate: 30 * 86400 },
+        signal: AbortSignal.timeout(5000),
+      });
+      const [hit] = res.ok ? ((await res.json()) as GeoHit[]) : [];
+      return usableHit(hit) ? { lat: Number(hit.lat), lon: Number(hit.lon) } : null;
+    } catch {
+      return null;
+    }
+  };
+  return (await search('se')) ?? (await search('se,dk,no,fi'));
 }
 
 /** Orter för "i närheten" (POLICE_AREAS, kommaseparerade; standard Eskilstuna). */
