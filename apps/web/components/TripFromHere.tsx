@@ -19,8 +19,10 @@ type Result = { from: From; to: To; when?: When; at?: number; fromName?: string;
 
 const SRC = { phone: 'telefonens plats', life360: 'Life360-positionen' } as const;
 
-/** Ändpunkt: snabbval (Min plats, Hem, jobbet) eller valfri plats (fritext). */
-type End = { kind: From; q: string };
+/** Ändpunkt: snabbval (Min plats, Hem, jobbet) eller valfri plats (fritext, eller valt förslag med punkt). */
+type End = { kind: From; q: string; ll?: string };
+type Place = { name: string; lat: number; lon: number; kind: 'stop' | 'address' | 'place' };
+const KIND_TEXT = { stop: 'Hållplats', address: 'Adress', place: 'Plats' } as const;
 
 /**
  * Reseplanering i SL:s stil: en kompakt ruta med Från och Till (fritext) och ⇅ på avdelaren. Snabbvalen (Min plats,
@@ -31,6 +33,19 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
   const [from, setFrom] = useState<End>({ kind: 'here', q: '' });
   const [to, setTo] = useState<End>({ kind: defaultTo, q: '' });
   const [active, setActive] = useState<'from' | 'to' | null>(null);
+  // Förslag medan man skriver (ResRobot: hållplatser, adresser, platser), 250 ms efter sista tangenttrycket.
+  const [sugg, setSugg] = useState<Place[]>([]);
+  const typed = active === 'from' ? from : active === 'to' ? to : null;
+  const term = typed?.kind === 'place' && !typed.ll ? typed.q.trim() : '';
+  useEffect(() => {
+    if (term.length < 2) { setSugg([]); return; }
+    let alive = true;
+    const t = setTimeout(() => {
+      fetch(`${BASE_PATH}/api/places?q=${encodeURIComponent(term)}`).then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (alive) setSugg(Array.isArray(d?.places) ? d.places : []); }).catch(() => {});
+    }, 250);
+    return () => { alive = false; clearTimeout(t); };
+  }, [term]);
   const [mode, setMode] = useState<Mode>(transit ? 'transit' : 'car');
   // Tid: nu, avgång vid eller framme senast. Fältet tar lokal tid (datetime-local).
   const [when, setWhen] = useState<When>('now');
@@ -61,7 +76,7 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
     setBusy(true); reset();
     try {
       const enc = (v: string) => encodeURIComponent(v.trim());
-      const r = await fetch(`${BASE_PATH}/api/trip?from=${from.kind}&to=${to.kind}&mode=${mode}${from.kind === 'place' ? `&fq=${enc(from.q)}` : ''}${to.kind === 'place' ? `&q=${enc(to.q)}` : ''}${when !== 'now' ? `&when=${when}&t=${t}` : ''}${from.kind === 'here' ? await phonePos() : ''}`);
+      const r = await fetch(`${BASE_PATH}/api/trip?from=${from.kind}&to=${to.kind}&mode=${mode}${from.kind === 'place' ? `&fq=${enc(from.q)}${from.ll ? `&fqll=${from.ll}` : ''}` : ''}${to.kind === 'place' ? `&q=${enc(to.q)}${to.ll ? `&qll=${to.ll}` : ''}` : ''}${when !== 'now' ? `&when=${when}&t=${t}` : ''}${from.kind === 'here' ? await phonePos() : ''}`);
       const d = await r.json().catch(() => null);
       if (r.ok && d) setRes(d); else setErr(d?.error ?? 'Resan kunde inte räknas fram');
     } catch { setErr('Resan kunde inte räknas fram'); }
@@ -107,6 +122,21 @@ export function TripFromHere({ defaultTo, workLabel, transit, car }: { defaultTo
         <button type="button" onClick={swap} aria-label="Byt från och till"
           className="absolute top-1/2 right-2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-card text-[1.125rem]">⇅</button>
       </div>
+      {/* Förslag medan du skriver: välj ett så används just den hållplatsen eller adressen. */}
+      {active && sugg.length > 0 && (
+        <ul role="listbox" aria-label={`Förslag ${active === 'from' ? 'från' : 'till'}`} className="flex flex-col overflow-hidden rounded-[1.125rem] bg-white/[0.07]">
+          {sugg.map((p) => (
+            <li key={`${p.name}-${p.lat}-${p.lon}`} className="border-b border-line last:border-b-0">
+              <button type="button" role="option" aria-selected={false} onMouseDown={(ev) => ev.preventDefault()}
+                onClick={() => { set(active, { kind: 'place', q: p.name, ll: `${p.lat},${p.lon}` }); setSugg([]); setActive(null); }}
+                className="flex min-h-12 w-full items-center gap-3 px-4 text-left">
+                <span className="min-w-0 grow truncate text-[1rem]">{p.name}</span>
+                <span className="shrink-0 text-[0.8125rem] text-dim">{KIND_TEXT[p.kind]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {/* Snabbval för fältet du står i. */}
       {active && (
         <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Snabbval ${active === 'from' ? 'från' : 'till'}`}>

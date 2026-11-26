@@ -36,22 +36,25 @@ export async function GET(req: Request) {
   if (mode === 'transit' ? !transitSearchable() : !etaConfigured()) return err(mode === 'transit' ? 'Kollektivtrafik är inte inställd' : 'Bilresa är inte inställd', 404);
 
   // Valfri plats: adress (geokodning) eller platsnamn (TomTom-sökning nära hemmet).
-  const findPlace = async (raw: string | null) => {
+  // Valt förslag (Sök resa) skickar sin punkt som "lat,lon": den används direkt, utan geokodning.
+  const findPlace = async (raw: string | null, ll?: string | null) => {
     const query = (raw ?? '').trim().slice(0, 120);
     if (query.length < 2) return { error: 'Skriv en adress eller plats' };
+    const m = ll?.match(/^(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)$/);
+    if (m && Math.abs(Number(m[1])) <= 90 && Math.abs(Number(m[2])) <= 180) return { name: query, at: { lat: Number(m[1]), lon: Number(m[2]) } };
     const hit = await geocode(query).then((at) => (at ? { name: query, at } : guessPlace(query, PLACE))).catch(() => null);
     return hit ?? { error: `Hittade inte "${query}". Prova en adress med ort.` };
   };
   // Jobbet: kollektivmålet (TRANSIT_DESTINATION) för kollektivt, annars standardmålet (DEFAULT_DESTINATION, t.ex. Ulrikas jobb).
   const goalAt = mode === 'transit' ? transitGoal()?.at ?? (await defaultGoal())?.at : (await defaultGoal())?.at ?? transitGoal()?.at;
   // Hem, jobbet eller valfri plats som ändpunkt.
-  const point = async (kind: string, raw: string | null): Promise<{ at: LatLon; name?: string } | { error: string }> => {
+  const point = async (kind: string, raw: string | null, ll?: string | null): Promise<{ at: LatLon; name?: string } | { error: string }> => {
     if (kind === 'home') return { at: PLACE };
     if (kind === 'work') return goalAt ? { at: goalAt } : { error: 'Jobbet är inte inställt' };
-    return findPlace(raw);
+    return findPlace(raw, ll);
   };
 
-  const target = await point(to!, q.get('q'));
+  const target = await point(to!, q.get('q'), q.get('qll'));
   if ('error' in target) return err(target.error, target.error.startsWith('Hittade') ? 404 : 400);
   let pos: { at: LatLon; src: 'phone' | 'life360' | 'home' | 'work' | 'place'; name?: string } | null = null;
   if (from === 'here') {
@@ -65,7 +68,7 @@ export async function GET(req: Request) {
     }
     if (!pos) return err('Ingen position. Tillåt platsåtkomst i webbläsaren eller starta Life360.', 404);
   } else {
-    const o = await point(from, q.get('fq'));
+    const o = await point(from, q.get('fq'), q.get('fqll'));
     if ('error' in o) return err(o.error, o.error.startsWith('Hittade') ? 404 : 400);
     pos = { at: o.at, src: from as 'home' | 'work' | 'place', name: o.name };
   }
