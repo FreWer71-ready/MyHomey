@@ -8,7 +8,7 @@ export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/mydashboard';
 const built = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', dateStyle: 'short', timeStyle: 'short' }).format(new Date());
 
 // Version (semantisk, ett enda ställe): V<stor>.<mindre>.<fix>. Höjs av Claude i varje ändring, se CLAUDE.md "Version".
-const version = 'V1.3.3';
+const version = 'V1.3.4';
 console.log(`Version ${version}`); // syns i bygglogg
 
 const config: NextConfig = {

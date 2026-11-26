@@ -1,5 +1,5 @@
 import 'server-only';
-import { bestTrips, doneLegs, fastest, parseTrips, walkMeters, withWalk, withWalkEnd, type TransitLeg, type TransitTrip } from './transit.ts';
+import { bestTrips, doneLegs, fastest, parseTrips, stopName, walkMeters, withWalk, withWalkEnd, type TransitLeg, type TransitTrip } from './transit.ts';
 import { km, type LatLon } from './trip.ts';
 import type { Start } from './startpoint.ts';
 
@@ -57,6 +57,24 @@ async function query(from: Point, to: Point, at: number, opts: { products?: stri
     if (!res.ok) return [];
   }
   return body ? parseTrips(body) : [];
+}
+
+/**
+ * Hållplats på namn (ResRobot location.name), cachas ett dygn. Reserv när målets punkt ligger för långt från en hållplats
+ * (SVC_LOC H9220), t.ex. stadskärnan i Köpenhamn som ligger 1,5 km från Köpenhamn H.
+ */
+async function stopByName(name: string): Promise<{ id: string; name: string } | null> {
+  const key = process.env.RESROBOT_API_KEY;
+  if (!key || name.trim().length < 2) return null;
+  const q = new URLSearchParams({ format: 'json', accessId: key, input: name.trim().slice(0, 80), maxNo: '1', type: 'S' });
+  try {
+    const res = await fetch(`https://api.resrobot.se/v2.1/location.name?${q}`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(6000) });
+    const body = res.ok ? await res.json() as { stopLocationOrCoordLocation?: { StopLocation?: { extId?: string; name?: string } }[] } : null;
+    const s = body?.stopLocationOrCoordLocation?.find((x) => x.StopLocation?.extId)?.StopLocation;
+    return s?.extId ? { id: s.extId, name: stopName(s.name ?? name) } : null;
+  } catch {
+    return null;
+  }
 }
 
 const walkMin = (d: number) => Math.max(1, Math.ceil(((d * 1.25) / 4.8) * 60));
@@ -126,6 +144,11 @@ export async function loadTransit(from: LatLon, to: LatLon, at = Date.now(), n =
     // (118) hittar ResRobot ingen hållplats nära hemmet (SVC_LOC H9220). TRANSIT_PRODUCTS styr om det är satt.
     const products = process.env.TRANSIT_PRODUCTS ?? (process.env.TRANSIT_ORIGIN_STOP ? '118' : undefined);
     let trips = await query(f, t, at, { products, n: n + 2, arrival: arrive });
+    // Ingen hållplats nära målets punkt (t.ex. en stads mittpunkt): sök hållplatsen på namn i stället.
+    if (!trips.length && !endStop && toName) {
+      const named = await stopByName(toName);
+      if (named) trips = await query(f, { id: named.id }, at, { products, n: n + 2, arrival: arrive });
+    }
     if (stop) trips = trips.map((x) => (x.startAt ? withWalk(x, km(from, x.startAt)) : x));
     if (endStop) trips = trips.map((x) => (x.endAt ? withWalkEnd(x, km(x.endAt, to), 'Hemma', to) : x));
     if (arrive) return trips.filter((x) => x.arr <= at + MIN).sort((a, b) => b.arr - a.arr || b.dep - a.dep).slice(0, n).reverse();
