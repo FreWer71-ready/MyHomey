@@ -9,7 +9,8 @@ const hourNow = () => Number(new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, ho
 /** Nattläge 22–06: bara klocka, temperatur och larm, dämpat och varmare. */
 const isNight = (h: number) => h >= 22 || h < 6;
 
-export function HomeShell({ temp, alarms, children }: { temp: string | null; alarms: number; children: React.ReactNode }) {
+/** `footer`: läggs utanför den förskjutna ramen, så att `position: fixed` gäller skärmen (transform bryter fixed). */
+export function HomeShell({ temp, alarms, footer, children }: { temp: string | null; alarms: number; footer?: React.ReactNode; children: React.ReactNode }) {
   const [hour, setHour] = useState<number | null>(null);
   const [wakeUntil, setWakeUntil] = useState(0);
   const [now, setNow] = useState(0);
@@ -27,6 +28,7 @@ export function HomeShell({ temp, alarms, children }: { temp: string | null; ala
   return (
     <>
       <div style={{ transform: `translate(${x}px, ${y}px)` }} className="transition-transform duration-1000">{children}</div>
+      {footer}
       {night && (
         <button
           type="button" aria-label="Väck skärmen"

@@ -298,7 +298,8 @@ a.surface-primary:hover { background: color-mix(in srgb, white 4%, rgb(34 40 50 
   .surface[data-tint="hav"] { --tint: #1E3A52; --tint-line: #335B7C; }
   .surface[data-tint="linne"] { --tint: #37332C; --tint-line: #5A5346; }
   .surface[data-tint="honung"] { --tint: #463A22; --tint-line: #715E38; }
-  .surface[data-tint="terrakotta"] { --tint: #46302A; --tint-line: #704C42; }
+  .surface[data-tint="sten"] { --tint: #383A45; --tint-line: #5C5F6E; }
+  .surface[data-tint="terrakotta"] { --tint: #5C3A2E; --tint-line: #8C5A47; }
   .surface[data-tint] { background: var(--tint) !important; border-color: var(--tint-line) !important; }
   a.surface[data-tint]:hover { background: color-mix(in srgb, white 4%, var(--tint)) !important; }
 }
