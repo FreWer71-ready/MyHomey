@@ -15,7 +15,6 @@ import { EventTransit } from '@/components/EventTransit';
 import { TransitLegs, tripDelay } from '@/components/TransitTrip';
 import { LeaveIn } from '@/components/LeaveIn';
 import { Briefing } from '@/components/Briefing';
-import { FreshButton } from '@/components/FreshButton';
 import { Suspense } from 'react';
 import { progress } from '@/lib/transit';
 import type { TransitLeg } from '@/lib/transit';
@@ -677,7 +676,6 @@ export default async function HomePage() {
               <>
                 {pingable.map((n) => <PingPhoneButton key={n} first={n} label={`📱 Ringa ${n.charAt(0).toUpperCase() + n.slice(1)}`} className="min-w-0 justify-center" />)}
                 <Suspense fallback={null}><Briefing className="min-w-0 justify-center" /></Suspense>
-                <FreshButton className="min-w-0 justify-center" />
               </>
             );
             return issues > 0 ? <AlertChips alerts={alerts} actions={actions} /> : (
