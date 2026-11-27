@@ -49,6 +49,7 @@ test('gata, ort', () => {
   assert.equal(streetTown('Faktorigatan, Eskilstuna'), 'Faktorigatan, Eskilstuna');
   assert.equal(streetTown('Kungsgatan 3'), 'Kungsgatan 3');
   assert.equal(streetTown(null), null);
+  assert.equal(streetTown('Øresundsmotorvejen, Tårnby Kommune'), 'Øresundsmotorvejen, Tårnby');
   assert.equal(streetTown('Faktorigatan 1, Eskilstuna kommun, Södermanlands län, Sverige'), 'Faktorigatan 1, Eskilstuna');
   assert.equal(streetTown('Drottninggatan 5, Stockholms kommun'), 'Drottninggatan 5, Stockholm');
   assert.equal(streetTown('Stora torget, Västerås kommun'), 'Stora torget, Västerås');

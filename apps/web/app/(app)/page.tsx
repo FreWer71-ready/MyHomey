@@ -66,6 +66,13 @@ export const dynamic = 'force-dynamic';
 // avvikelser lyfts fram och det normala hålls dämpat. Bara visning, ingen styrning.
 
 const C = { ok: '#3FB950', warn: '#E3A008', bad: '#F85149', mute: '#8B98A5' } as const;
+/** Närvaro: rund bricka med initialen. Grön = hemma, blå = borta (känd plats), grå = borta i över två dygn. */
+function Avatar({ name, tone }: { name: string; tone: 'home' | 'away' | 'stale' }) {
+  const st = tone === 'home' ? { background: C.ok, color: '#101318' }
+    : tone === 'away' ? { background: 'rgba(88,166,255,0.16)', color: '#79B8FF', boxShadow: 'inset 0 0 0 2px #58A6FF' }
+    : { background: '#1D222A', color: C.mute, boxShadow: `inset 0 0 0 2px rgba(139,152,165,0.45)` };
+  return <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full text-[0.9375rem] font-bold" style={st}>{name.trim().charAt(0).toUpperCase()}</span>;
+}
 const num = (v: number, d = 1) => v.toLocaleString('sv-SE', { maximumFractionDigits: d });
 /** Rum utanför det här spannet räknas som avvikelse och lyfts fram. */
 const COMFORT = { low: 18, high: 26 };
@@ -526,6 +533,12 @@ export default async function HomePage() {
     ...locate.members.filter((m) => !h.people.some((p) => first(p.name) === m.first.toLowerCase()))
       .map((m) => ({ id: m.id, name: m.first, present: m.home, since: null as string | null, src: 'L360' })),
   ].sort((x, y) => Number(y.present) - Number(x.present));
+  // Borta i över 48 h (ingen ny position eller närvaroändring): grå och sist, ihop på en rad.
+  const STALE_MS = 48 * 3600_000;
+  const lastSeen = (p: (typeof people)[number]) => { const m = where(p.name); return m && p.src === 'L360' ? (m.posUpdated ?? m.updated) : p.since; };
+  const isStale = (p: (typeof people)[number]) => { const t = lastSeen(p); return !p.present && !!t && now - Date.parse(t) > STALE_MS; };
+  const fresh = people.filter((p) => !isStale(p));
+  const stale = people.filter(isStale);
 
   // Snabbval: bara de mest använda (Kväll, Släck alla, Städ, Chill) + "Alla kontroller"; Auto På/Av som status sist.
   const QUICK_PICK = [/kväll/i, /släck/i, /städ/i, /chill|mys/i];
@@ -692,20 +705,26 @@ export default async function HomePage() {
           )}
           {people.length > 0 && (
           <Link href="/hitta" aria-label="Närvaro – visa var alla är">
-            <ul aria-label="Närvaro" className="flex flex-wrap gap-x-5 gap-y-1.5 lg:flex-col lg:gap-1.5">
-              {people.map((p) => {
+            <ul aria-label="Närvaro" className="flex flex-col gap-2">
+              {fresh.map((p) => {
                 const m = !p.present ? where(p.name) : undefined;
                 const w = m && !m.home ? [whereText(m), awayKm(m)].filter(Boolean).join(' · ') || null : null;
                 const ago = !p.present && !w && p.since ? seenAgo(p.since) : null;
                 return (
-                  <li key={p.id} className="flex min-w-0 items-baseline gap-2 text-[1.125rem]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
-                    <span className="size-3 shrink-0 self-center rounded-full" style={{ background: p.present ? C.ok : 'transparent', boxShadow: p.present ? undefined : `inset 0 0 0 2px ${C.mute}` }} />
-                    <span className={`shrink-0 ${p.present ? 'font-semibold' : 'text-dim'}`}>{p.name}</span>
+                  <li key={p.id} className="flex min-w-0 items-center gap-2.5 text-[1.125rem]" title={p.present ? `${p.name} är hemma` : `${p.name} är borta`}>
+                    <Avatar name={p.name} tone={p.present ? 'home' : 'away'} />
+                    <span className={`shrink-0 ${p.present ? 'font-semibold' : ''}`}>{p.name}</span>
                     {w && <span className="truncate text-[1rem] text-dim">{w}</span>}
                     {ago && <span className="truncate text-[0.9375rem] text-dim italic">{ago}</span>}
                   </li>
                 );
               })}
+              {stale.length > 0 && (
+                <li className="flex min-w-0 items-center gap-2.5 text-[1rem] text-mute" title="Borta i mer än två dygn">
+                  <span className="flex shrink-0 -space-x-2">{stale.map((p) => <Avatar key={p.id} name={p.name} tone="stale" />)}</span>
+                  <span className="truncate">{stale.map((p) => p.name).join(', ')} · borta 2+ dygn</span>
+                </li>
+              )}
             </ul>
           </Link>
           )}
