@@ -77,10 +77,17 @@ export function whereText(m: Member): string | null {
   return streetTown(m.address);
 }
 
+/** "Eskilstuna kommun" → "Eskilstuna", "Stockholms stad" → "Stockholm" (genitiv-s bort efter konsonant). */
+function townName(t: string): string {
+  const m = t.trim().match(/^(.+?)\s+(kommun|stad|municipality)$/i);
+  if (!m) return t.trim();
+  return /[^aeiouyåäös]s$/i.test(m[1]) ? m[1].slice(0, -1) : m[1];
+}
+
 /** "Fredsborgsgatan 24, 117 43 Stockholm, Sverige" → "Fredsborgsgatan 24, Stockholm" (gata, ort). */
 export function streetTown(address: string | null): string | null {
-  const parts = (address ?? '').split(',').map((x) => x.trim()).filter((x) => x && !/^(sverige|sweden)$/i.test(x));
+  const parts = (address ?? '').split(',').map((x) => x.trim()).filter((x) => x && !/^(sverige|sweden)$/i.test(x) && !/\slän$/i.test(x));
   if (!parts.length) return null;
-  const town = parts.length > 1 ? parts.at(-1)!.replace(/^\d{3}\s?\d{2}\s*/, '').trim() : '';
+  const town = parts.length > 1 ? townName(parts.at(-1)!.replace(/^\d{3}\s?\d{2}\s*/, '')) : '';
   return town && town !== parts[0] ? `${parts[0]}, ${town}` : parts[0];
 }
