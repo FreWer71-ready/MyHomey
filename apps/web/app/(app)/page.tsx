@@ -82,7 +82,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 const COMMUTE_H = 'lg:max-h-[calc(50%-0.75rem)]';
 
 /** Kortets färgplatta (bara när HOME_COLORS är satt, se `data-farger` i globals.css). */
-type Tint = 'rose' | 'sten' | 'skiffer' | 'hav' | 'linne' | 'honung' | 'terrakotta';
+type Tint = 'rose' | 'sten' | 'skiffer' | 'hav' | 'linne' | 'ljung' | 'terrakotta';
 
 /**
  * Kort på Hem (`surface`: #1D222A, kant 8 %, radie 16 px, bred dämpad skugga). Med href blir hela kortet en länk: pilen › visar
@@ -665,10 +665,10 @@ export default async function HomePage() {
               )}
             </>
           );
-          const cls = 'order-2 flex min-w-0 flex-col gap-1 self-center px-1 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-5 lg:row-start-1 2xl:col-span-5 cols2:hidden';
+          const cls = 'surface order-2 flex min-w-0 flex-col gap-1 self-center px-4 py-3 lg:px-5 md:col-span-2 lg:order-none lg:col-span-4 lg:col-start-5 lg:row-start-1 2xl:col-span-5 cols2:hidden';
           return nextStep
-            ? <Link href={nextStep.href} aria-label={`${greetName ? `${greeting}, ${greetName}. ` : ''}Nästa händelse: ${nextStep.title}${nextStep.when ? ` ${nextStep.when}` : ''}.`} className={`${cls} row-hit rounded-xl`}>{inner}</Link>
-            : <div className={cls}>{inner}</div>;
+            ? <Link href={nextStep.href} aria-label={`${greetName ? `${greeting}, ${greetName}. ` : ''}Nästa händelse: ${nextStep.title}${nextStep.when ? ` ${nextStep.when}` : ''}.`} data-tint="skiffer" className={cls}>{inner}</Link>
+            : <div data-tint="skiffer" className={cls}>{inner}</div>;
         })()}
 
         {/* VARNINGAR: en kompakt rad över hela bredden. Den viktigaste dominerar (bärnsten/röd), övriga dämpas, resten bakom "+N". */}
@@ -760,7 +760,7 @@ export default async function HomePage() {
             </Card>
           )}
           {weekend && (
-            <Card tint="honung" title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
+            <Card tint="ljung" title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
               <p className="truncate text-[1rem] text-dim">
                 {trip
                   ? <>{trip.start != null ? <span className="font-semibold text-fg">{dayOf(trip.start) === dayOf(now) ? hhmm(trip.start) : `imorgon ${hhmm(trip.start)}`}</span> : <span className="font-semibold text-fg">Idag</span>} · {trip.title} · {Math.round(trip.km)} km</>
@@ -876,13 +876,13 @@ export default async function HomePage() {
             </Card>
           )}
           {commute && !commute.trains && homeGoal?.atGoal && dir === 'out' && (
-            <Card tint="honung" title={<>Trafik<span className="ml-auto rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">På jobbet</span></>} icon="road" href="/pendling"
+            <Card tint="ljung" title={<>Trafik<span className="ml-auto rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">På jobbet</span></>} icon="road" href="/pendling"
               label="Du är på jobbet. Hemresan visas från klockan 12. Visa trafikläget." className="order-3 lg:order-none lg:shrink-0">
               <p className="text-[1rem] text-dim">Hemresan visas från 12:00</p>
             </Card>
           )}
           {commute && !commute.trains && !(homeGoal?.atGoal && dir === 'out') && (
-            <Card tint="honung"
+            <Card tint="ljung"
               title={homeGoal ? `${homeGoal.driving ? 'Du kör · ' : ''}${homeGoal.home ? (homeGoal.driving ? 'hem' : 'Hem') : `${homeGoal.driving ? 'till' : 'Till'} ${homeGoal.label.toLowerCase()}`}` : 'Väg 56/E18 · Eskilstuna–Västerås'}
               icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0"
               label={homeGoal
