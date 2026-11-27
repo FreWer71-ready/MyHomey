@@ -23,8 +23,10 @@ export function FreshButton({ className = '' }: { className?: string }) {
   };
   return (
     <button type="button" onClick={run} disabled={busy} aria-live="polite"
-      className={`btn min-h-12 shrink-0 px-4 text-[0.9375rem] ${className} ${busy ? 'animate-pulse' : ''} ${fail ? 'text-danger' : ''}`}>
-      {busy ? 'Hämtar … kan ta upp mot 10 s' : fail ? 'Gick inte, försök igen' : '↻ Färsk data · upp mot 10 s'}
+      className={`btn min-h-12 shrink-0 overflow-hidden px-4 text-[0.9375rem] ${className} ${busy ? 'animate-pulse' : ''} ${fail ? 'text-danger' : ''}`}>
+      {/* Kort text på mobil så att knappen inte flyter in i grannen. */}
+      <span className="truncate sm:hidden">{busy ? 'Hämtar …' : fail ? 'Försök igen' : '↻ Färsk · ≤10 s'}</span>
+      <span className="hidden truncate sm:inline">{busy ? 'Hämtar … kan ta upp mot 10 s' : fail ? 'Gick inte, försök igen' : '↻ Färsk data · upp mot 10 s'}</span>
     </button>
   );
 }
