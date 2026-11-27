@@ -47,9 +47,23 @@ export function outcome(anns: Ann[], toSig: string, plannedArr: number, names: R
   const arrivals = anns.filter((x) => x.ActivityType === 'Ankomst' && x.AdvertisedTimeAtLocation);
   const at = arrivals.filter((x) => sigs.has(x.LocationSignature) && diff(x) <= 10 * 60_000);
   const a = (at.length ? at : arrivals.filter((x) => diff(x) < 60_000)).sort((x, y) => diff(x) - diff(y))[0];
-  if (!a) return null;
+  if (!a) return abroad(anns, toSig, plannedArr);
   if (a.Canceled) return { actualArr: null, canceled: true };
   return a.TimeAtLocation ? { actualArr: Date.parse(a.TimeAtLocation), canceled: false } : null;
+}
+
+/**
+ * Slutstation utomlands (ResRobot-namn som "Köpenhamn H (Danmark)") finns inte hos Trafikverket. Då uppskattas ankomsten med
+ * förseningen vid sista rapporterade punkten i Sverige (högst 60 min före planerad ankomst), t.ex. Peberholm på Öresundsbron.
+ */
+function abroad(anns: Ann[], toSig: string, plannedArr: number): { actualArr: number | null; canceled: boolean } | null {
+  const land = toSig.match(/\(([^)]+)\)\s*$/)?.[1];
+  if (!land || /^sverige$/i.test(land)) return null;
+  const adv = (x: Ann) => Date.parse(x.AdvertisedTimeAtLocation ?? '');
+  const last = anns.filter((x) => x.TimeAtLocation && adv(x) <= plannedArr && plannedArr - adv(x) <= 60 * 60_000)
+    .sort((x, y) => adv(y) - adv(x))[0];
+  if (!last) return null;
+  return { actualArr: plannedArr + Math.max(0, Date.parse(last.TimeAtLocation!) - adv(last)), canceled: false };
 }
 
 /** Ankomstförsening i hela minuter (aldrig negativ). */
