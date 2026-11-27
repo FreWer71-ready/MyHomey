@@ -1,6 +1,7 @@
 import 'server-only';
 import { after } from 'next/server';
 import { staleWhileRevalidate } from './timing';
+import { calKey, household, readSnapshot } from './snapshot-source';
 import { FORZA_API, forzaIcsFromResponse, forzaTeams } from './forza';
 import { isBusyOnly, mergeCalendars, parseCalendar, summarizeBusy, withoutAllDay, type Calendar } from './calendar';
 
@@ -24,7 +25,7 @@ export const calendarConfigured = () => calendarUrls().length > 0;
  * Kalendern för idag + 30 dagar (kortet visar en vecka, rutan vid tryck en månad), eller null om ingen kalender är kopplad eller ingen gick att hämta.
  * `range` ger ett annat fönster: back = dagar före idag, days = dagar efter (månadsvyn använder monthsWindow).
  */
-async function buildCalendar(range: { back: number; days: number }): Promise<Calendar | null> {
+export async function buildCalendar(range: { back: number; days: number }): Promise<Calendar | null> {
   const urls = calendarUrls();
   if (!urls.length) return null;
   const parsed = await Promise.all(urls.map(async (u, i) => {
@@ -63,4 +64,11 @@ const calendars = staleWhileRevalidate(buildCalendar, {
   ttl: CAL_TTL * 1000, maxStale: 3600_000, keyOf: (r) => `${r.back}:${r.days}`,
   later: (job) => { try { after(job); } catch { void job(); } },
 });
-export const loadCalendarServer = (range: { back: number; days: number } = { back: 0, days: 30 }): Promise<Calendar | null> => calendars(range);
+/**
+ * Kalendern: först den bakgrundshämtade (tabellen snapshots, högst 30 min gammal, fylls var 10:e minut av /api/refresh),
+ * annars tolkas flödena här som förut (utan inloggning, t.ex. rapportens textadress, finns ingen sparad).
+ */
+export async function loadCalendarServer(range: { back: number; days: number } = { back: 0, days: 30 }): Promise<Calendar | null> {
+  const snap = await readSnapshot<Calendar>(household(), calKey(range), 30 * 60_000);
+  return snap?.data ?? calendars(range);
+}

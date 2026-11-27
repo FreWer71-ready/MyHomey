@@ -13,6 +13,7 @@ import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './t
 import { parseCommute, parseRoad, type Train, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
 import { homeWalkMin } from './transit-source';
 import { parsePolice, type PoliceEvent, type RawPolice } from './police';
+import { readSnapshot } from './snapshot-source';
 import { buildLocate, type Item, type LocCap, type Member } from './locate';
 import { extractHits, toItems, type MuniItem } from './municipal';
 import { usableHit, type GeoHit } from './trip';
@@ -420,7 +421,9 @@ async function loadCommuteFresh(): Promise<Commute | null> {
     })));
   }
   const sb = await createClient();
-  const { data, error } = await sb.functions.invoke('trafik', { body: {} });
+  // Bakgrundshämtad trafikdata (varje minut, högst 3 min gammal) går före ett direktanrop till trafik-funktionen.
+  const snap = await readSnapshot<RawCommute>('*', 'trafik', 3 * 60_000);
+  const { data, error } = snap ? { data: snap.data as RawCommute & { error?: string }, error: null } : await sb.functions.invoke('trafik', { body: {} });
   if (error || !data || data.error) return null;
   const c = withHomeAt(roadOnly(parseCommute(data as RawCommute)));
   // Avgångar som hushållet valt att dölja ("Dölj").

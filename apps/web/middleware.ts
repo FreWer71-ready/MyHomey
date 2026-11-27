@@ -4,7 +4,8 @@ import { BASE_PATH, publicUrl } from './lib/paths';
 import { COOKIE_OPTIONS } from './lib/supabase/cookie';
 
 // /api/calendar/share och /api/briefing skyddas av egna nycklar (server till server, utan inloggning).
-const PUBLIC = ['/login', '/auth', '/api/calendar/share', '/api/briefing'];
+// /api/refresh kontrollerar själv: nyckel från pg_cron (prövas av databasen) eller inloggning.
+const PUBLIC = ['/login', '/auth', '/api/calendar/share', '/api/briefing', '/api/refresh'];
 // Hushållskontrollen sparas 10 min i en kaka (per användare och hushåll) i stället för ett databasanrop vid varje sidhopp.
 const HH_COOKIE = `hh-ok-${BASE_PATH.replace(/\W/g, '')}`;
 
