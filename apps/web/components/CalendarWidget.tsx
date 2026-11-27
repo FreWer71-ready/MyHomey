@@ -62,7 +62,7 @@ export function CalendarWidget({ src = '/api/calendar', title = 'Kalender', id =
 
   return (
     <>
-    <section aria-label={title} data-tint={compact ? 'skiffer' : 'plommon'} className={`flex min-h-0 w-full min-w-0 flex-col gap-3 surface overflow-hidden p-5 lg:max-h-none lg:p-6 ${compact ? 'max-h-[30rem]' : 'max-h-[44rem]'}`}>
+    <section aria-label={title} data-tint={compact ? 'skiffer' : 'rose'} className={`flex min-h-0 w-full min-w-0 flex-col gap-3 surface overflow-hidden p-5 lg:max-h-none lg:p-6 ${compact ? 'max-h-[30rem]' : 'max-h-[44rem]'}`}>
       <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
         {/* Rubriken fäller in och ut; "Månad" öppnar 30 dagar i en egen ruta. */}
         {collapsible ? (
