@@ -81,15 +81,18 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 /** Pendling/helgtrafik: höjd efter innehåll men högst halva kolumnen; kalendern tar resten. */
 const COMMUTE_H = 'lg:max-h-[calc(50%-0.75rem)]';
 
+/** Kortets färgplatta (bara när HOME_COLORS är satt, se `data-farger` i globals.css). */
+type Tint = 'plommon' | 'skiffer' | 'petrol' | 'mossa' | 'sand' | 'lera';
+
 /**
  * Kort på Hem (`surface`: #1D222A, kant 8 %, radie 16 px, bred dämpad skugga). Med href blir hela kortet en länk: pilen › visar
  * det (WCAG 2.4.4), `label` ger skärmläsare ett kort namn. Hover ändrar bara yta/kant/skugga (aldrig storlek eller läge).
  * `primary` = Nu och nästa: något ljusare yta, ingen färgad glöd.
  */
-function Card({ title, icon, href, label, primary, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; label?: string; primary?: boolean; className?: string; children: React.ReactNode }) {
+function Card({ title, icon, href, label, primary, tint, className = '', children }: { title?: React.ReactNode; icon?: IconName; href?: string; label?: string; primary?: boolean; tint?: Tint; className?: string; children: React.ReactNode }) {
   const Box = href ? Link : 'section';
   return (
-    <Box href={href!} aria-label={href ? label : undefined} data-live="" className={`surface ${primary ? 'surface-primary' : ''} relative flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-5 lg:p-6 ${className}`}>
+    <Box href={href!} aria-label={href ? label : undefined} data-live="" data-tint={tint} className={`surface ${primary ? 'surface-primary' : ''} relative flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-5 lg:p-6 ${className}`}>
       {title && (
         <h2 className="flex items-center gap-2.5 text-[1.125rem] font-semibold text-dim">
           {icon && <Icon name={icon} size={22} />}
@@ -545,7 +548,7 @@ export default async function HomePage() {
   for (const re of QUICK_PICK) { const f = quickList.find((a) => !a.toggle && re.test(a.name) && !picked.includes(a)); if (f) picked.push(f); }
   const quickShown = [...(picked.length >= 2 ? picked : quickList.filter((a) => !a.toggle).slice(0, 4)), ...quickList.filter((a) => a.toggle).slice(0, 1)];
   const snabbval = quickShown.length > 0 && (
-    <section aria-label="Snabbval" data-live="" className="surface sticky bottom-4 z-10 mt-4 flex min-w-0 flex-row items-center gap-2 !border-white/[0.14] p-2 !shadow-[0_-8px_24px_rgb(0_0_0/0.4),inset_0_1px_0_rgb(255_255_255/0.04)] max-md:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:mt-5 lg:gap-4 lg:p-3 lg:px-5">
+    <section aria-label="Snabbval" data-live="" data-tint="lera" className="surface sticky bottom-4 z-10 mt-4 flex min-w-0 flex-row items-center gap-2 !border-white/[0.14] p-2 !shadow-[0_-8px_24px_rgb(0_0_0/0.4),inset_0_1px_0_rgb(255_255_255/0.04)] max-md:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:mt-5 lg:gap-4 lg:p-3 lg:px-5">
       <h2 className="hidden items-center gap-2.5 px-1 text-[1.125rem] font-semibold text-dim md:flex md:shrink-0"><Icon name="star" size={22} />Snabbval</h2>
       <div className="min-w-0 grow"><ActionTiles items={quickShown} layout="bar" /></div>
       <Link href="/favoriter" className="btn min-h-12 shrink-0 text-[1rem] lg:min-h-14"><span className="max-lg:hidden">Alla kontroller</span><span className="lg:hidden">Alla</span><span aria-hidden="true">›</span></Link>
@@ -740,7 +743,7 @@ export default async function HomePage() {
         <div className="contents lg:col-span-4 lg:col-start-5 lg:row-start-3 lg:flex lg:min-h-0 lg:flex-col lg:gap-5 2xl:col-span-5 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
           {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
           {tripEta && !(weekend && trip) && !sure && (
-            <Card title={`Resa · ${tripEta.trip.place}`} icon="road"
+            <Card tint="sand" title={`Resa · ${tripEta.trip.place}`} icon="road"
               label={`Resa till ${tripEta.trip.place.replace(/\?$/, ' (gissad plats)')}${tripEta.trip.start != null ? ` klockan ${hhmm(tripEta.trip.start)}` : ''}: ${tripEta.eta.live ? `åk nu, framme ${hhmm(tripEta.eta.arrive)}` : `åk senast ${hhmm(tripEta.eta.depart)}`}, ${plural(tripEta.eta.minutes, 'minut', 'minuter')} plus ${tripEta.margin} minuters marginal. Visa trafikläget.`} className="order-3 lg:order-none lg:shrink-0">
               <p className="truncate text-[1rem] text-dim">
                 {tripEta.fallback
@@ -757,7 +760,7 @@ export default async function HomePage() {
             </Card>
           )}
           {weekend && (
-            <Card title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
+            <Card tint="sand" title={trip ? `Trafik · mot ${trip.place}` : 'Trafik · närområdet'} icon="road" className={`order-3 lg:order-none lg:shrink-0 ${COMMUTE_H}`}>
               <p className="truncate text-[1rem] text-dim">
                 {trip
                   ? <>{trip.start != null ? <span className="font-semibold text-fg">{dayOf(trip.start) === dayOf(now) ? hhmm(trip.start) : `imorgon ${hhmm(trip.start)}`}</span> : <span className="font-semibold text-fg">Idag</span>} · {trip.title} · {Math.round(trip.km)} km</>
@@ -786,18 +789,18 @@ export default async function HomePage() {
             </Card>
           )}
           {focus && (
-            <Card className="order-3 lg:order-none lg:shrink-0">
+            <Card tint="sand" className="order-3 lg:order-none lg:shrink-0">
               <FocusTripCard focus={focus} trains={commute ? [...commute.out, ...commute.home, ...commute.all] : []} pos={focusPos} />
             </Card>
           )}
           {!focus && commute?.trains && !weekend && atWork && (
-            <Card title={<>Pendling<span className="ml-auto rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">På jobbet</span></>} icon="train" href="/pendling"
+            <Card tint="sand" title={<>Pendling<span className="ml-auto rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">På jobbet</span></>} icon="train" href="/pendling"
               label="Du är på jobbet. Hemresan visas från klockan 12. Visa alla avgångar." className="order-3 lg:order-none lg:shrink-0">
               <p className="text-[1rem] text-dim">Hemresan visas från 12:00</p>
             </Card>
           )}
           {!focus && commute?.trains && !weekend && !atWork && (
-            <Card title={ridden ? <>{arrived || sure ? (riddenToWork ? 'På väg till jobbet' : 'På väg hem') : guessed ? 'På tåget (troligen)' : 'På tåget'}<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{arrived && tripEnd ? `framme ${hhmm(tripEnd)}` : `${ridden.product ?? 'Tåg'} ${ridden.ident}`}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling" primary
+            <Card tint="sand" title={ridden ? <>{arrived || sure ? (riddenToWork ? 'På väg till jobbet' : 'På väg hem') : guessed ? 'På tåget (troligen)' : 'På tåget'}<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">{arrived && tripEnd ? `framme ${hhmm(tripEnd)}` : `${ridden.product ?? 'Tåg'} ${ridden.ident}`}</span></> : <>Pendling<span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg"><span className="hidden sm:inline">{dir === 'out' ? 'Eskilstuna ' : 'Stockholm '}</span>{dir === 'out' ? '→ Stockholm' : '→ Eskilstuna'}</span></>} icon="train" href="/pendling" primary
               label={ridden && arrived && tripEnd ? `På väg ${riddenToWork ? 'till jobbet' : 'hem'}, ${riddenToWork ? 'framme' : 'hemma'} ${hhmm(tripEnd)}. Visa trafikläget.` : ridden ? `Du är på ${ridden.product ?? 'tåg'} ${ridden.ident}${ridden.canceled ? ', inställt' : ridden.delay ? `, ${plural(ridden.delay, 'minut', 'minuter')} sent` : ', i tid'}${riddenArr ? `, framme ${ridden.dest} cirka ${hhmm(riddenArr)}` : ''}${onward.length ? `, framme ${riddenToWork ? 'på jobbet' : 'hemma'} ${hhmm(onward.at(-1)!.arr)}` : ''}. Visa trafikläget.` : `Pendling ${dir === 'out' ? 'mot Stockholm' : 'mot Eskilstuna'}${trains[0] ? `: nästa tåg ${hhmm(trains[0].est ?? trains[0].dep)}${trains[0].canceled ? ', inställt' : trains[0].delay ? `, ${plural(trains[0].delay, 'minut', 'minuter')} sent` : ''}` : ''}${nextTransit ? `. ${transitHome ? 'Hem' : tg?.label}: ${leaveIn < -1 ? `sen ${plural(-leaveIn, 'minut', 'minuter')}, ta cykel eller taxi` : `gå om ${plural(Math.max(0, leaveIn), 'minut', 'minuter')}`}, ${transitHome ? 'hemma' : 'framme'} ${hhmm(nextTransit.arr)}` : ''}. Visa alla avgångar.`}
               className={`order-3 lg:order-none lg:shrink-0 ${nextTransit || ridden ? '' : COMMUTE_H}`}>
               {!ridden && trains.length === 0 && <p className="text-[1.125rem] text-dim">{sunday ? 'Måndagens tåg från 06:00 visas här' : 'Inga tåg de närmaste timmarna'}</p>}
@@ -873,13 +876,13 @@ export default async function HomePage() {
             </Card>
           )}
           {commute && !commute.trains && homeGoal?.atGoal && dir === 'out' && (
-            <Card title={<>Trafik<span className="ml-auto rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">På jobbet</span></>} icon="road" href="/pendling"
+            <Card tint="sand" title={<>Trafik<span className="ml-auto rounded-full bg-white/[0.08] px-3 py-1 text-[1.0625rem] font-bold text-fg">På jobbet</span></>} icon="road" href="/pendling"
               label="Du är på jobbet. Hemresan visas från klockan 12. Visa trafikläget." className="order-3 lg:order-none lg:shrink-0">
               <p className="text-[1rem] text-dim">Hemresan visas från 12:00</p>
             </Card>
           )}
           {commute && !commute.trains && !(homeGoal?.atGoal && dir === 'out') && (
-            <Card
+            <Card tint="sand"
               title={homeGoal ? `${homeGoal.driving ? 'Du kör · ' : ''}${homeGoal.home ? (homeGoal.driving ? 'hem' : 'Hem') : `${homeGoal.driving ? 'till' : 'Till'} ${homeGoal.label.toLowerCase()}`}` : 'Väg 56/E18 · Eskilstuna–Västerås'}
               icon="road" href="/pendling" className="order-3 lg:order-none lg:shrink-0"
               label={homeGoal
@@ -916,7 +919,7 @@ export default async function HomePage() {
               )}
             </Card>
           )}
-          <Card title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
+          <Card tint="petrol" title={`Ute${outSource ? ` · ${outSource}` : ''}`} icon="thermo" href="/vader"
             label={`Ute ${outTemp != null ? fmtTemp(outTemp) : ''}${sky ? `, ${sky.label.toLowerCase()}` : ''}${hint ? `. ${hint.text}` : ''}. Visa väderprognosen.`} className="order-4 lg:order-none lg:shrink-0">
             <div className="flex items-center gap-3">
               {sky && weather && <WeatherIcon kind={weatherKind(weather.current.symbol)} size={60} label={sky.label} />}
@@ -955,7 +958,7 @@ export default async function HomePage() {
 
         {/* HEMMET (höger): platta rader i ett kort. Avvikelser lyfts överst och får egen yta; det normala är dämpat. */}
         <div className="contents lg:col-span-4 lg:col-start-9 lg:row-start-3 lg:flex lg:min-h-0 lg:flex-col lg:gap-5 2xl:col-span-3 2xl:col-start-10 cols2:2xl:col-span-1 cols2:lg:col-span-1 cols2:lg:col-start-1 cols2:lg:row-start-4">
-          <Card className="order-6 lg:order-none lg:max-h-full lg:self-stretch lg:py-3 cols2:lg:max-h-none" title="Hemmet" icon="home">
+          <Card tint="mossa" className="order-6 lg:order-none lg:max-h-full lg:self-stretch lg:py-3 cols2:lg:max-h-none" title="Hemmet" icon="home">
             <div className="scroll-x flex min-h-0 flex-col overflow-y-auto" style={{ '--row-h': rows.length > 6 ? '3.25rem' : '3.5rem' } as React.CSSProperties}>
               {rows.map((r) => r.node)}
             </div>
