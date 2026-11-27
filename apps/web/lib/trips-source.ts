@@ -7,7 +7,7 @@ import { ROUTE_KM, delayOf, fromRow, outcome, type Ann, type Trip, isMovingo, ty
 // inloggning och hushållets RLS. Trafikverket ger ankomsttider bara ett par timmar bakåt, så resor fylls i
 // när pendlings- eller historiksidan öppnas inom {GIVE_UP} efter ankomst; därefter räknas förseningen som okänd.
 
-const GIVE_UP = 7 * 3600_000;
+const GIVE_UP = 3 * 24 * 3600_000;
 const iso = (ms: number) => new Date(ms).toISOString();
 
 /** Sparar resan för ett bekräftat tåg (riktning och planerad ankomst ur pendlingens avgångar). Gör inget om tåget inte hittas. */
@@ -40,7 +40,7 @@ export async function settleTrips(now = Date.now()): Promise<void> {
     const { data } = await sb.from('train_trips').select('ident,dep,arr,to_sig').eq('settled', false).lt('arr', iso(now - 2 * 60_000)).limit(10);
     for (const r of data ?? []) {
       const arr = Date.parse(r.arr as string);
-      const { data: d } = await sb.functions.invoke('trafik', { body: { train: r.ident } });
+      const { data: d } = await sb.functions.invoke('trafik', { body: { train: r.ident, at: r.arr } });
       const o = outcome((d?.announcements ?? []) as Ann[], r.to_sig as string, arr, (d?.names ?? {}) as Record<string, string>);
       const patch = o ? { settled: true, canceled: o.canceled, actual_arr: o.actualArr ? iso(o.actualArr) : null, delay_min: o.actualArr ? delayOf(arr, o.actualArr) : null }
         : now - arr > GIVE_UP ? { settled: true } : null;

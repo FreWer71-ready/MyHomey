@@ -147,12 +147,16 @@ Deno.serve(async (req) => {
     // Ett tåg: alla passager idag (även driftplatser mellan stationerna, Advertised=false) + stationsnamn. Cache 45 s.
     if (typeof p.train === "string") {
       if (!/^\d{1,6}$/.test(p.train)) return json({ error: "ogiltigt tåg" }, 400);
-      const hit = trains.get(p.train);
+      // `at` (ISO, valfritt): sök runt den tiden i stället för nu, så att äldre resor kan stämmas av i efterhand.
+      const at = typeof p.at === "string" && !isNaN(Date.parse(p.at)) ? new Date(Date.parse(p.at)) : null;
+      const ck = at ? `${p.train}@${at.toISOString()}` : p.train;
+      const win = (h: number) => at ? new Date(at.getTime() + h * 3600_000).toISOString() : `$dateadd(${h < 0 ? "-" : ""}0${Math.abs(h)}:00:00)`;
+      const hit = trains.get(ck);
       if (hit && Date.now() - hit.at < 45_000) return json(hit.body);
       const [r] = await query(`
 <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" limit="300" orderby="AdvertisedTimeAtLocation">
   <FILTER><AND><EQ name="AdvertisedTrainIdent" value="${p.train}"/>
-    <GT name="AdvertisedTimeAtLocation" value="$dateadd(-08:00:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(08:00:00)"/></AND></FILTER>
+    <GT name="AdvertisedTimeAtLocation" value="${win(-8)}"/><LT name="AdvertisedTimeAtLocation" value="${win(8)}"/></AND></FILTER>
   <INCLUDE>LocationSignature</INCLUDE><INCLUDE>ActivityType</INCLUDE><INCLUDE>Advertised</INCLUDE><INCLUDE>Canceled</INCLUDE>
   <INCLUDE>AdvertisedTimeAtLocation</INCLUDE><INCLUDE>EstimatedTimeAtLocation</INCLUDE><INCLUDE>TimeAtLocation</INCLUDE><INCLUDE>TrackAtLocation</INCLUDE>
   <INCLUDE>ScheduledDepartureDateTime</INCLUDE>
@@ -172,7 +176,7 @@ Deno.serve(async (req) => {
       }
       const body = { announcements: anns, names: Object.fromEntries(sigs.map((sig) => [sig, stationNames.get(sig) ?? sig])), fetched: new Date().toISOString() };
       if (trains.size > 100) trains.clear();
-      trains.set(p.train, { at: Date.now(), body });
+      trains.set(ck, { at: Date.now(), body });
       return json(body);
     }
     if (cache && Date.now() - cache.at < 60_000) return json(cache.body);
