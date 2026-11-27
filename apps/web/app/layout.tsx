@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const weather = await loadWeather();
   const sky = skyState(weather?.current);
   return (
-    <html lang="sv" data-mode={def} data-cols={def === 'stor' ? '2' : '3'} data-big={big} style={{ '--ui-scale': def === 'stor' ? big : 1 } as React.CSSProperties} suppressHydrationWarning>
+    <html lang="sv" data-farger={process.env.HOME_COLORS || undefined} data-mode={def} data-cols={def === 'stor' ? '2' : '3'} data-big={big} style={{ '--ui-scale': def === 'stor' ? big : 1 } as React.CSSProperties} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: modeScript(big, def) }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
