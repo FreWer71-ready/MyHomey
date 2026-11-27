@@ -291,14 +291,14 @@ html[data-laddar] body::after { content: 'Laddar …'; position: fixed; z-index:
 a.surface { cursor: pointer; transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out; }
 a.surface:hover { background: color-mix(in srgb, white 4%, rgb(29 34 42 / 0.94)); border-color: var(--color-line-hi); box-shadow: var(--shadow-card-hover); }
 a.surface-primary:hover { background: color-mix(in srgb, white 4%, rgb(34 40 50 / 0.96)); }
-/* Färgplattor per kort (HOME_COLORS=skymning, Ulrika): dova toner med samma ljushet, kanten något ljusare. Status (bärnsten/röd/grön) oförändrad. */
+/* Färgplattor per kort (HOME_COLORS=skymning, Ulrika): Nordisk natt, tydliga men dova toner utan lila och grönt, kanten ljusare. Status (bärnsten/röd/grön) oförändrad. */
 :root[data-farger="skymning"] {
-  .surface[data-tint="plommon"] { --tint: #2A2233; --tint-line: #4A3D5C; }
-  .surface[data-tint="skiffer"] { --tint: #1F2833; --tint-line: #36465A; }
-  .surface[data-tint="petrol"] { --tint: #1C2B2E; --tint-line: #2F4A4F; }
-  .surface[data-tint="mossa"] { --tint: #222A22; --tint-line: #3A4A3A; }
-  .surface[data-tint="sand"] { --tint: #2D2A20; --tint-line: #4D4834; }
-  .surface[data-tint="lera"] { --tint: #2C2523; --tint-line: #4A3D39; }
+  .surface[data-tint="rose"] { --tint: #45303A; --tint-line: #6E4D5C; }
+  .surface[data-tint="skiffer"] { --tint: #283447; --tint-line: #43546E; }
+  .surface[data-tint="hav"] { --tint: #1E3A52; --tint-line: #335B7C; }
+  .surface[data-tint="linne"] { --tint: #37332C; --tint-line: #5A5346; }
+  .surface[data-tint="honung"] { --tint: #463A22; --tint-line: #715E38; }
+  .surface[data-tint="terrakotta"] { --tint: #46302A; --tint-line: #704C42; }
   .surface[data-tint] { background: var(--tint) !important; border-color: var(--tint-line) !important; }
   a.surface[data-tint]:hover { background: color-mix(in srgb, white 4%, var(--tint)) !important; }
 }
