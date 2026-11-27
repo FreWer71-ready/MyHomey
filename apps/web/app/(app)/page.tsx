@@ -548,7 +548,7 @@ export default async function HomePage() {
   for (const re of QUICK_PICK) { const f = quickList.find((a) => !a.toggle && re.test(a.name) && !picked.includes(a)); if (f) picked.push(f); }
   const quickShown = [...(picked.length >= 2 ? picked : quickList.filter((a) => !a.toggle).slice(0, 4)), ...quickList.filter((a) => a.toggle).slice(0, 1)];
   const snabbval = quickShown.length > 0 && (
-    <section aria-label="Snabbval" data-live="" data-tint="lera" className="surface sticky bottom-4 z-10 mt-4 flex min-w-0 flex-row items-center gap-2 !border-white/[0.14] p-2 !shadow-[0_-8px_24px_rgb(0_0_0/0.4),inset_0_1px_0_rgb(255_255_255/0.04)] max-md:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:mt-5 lg:gap-4 lg:p-3 lg:px-5">
+    <section aria-label="Snabbval" data-live="" data-tint="lera" className={`surface ${calFocus ? '' : 'sticky bottom-4 z-10 max-md:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]'} mt-4 flex min-w-0 flex-row items-center gap-2 !border-white/[0.14] p-2 !shadow-[0_-8px_24px_rgb(0_0_0/0.4),inset_0_1px_0_rgb(255_255_255/0.04)] lg:mt-5 lg:gap-4 lg:p-3 lg:px-5`}>
       <h2 className="hidden items-center gap-2.5 px-1 text-[1.125rem] font-semibold text-dim md:flex md:shrink-0"><Icon name="star" size={22} />Snabbval</h2>
       <div className="min-w-0 grow"><ActionTiles items={quickShown} layout="bar" /></div>
       <Link href="/favoriter" className="btn min-h-12 shrink-0 text-[1rem] lg:min-h-14"><span className="max-lg:hidden">Alla kontroller</span><span className="lg:hidden">Alla</span><span aria-hidden="true">›</span></Link>
