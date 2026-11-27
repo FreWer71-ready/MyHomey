@@ -98,3 +98,13 @@ test('avslutade ärenden (utbetald/avslagen) döljs', async () => {
   assert.equal(claimDone({ ...base, claim: 'rejected' }), true);
   assert.equal(claimDone({ ...base, claim: 'sent' }), false);
 });
+
+test('outcome: slutstation utomlands uppskattas med förseningen vid sista svenska punkten', () => {
+  const planned = Date.parse('2026-11-27T09:44:00Z');
+  const anns = [
+    { LocationSignature: 'Hie', ActivityType: 'Ankomst', AdvertisedTimeAtLocation: '2026-11-27T10:12:00+01:00', TimeAtLocation: '2026-11-27T10:17:00+01:00' },
+    { LocationSignature: 'Phm', ActivityType: 'Ankomst', AdvertisedTimeAtLocation: '2026-11-27T10:24:00+01:00', TimeAtLocation: '2026-11-27T10:27:00+01:00' },
+  ] as never[];
+  assert.deepEqual(outcome(anns, 'Köpenhamn H (Danmark)', planned), { actualArr: planned + 3 * 60_000, canceled: false });
+  assert.equal(outcome(anns, 'Lund C', planned), null);
+});
