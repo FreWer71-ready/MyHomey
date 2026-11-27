@@ -82,7 +82,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 const COMMUTE_H = 'lg:max-h-[calc(50%-0.75rem)]';
 
 /** Kortets färgplatta (bara när HOME_COLORS är satt, se `data-farger` i globals.css). */
-type Tint = 'rose' | 'skiffer' | 'hav' | 'linne' | 'honung' | 'terrakotta';
+type Tint = 'rose' | 'sten' | 'skiffer' | 'hav' | 'linne' | 'honung' | 'terrakotta';
 
 /**
  * Kort på Hem (`surface`: #1D222A, kant 8 %, radie 16 px, bred dämpad skugga). Med href blir hela kortet en länk: pilen › visar
@@ -548,7 +548,7 @@ export default async function HomePage() {
   for (const re of QUICK_PICK) { const f = quickList.find((a) => !a.toggle && re.test(a.name) && !picked.includes(a)); if (f) picked.push(f); }
   const quickShown = [...(picked.length >= 2 ? picked : quickList.filter((a) => !a.toggle).slice(0, 4)), ...quickList.filter((a) => a.toggle).slice(0, 1)];
   const snabbval = quickShown.length > 0 && (
-    <section aria-label="Snabbval" data-live="" data-tint="terrakotta" className={`surface ${calFocus ? '' : 'sticky bottom-4 z-10 max-md:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]'} mt-4 flex min-w-0 flex-row items-center gap-2 !border-white/[0.14] p-2 !shadow-[0_-8px_24px_rgb(0_0_0/0.4),inset_0_1px_0_rgb(255_255_255/0.04)] lg:mt-5 lg:gap-4 lg:p-3 lg:px-5`}>
+    <section aria-label="Snabbval" data-live="" data-tint="terrakotta" className={`surface ${calFocus ? 'fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-10 md:right-4 md:bottom-4 md:left-[5rem]' : 'sticky bottom-4 z-10 mt-4 max-md:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]'} flex min-w-0 flex-row items-center gap-2 !border-white/[0.14] p-2 !shadow-[0_-8px_24px_rgb(0_0_0/0.4),inset_0_1px_0_rgb(255_255_255/0.04)] lg:mt-5 lg:gap-4 lg:p-3 lg:px-5`}>
       <h2 className="hidden items-center gap-2.5 px-1 text-[1.125rem] font-semibold text-dim md:flex md:shrink-0"><Icon name="star" size={22} />Snabbval</h2>
       <div className="min-w-0 grow"><ActionTiles items={quickShown} layout="bar" /></div>
       <Link href="/favoriter" className="btn min-h-12 shrink-0 text-[1rem] lg:min-h-14"><span className="max-lg:hidden">Alla kontroller</span><span className="lg:hidden">Alla</span><span aria-hidden="true">›</span></Link>
@@ -629,7 +629,7 @@ export default async function HomePage() {
   sw.mark('klar');
   console.info(`Hem ${sw.line()}`);
   return (
-    <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues}>
+    <HomeShell temp={outTemp != null ? fmtTemp(outTemp) : null} alarms={issues} footer={calFocus ? snabbval : undefined}>
       <>
       {/* Läge Stor (cols2): två kolumner – NU och HEMMET till vänster, HÄRNÄST till höger; sidan får scrolla. */}
       <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:h-[calc(100dvh-2rem-5.9rem)] lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)] lg:items-stretch lg:gap-5 cols2:lg:h-auto cols2:lg:grid-cols-2 cols2:lg:grid-rows-[auto_auto_auto_1fr] cols2:lg:items-start">
@@ -743,7 +743,7 @@ export default async function HomePage() {
         <div className="contents lg:col-span-4 lg:col-start-5 lg:row-start-3 lg:flex lg:min-h-0 lg:flex-col lg:gap-5 2xl:col-span-5 cols2:lg:col-span-1 cols2:2xl:col-span-1 cols2:lg:col-start-2 cols2:lg:row-start-3 cols2:lg:row-span-2">
           {/* Nästa resa (TomTom), om helgkortet inte redan visar den. */}
           {tripEta && !(weekend && trip) && !sure && (
-            <Card tint="honung" title={`Resa · ${tripEta.trip.place}`} icon="road"
+            <Card tint="sten" title={`Resa · ${tripEta.trip.place}`} icon="road"
               label={`Resa till ${tripEta.trip.place.replace(/\?$/, ' (gissad plats)')}${tripEta.trip.start != null ? ` klockan ${hhmm(tripEta.trip.start)}` : ''}: ${tripEta.eta.live ? `åk nu, framme ${hhmm(tripEta.eta.arrive)}` : `åk senast ${hhmm(tripEta.eta.depart)}`}, ${plural(tripEta.eta.minutes, 'minut', 'minuter')} plus ${tripEta.margin} minuters marginal. Visa trafikläget.`} className="order-3 lg:order-none lg:shrink-0">
               <p className="truncate text-[1rem] text-dim">
                 {tripEta.fallback
@@ -987,8 +987,9 @@ export default async function HomePage() {
 
       </div>
 
-      {/* SNABBVAL: fast underst (sticky, sist i sidan) med diskret ram; bara det mest använda, resten på Styrning. */}
-      {snabbval}
+      {/* SNABBVAL: fast underst (sticky, sist i sidan) med diskret ram; bara det mest använda, resten på Styrning.
+          Kalenderfokus (Ulrika): fast ovanpå innehållet (utanför HomeShells förskjutna ram, `footer`), med luft under sidan. */}
+      {calFocus ? snabbval && <div aria-hidden="true" className="h-24 lg:h-20" /> : snabbval}
       </>
     </HomeShell>
   );
