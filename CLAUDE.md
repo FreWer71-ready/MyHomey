@@ -15,7 +15,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - Prioritet: **mobilens plats → Life360 (eller Apple Watch) → hemmet/jobbet.**
 - Platsåtkomst frågas bara vid tryck, aldrig vid sidladdning. Nekas den används nästa källa.
 - Positioner lagras inte. Noggrannhet sämre än 1 km används inte.
-- **Närvaro på Hem (V1.6.0):** rund bricka med initialen (`Avatar`): grön = hemma, blå = borta med plats, grå = borta i över 48 h (ingen ny position/närvaroändring); de gråa samlas sist på en rad ("Molly, Wilmer · borta 2+ dygn"). Orten visas utan "kommun/kommune/stad/län" (`streetTown`).
+- **Närvaro på Hem (V1.6.1):** rund bricka med initialen (`Avatar`): grön = hemma, blå = borta med plats, grå = borta i över 48 h (ingen ny position/närvaroändring); de gråa samlas sist på en rad ("Molly, Wilmer · borta 2+ dygn"). Orten visas utan "kommun/kommune/stad/län" (`streetTown`).
 
 ## Resor och pendling
 - Reseben visas som **starttid · symbol för färdsätt · text · sluttid**. Linjer visas som SL-bricka (nummer på linjens färg: tunnelbana röd/grön/blå, Tvärbanan, pendeltåg rosa, buss blå; `lineBadge`), gång som sträcka i meter (`meters`, annars minuter) och under rubriken "13:58 från Årstadal" (`DepartsFrom`). Nedräkningen "Gå om N min" tickar i klienten (`LeaveIn`) och blir "Gått kl hh:mm". Målets namn skickas till ResRobot (`toName`), HTML-koder i namn avkodas (`stopName`).
@@ -96,7 +96,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - `BirthdayOverlay` (i layouten) visar "Grattis / på födelsedagen" med namnet i gult under, med fyrverkerier, konfetti, blommor och champagne i cirka 5 s (avslutas med ett finalsalvo av fyrverkerier) vid varje full omladdning under dagen, inte vid sidbyte eller automatisk uppdatering. Tryck stänger direkt. Utan `BIRTHDAYS` visas inget.
 
 ## Version
-- **Semantisk version `V<stor>.<mindre>.<fix>`, utan PR-nummer** (nu V1.6.0). Ett enda ställe: `const version` i `next.config.ts` (visas via `lib/version.ts` ovanför huset i sidomenyn, i mobilen längst ned: "MyHomey V1.6.0").
+- **Semantisk version `V<stor>.<mindre>.<fix>`, utan PR-nummer** (nu V1.6.1). Ett enda ställe: `const version` i `next.config.ts` (visas via `lib/version.ts` ovanför huset i sidomenyn, i mobilen längst ned: "MyHomey V1.6.1").
 - **Claude höjer versionen i varje ändring, före commit** (samma PR som ändringen): **fix** (tredje siffran, +1) = buggar och små rättelser; **mindre** (andra siffran +1, fix nollas) = mindre omdisponering och justeringar i befintlig funktion; **stor** (första siffran +1, övriga nollas) = stora ändringar och nya funktioner med stor påverkan. Vid tveksamhet: välj den lägre nivån och säg vilken som valdes i svaret. Rena dokumentationsändringar (bara CLAUDE.md) höjer inte versionen. **Vid publicering anges den nya versionen (inte PR-numret) i commit- och PR-rubriken (`… (V1.3.0)`) och i svaret till användaren.**
 
 ## Prestanda
