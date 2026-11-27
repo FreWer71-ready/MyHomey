@@ -79,7 +79,7 @@ export function whereText(m: Member): string | null {
 
 /** "Eskilstuna kommun" → "Eskilstuna", "Stockholms stad" → "Stockholm" (genitiv-s bort efter konsonant). */
 function townName(t: string): string {
-  const m = t.trim().match(/^(.+?)\s+(kommun|stad|municipality)$/i);
+  const m = t.trim().match(/^(.+?)\s+(kommun|kommune|stad|municipality)$/i);
   if (!m) return t.trim();
   return /[^aeiouyåäös]s$/i.test(m[1]) ? m[1].slice(0, -1) : m[1];
 }
