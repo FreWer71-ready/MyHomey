@@ -553,7 +553,8 @@ async function loadPoliceFresh(): Promise<PoliceEvent[]> {
   }
   try {
     const res = await fetch(`https://polisen.se/api/events?locationname=${encodeURIComponent(POLICE_AREAS.join(';'))}`, {
-      headers: { 'User-Agent': 'home-dashboard/1.0' }, next: { revalidate: 600 }, signal: AbortSignal.timeout(6000),
+      // Ingen egen User-Agent: polisen.se svarar 400 på "home-dashboard/1.0" (kontrollerat 2026-11-28).
+      next: { revalidate: 600 }, signal: AbortSignal.timeout(6000),
     });
     return res.ok ? parsePolice((await res.json()) as RawPolice[], POLICE_AREAS) : [];
   } catch {
