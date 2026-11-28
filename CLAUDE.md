@@ -97,7 +97,7 @@ Svara och skriv på svenska (kommentarer, UI-text, commit-meddelanden).
 - `BirthdayOverlay` (i layouten) visar "Grattis / på födelsedagen" med namnet i gult under, med fyrverkerier, konfetti, blommor och champagne i cirka 5 s (avslutas med ett finalsalvo av fyrverkerier) vid varje full omladdning under dagen, inte vid sidbyte eller automatisk uppdatering. Tryck stänger direkt. Utan `BIRTHDAYS` visas inget.
 
 ## Version
-- **Semantisk version `V<stor>.<mindre>.<fix>`, utan PR-nummer** (nu V1.7.7). Ett enda ställe: `const version` i `next.config.ts` (visas via `lib/version.ts` ovanför huset i sidomenyn, i mobilen längst ned: "MyHomey V1.7.7").
+- **Semantisk version `V<stor>.<mindre>.<fix>`, utan PR-nummer** (nu V1.7.8). Ett enda ställe: `const version` i `next.config.ts` (visas via `lib/version.ts` ovanför huset i sidomenyn, i mobilen längst ned: "MyHomey V1.7.8").
 - **Claude höjer versionen i varje ändring, före commit** (samma PR som ändringen): **fix** (tredje siffran, +1) = buggar och små rättelser; **mindre** (andra siffran +1, fix nollas) = mindre omdisponering och justeringar i befintlig funktion; **stor** (första siffran +1, övriga nollas) = stora ändringar och nya funktioner med stor påverkan. Vid tveksamhet: välj den lägre nivån och säg vilken som valdes i svaret. Rena dokumentationsändringar (bara CLAUDE.md) höjer inte versionen. **Vid publicering anges den nya versionen (inte PR-numret) i commit- och PR-rubriken (`… (V1.3.0)`) och i svaret till användaren.**
 
 ## Prestanda
