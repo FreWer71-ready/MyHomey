@@ -1,6 +1,7 @@
 import { Icon, type IconName } from '@/components/Icon';
 import { HUMIDITY_LIMIT, humidityWarnings, rainWarning } from '@/lib/alerts';
 import { loadHome, loadMunicipal, loadNet, loadOpeningsToday, loadPolice, loadWarnings, loadWeather, POLICE_AREAS } from '@/lib/data';
+import { areaLabel } from '@/lib/police';
 import { when } from '@/components/WarningBanners';
 import { NET_LABEL } from '@/lib/net';
 import { HistoryChart } from '@/components/HistoryChart';
@@ -92,8 +93,8 @@ export default async function AlarmPage() {
         )}
       </Section>}
 
-      {/* Polisens händelser i närheten senaste dygnet (POLICE_AREAS). */}
-      <Section id="narhet" icon={police.length ? 'siren' : 'sirenOff'} title={`I närheten · ${POLICE_AREAS.join(', ')}`} count={police.length} tone={police.some((e) => e.level !== 'yellow') ? 'warn' : 'ok'}>
+      {/* Polisens händelser i närheten senaste veckan (POLICE_AREAS, hela kommunen). */}
+      <Section id="narhet" icon={police.length ? 'siren' : 'sirenOff'} title={`I närheten · ${areaLabel(POLICE_AREAS)}`} count={police.length} tone={police.some((e) => e.level !== 'yellow') ? 'warn' : 'ok'}>
         {police.length ? (
           <ul className="flex flex-col gap-2">
             {police.slice(0, 12).map((e) => (
@@ -101,7 +102,7 @@ export default async function AlarmPage() {
                 <a href={e.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 rounded-2xl bg-glass-2 px-3 py-2">
                   <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ background: e.level === 'red' ? '#F85149' : e.level === 'orange' ? '#F0883E' : '#E3A008' }} />
                   <span className="min-w-0 grow">
-                    <span className="block font-extrabold">{e.type}</span>
+                    <span className="block font-extrabold">{e.type}{e.place && e.place.toLowerCase() !== POLICE_AREAS[0]?.toLowerCase() ? ` · ${e.place}` : ''}</span>
                     <span className="block text-sm font-bold text-dim">{e.summary}</span>
                   </span>
                   <span className="shrink-0 text-sm font-bold text-dim tabular-nums">{when(e.at)}</span>
@@ -109,7 +110,7 @@ export default async function AlarmPage() {
               </li>
             ))}
           </ul>
-        ) : <Empty text="Inga händelser senaste dygnet" />}
+        ) : <Empty text="Inga händelser senaste veckan" />}
         <p className="mt-2 px-1 text-[0.875rem] font-bold text-dim">Källa: Polisen (polisen.se), uppdateras var 10:e minut.</p>
       </Section>
 

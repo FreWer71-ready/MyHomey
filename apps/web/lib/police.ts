@@ -10,6 +10,17 @@ const RED = /skottlossning|explosion|mord|dråp|bombhot|vma/i;
 const ORANGE = /brand|räddningsinsats|trafikolycka|farligt föremål|rån|knivlagen|olaga hot|försvunnen|gasläcka/i;
 
 /** "2026-11-14 7:54:42 +01:00" → ms. */
+/** Kommuner som ett ortnamn står för: polisen anger ibland tätorten (Torshälla) i stället för kommunen. */
+export const KOMMUN: Record<string, string[]> = {
+  eskilstuna: ['Eskilstuna', 'Torshälla', 'Kvicksund', 'Hällbybrunn', 'Ärla', 'Skogstorp', 'Alberga', 'Hällberga', 'Sundbyholm'],
+};
+
+/** "Eskilstuna" → Eskilstuna kommuns alla tätorter; övriga namn som de är. Utan dubbletter. */
+export const expandAreas = (areas: string[]) => [...new Set(areas.flatMap((a) => KOMMUN[a.trim().toLowerCase()] ?? [a.trim()]))];
+
+/** Rubrik: "Eskilstuna kommun" för en kommun i KOMMUN, annars namnet. */
+export const areaLabel = (areas: string[]) => areas.map((a) => (KOMMUN[a.trim().toLowerCase()] ? `${a.trim()} kommun` : a.trim())).join(', ');
+
 export function policeTime(s: string): number {
   const m = s.match(/^(\d{4}-\d{2}-\d{2}) (\d{1,2}):(\d{2}):(\d{2}) ([+-]\d{2}:\d{2})$/);
   return m ? Date.parse(`${m[1]}T${m[2].padStart(2, '0')}:${m[3]}:${m[4]}${m[5]}`) : NaN;
