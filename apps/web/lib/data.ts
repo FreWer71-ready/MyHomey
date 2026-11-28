@@ -12,7 +12,7 @@ import { smhiWarnings, storms, vmas, type SmhiWarning, type Storm, type Vma } fr
 import { buildPresence, buildTimeline, type OnOffRow, type RoomLines } from './timeline';
 import { parseCommute, parseRoad, type Train, type Commute, type RawCommute, type RawDeviation, type RoadEvent } from './commute';
 import { homeWalkMin } from './transit-source';
-import { parsePolice, type PoliceEvent, type RawPolice } from './police';
+import { expandAreas, parsePolice, type PoliceEvent, type RawPolice } from './police';
 import { readSnapshot } from './snapshot-source';
 import { buildLocate, type Item, type LocCap, type Member } from './locate';
 import { extractHits, toItems, type MuniItem } from './municipal';
@@ -542,7 +542,10 @@ export async function geocode(q: string): Promise<{ lat: number; lon: number } |
 /** Orter för "i närheten" (POLICE_AREAS, kommaseparerade; standard Eskilstuna). */
 export const POLICE_AREAS = (process.env.POLICE_AREAS ?? 'Eskilstuna').split(',').map((s) => s.trim()).filter(Boolean);
 
-/** Polisens händelser i närheten senaste dygnet (öppet API, cachas 10 min). Tom lista vid fel. */
+/** Hur långt bakåt Polisens händelser visas på Larm (Hem visar bara allvarliga från senaste 3 h). */
+export const POLICE_DAYS = 7;
+
+/** Polisens händelser i närheten (hela kommunen, `expandAreas`) senaste veckan (öppet API, cachas 10 min). Tom lista vid fel. */
 async function loadPoliceFresh(): Promise<PoliceEvent[]> {
   if (DEMO) {
     const t = (min: number) => { const d = new Date(Date.now() - min * 60_000); return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 19)} +00:00`; };
@@ -552,11 +555,12 @@ async function loadPoliceFresh(): Promise<PoliceEvent[]> {
     ], POLICE_AREAS);
   }
   try {
-    const res = await fetch(`https://polisen.se/api/events?locationname=${encodeURIComponent(POLICE_AREAS.join(';'))}`, {
+    const places = expandAreas(POLICE_AREAS);
+    const res = await fetch(`https://polisen.se/api/events?locationname=${encodeURIComponent(places.join(';'))}`, {
       // Ingen egen User-Agent: polisen.se svarar 400 på "home-dashboard/1.0" (kontrollerat 2026-11-28).
       next: { revalidate: 600 }, signal: AbortSignal.timeout(6000),
     });
-    return res.ok ? parsePolice((await res.json()) as RawPolice[], POLICE_AREAS) : [];
+    return res.ok ? parsePolice((await res.json()) as RawPolice[], places, Date.now(), POLICE_DAYS * 24) : [];
   } catch {
     return [];
   }

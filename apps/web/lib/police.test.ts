@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parsePolice, policeAlerts, policeTime } from './police.ts';
+import { areaLabel, expandAreas, parsePolice, policeAlerts, policeTime } from './police.ts';
 
 const now = Date.parse('2026-11-14T22:00:00+01:00');
 const raw = [
@@ -25,4 +25,10 @@ test('bara vår ort, senaste dygnet, utan sammanfattningar; nyast först', () =>
 
 test('varning på Hem bara för allvarligt och färskt', () => {
   assert.deepEqual(policeAlerts(parsePolice(raw, ['Eskilstuna'], now), now).map((e) => e.id), [1]);
+});
+
+test('expandAreas och areaLabel: Eskilstuna blir hela kommunen', () => {
+  assert.ok(expandAreas(['Eskilstuna']).includes('Torshälla'));
+  assert.deepEqual(expandAreas(['Nyköping']), ['Nyköping']);
+  assert.equal(areaLabel(['Eskilstuna', 'Nyköping']), 'Eskilstuna kommun, Nyköping');
 });
