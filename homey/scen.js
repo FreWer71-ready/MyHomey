@@ -1,12 +1,13 @@
-// DB Scen: Ljust / Mys / Släck för ett rum, eller aktivera ett mood.
+// DB Scen: dashboardens kommandon till Homey (rumsscener, moods, flöden, lampor och TV-fjärren).
 // Flöde: NÄR Logik → "Webhook tas emot", händelse: scen
 //        DÅ 1) HomeyScript → "Kör med argument": DB Scen, argument = [Tag]
 //           2) HomeyScript → "Kör": Dashboard (fördröjning 2 s)
 // Argument (JSON från dashboarden):
-//   {"zone":"<zon-id>","scene":"ljust|mys|slack"}  eller  {"mood":"<mood-id>"}
+//   {"zone":"<zon-id>","scene":"ljust|mys|slack|stad|varmt"}  eller  {"mood":"<mood-id>"}
 //   {"flow":"<flow-id>","advanced":"true|false"}
 //   {"device":"<enhets-id>","on":"true|false","dim":"0–1","temp":"0–1","hue":"0–1","sat":"0–1"} (alla valfria utom device)
 //   {"device":"<enhets-id>","cap":"volume_up|volume_down|volume_set|volume_mute|onoff|speaker_playing|…","value":"true|false|0–1"}  (TV-fjärren)
+// Körs skriptet i editorn (utan argument) blir det "Ogiltigt argument: undefined"; det är väntat.
 
 const a = JSON.parse(args[0] || '{}');
 
@@ -85,12 +86,15 @@ const SCENES = {
     ],
   },
   slack: { on: false },
+  stad: { on: true, dim: 1.0, temp: 0 }, // Städ kallvitt: allt på, 100 %, kallaste vita
+  varmt: { on: true, dim: 0.75, temp: 0.65 }, // Varmt ljus 75 %: varmvitt
 };
 const s = SCENES[a.scene];
 if (!a.zone || !s) throw new Error(`Ogiltigt argument: ${args[0]}`);
 
 const lights = Object.values(await Homey.devices.getDevices())
-  .filter((d) => d.zone === a.zone && d.class === 'light' && d.available !== false);
+  // "Vad är anslutet?" i Homey (t.ex. uttag med lampa) räknas som lampa, som i dashboarden.
+  .filter((d) => d.zone === a.zone && (d.virtualClass || d.class) === 'light' && d.available !== false);
 
 const set = (d, capabilityId, value) =>
   d.capabilities.includes(capabilityId)
