@@ -108,3 +108,15 @@ test('outcome: slutstation utomlands uppskattas med förseningen vid sista svens
   assert.deepEqual(outcome(anns, 'Köpenhamn H (Danmark)', planned), { actualArr: planned + 3 * 60_000, canceled: false });
   assert.equal(outcome(anns, 'Lund C', planned), null);
 });
+
+test('outcome: station med namn (Dagens resa) slås upp bland tågets stationer', () => {
+  const t = (h: number, m: number) => `2026-11-25T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000+01:00`;
+  const anns: Ann[] = [
+    { LocationSignature: 'Hm', ActivityType: 'Ankomst', AdvertisedTimeAtLocation: t(11, 50), TimeAtLocation: t(11, 52) },
+    { LocationSignature: 'Kc', ActivityType: 'Ankomst', AdvertisedTimeAtLocation: t(11, 56), TimeAtLocation: t(12, 3) },
+  ];
+  assert.deepEqual(outcome(anns, 'Kristianstad C', Date.parse(t(11, 56)), { Hm: 'Hässleholm C', Kc: 'Kristianstad' }), { actualArr: Date.parse(t(12, 3)), canceled: false });
+  // Okänt namn: ankomsten med exakt planerad tid.
+  assert.deepEqual(outcome(anns, 'Okänd', Date.parse(t(11, 50))), { actualArr: Date.parse(t(11, 52)), canceled: false });
+  assert.equal(outcome(anns, 'Okänd', Date.parse(t(11, 45))), null);
+});
